@@ -3,11 +3,7 @@ import { BookOpen, Users, Award, TrendingUp } from 'lucide-react';
 const stats = [
   { icon: Users, value: '500+', label: 'Students' },
   { icon: BookOpen, value: '10+', label: 'Subjects' },
-<<<<<<< HEAD
   { icon: Award, value: '15+', label: 'Years Experience' },
-=======
-  { icon: Award, value: '5+', label: 'Years Experience' },
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
   { icon: TrendingUp, value: '95%', label: 'Success Rate' },
 ];
 
@@ -34,7 +30,6 @@ export default function Hero() {
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-4">
-<<<<<<< HEAD
               Best Coaching Classes in Purnia, Bihar
               <span className="block text-[#f5a623]">Sunrise Classes & Academy</span>
             </h1>
@@ -43,16 +38,6 @@ export default function Hero() {
               Expert coaching for Class 9 & 10 board exams in Champanagar, Purnia, Bihar. 
               With 15+ years of teaching experience, we provide personalized education, daily YouTube educational videos, and comprehensive study materials for rural students in Bihar.
               We also offer offline classroom batches for in-person learning.
-=======
-              Sunrise Classes
-              <span className="block text-[#f5a623]">&amp; Academy</span>
-            </h1>
-
-            <p className="text-[#8ba8d4] text-base sm:text-lg max-w-xl mx-auto lg:mx-0 mb-4 leading-relaxed">
-              Illuminating minds with quality education since inception. We are committed to
-              nurturing every student's potential through dedicated teaching and modern learning
-              methods.
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
             </p>
 
             <p className="text-[#f5a623]/80 text-sm italic mb-8 font-medium">
@@ -73,19 +58,10 @@ export default function Hero() {
                 Learn More
               </a>
             </div>
-<<<<<<< HEAD
-=======
-
-            <p className="mt-6 text-[#6b8ab8] text-xs">
-              With the help of{' '}
-              <span className="text-[#f5a623] font-semibold">Nikhar Gramin Vikash Sansthan</span>
-            </p>
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
           </div>
 
           <div className="flex-shrink-0 flex flex-col items-center gap-6">
             <div className="relative">
-<<<<<<< HEAD
               <div className="absolute inset-0 bg-[#f5a623]/25 rounded-[2rem] blur-2xl scale-110" />
               <img
                 src="/sunrise-logo.png"
@@ -93,13 +69,6 @@ export default function Hero() {
                 width={320}
                 height={320}
                 className="relative w-64 h-64 sm:w-80 sm:h-80 max-w-[85vw] rounded-[1.75rem] object-contain bg-white shadow-2xl border-4 border-[#f5a623]/60 p-2"
-=======
-              <div className="absolute inset-0 bg-[#f5a623]/30 rounded-full blur-2xl scale-110" />
-              <img
-                src="/Sunrise_Classes_&_Academy_(1).jpg"
-                alt="Sunrise Classes & Academy Logo"
-                className="relative w-56 h-56 sm:w-72 sm:h-72 rounded-full object-contain bg-white shadow-2xl border-4 border-[#f5a623]/60 p-3"
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
               />
             </div>
           </div>

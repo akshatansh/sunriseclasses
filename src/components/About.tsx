@@ -10,10 +10,7 @@ const highlights = [
   'Specialized in Class 9 & 10 Board Exams',
   'Director with 15+ years of teaching experience',
   'Daily YouTube educational videos',
-<<<<<<< HEAD
   'Offline classroom batches available',
-=======
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
   'Individual attention to every student',
   'Regular mock tests and practice papers',
   'Comprehensive study materials provided',
@@ -24,7 +21,6 @@ export default function About() {
     <section id="about" className="py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14">
-<<<<<<< HEAD
           <div className="flex justify-center mb-4">
             <img
               src="/sunrise-logo.png"
@@ -34,10 +30,6 @@ export default function About() {
           </div>
           <span className="text-[#f5a623] text-sm font-semibold uppercase tracking-widest">Who We Are</span>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5c] mt-2">About Sunrise Classes & Academy - Best Coaching in Purnia</h2>
-=======
-          <span className="text-[#f5a623] text-sm font-semibold uppercase tracking-widest">Who We Are</span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5c] mt-2">About Sunrise Classes & Academy</h2>
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
           <div className="w-16 h-1 bg-[#f5a623] mx-auto mt-4 rounded-full" />
         </div>
 
@@ -66,7 +58,6 @@ export default function About() {
               Sunrise Classes & Academy, located in Champanagar, Purnia, Bihar, specializes in
               Class 9 & 10 board exam preparation with a proven track record of success. Under the
               visionary leadership of <strong>S.P. Jha</strong> with <strong>15+ years of teaching
-<<<<<<< HEAD
               experience in board exam coaching</strong>, the academy has become the trusted choice for serious students aiming
               for excellence in their board exams in rural Bihar.
             </p>
@@ -74,17 +65,6 @@ export default function About() {
               We combine excellent teaching with modern technology, including our
               popular YouTube channel where new educational videos are uploaded daily to help
               students learn at their own pace and revise effectively.
-=======
-              experience</strong>, the academy has become the trusted choice for serious students aiming
-              for excellence in their board exams.
-            </p>
-            <p className="text-gray-600 leading-relaxed mb-6">
-              We combine rigorous teaching excellence with modern technology, including our
-              popular YouTube channel where new educational videos are uploaded daily to help
-              students learn at their own pace and revise effectively. We also acknowledge the
-              support of <span className="text-[#f5a623] font-semibold">Nikhar Gramin Vikash Sansthan</span> in
-              promoting education and development in our community.
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

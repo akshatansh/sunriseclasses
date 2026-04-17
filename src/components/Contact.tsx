@@ -1,15 +1,10 @@
 import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
 import { useState } from 'react';
 
-<<<<<<< HEAD
 const WEB3FORMS_KEY = 'e2c63024-5003-46ff-a44f-0356db65047f'; // Provided Web3Forms key
 
 /** Always use Web3Forms since key is provided. */
 const canSubmitContact = true;
-=======
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
 
 const info = [
   {
@@ -39,10 +34,7 @@ export default function Contact() {
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-<<<<<<< HEAD
   const [emailNote, setEmailNote] = useState('');
-=======
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -50,7 +42,6 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-<<<<<<< HEAD
     setError('');
     setEmailNote('');
 
@@ -83,24 +74,6 @@ export default function Contact() {
       const w3data = (await w3.json().catch(() => ({}))) as { success?: boolean; message?: string };
       if (!w3.ok || !w3data.success) {
         throw new Error(w3data.message || 'Could not send. Please try again or call us.');
-=======
-    setLoading(true);
-    setError('');
-
-    try {
-      const apiUrl = `${SUPABASE_URL}/functions/v1/send-contact-email`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(form),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send message');
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
       }
 
       setSent(true);
@@ -116,7 +89,6 @@ export default function Contact() {
     <section id="contact" className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14">
-<<<<<<< HEAD
           <div className="flex justify-center mb-4">
             <img
               src="/sunrise-logo.png"
@@ -126,10 +98,6 @@ export default function Contact() {
           </div>
           <span className="text-[#f5a623] text-sm font-semibold uppercase tracking-widest">Get In Touch</span>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5c] mt-2">Contact Sunrise Classes - Best Coaching in Purnia</h2>
-=======
-          <span className="text-[#f5a623] text-sm font-semibold uppercase tracking-widest">Get In Touch</span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5c] mt-2">Contact Us</h2>
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
           <div className="w-16 h-1 bg-[#f5a623] mx-auto mt-4 rounded-full" />
         </div>
 
@@ -154,33 +122,16 @@ export default function Contact() {
                 </div>
               ))}
             </div>
-<<<<<<< HEAD
           </div>
 
           <div>
             <h3 className="text-xl font-bold text-[#0f2a5c] mb-6">Enroll for Board Exam Coaching in Purnia</h3>
-=======
-
-            <div className="bg-gradient-to-br from-[#0f2a5c] to-[#1a3f7a] rounded-2xl p-6 text-white">
-              <p className="font-bold text-base mb-1">Supported by</p>
-              <p className="text-[#f5a623] font-extrabold text-lg">Nikhar Gramin Vikash Sansthan</p>
-              <p className="text-gray-300 text-xs mt-2 leading-relaxed">
-                Our work in rural education is strengthened through the support and collaboration of
-                Nikhar Gramin Vikash Sansthan, dedicated to uplifting communities across Bihar.
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-xl font-bold text-[#0f2a5c] mb-6">Send Us a Message</h3>
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
             {sent ? (
               <div className="bg-green-50 border border-green-200 rounded-2xl p-8 text-center">
                 <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Send size={24} className="text-green-600" />
                 </div>
                 <h4 className="text-green-800 font-bold text-lg mb-2">Message Sent!</h4>
-<<<<<<< HEAD
                 <p className="text-green-600 text-sm">Thank you for reaching out. We&apos;ll contact you within 24 hours.</p>
                 {emailNote && (
                   <p className="text-amber-800 text-xs mt-3 text-left bg-amber-50 border border-amber-200 rounded-lg p-3">
@@ -193,11 +144,6 @@ export default function Contact() {
                     setSent(false);
                     setEmailNote('');
                   }}
-=======
-                <p className="text-green-600 text-sm">Thank you for reaching out. We'll contact you within 24 hours.</p>
-                <button
-                  onClick={() => setSent(false)}
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
                   className="mt-4 text-[#0f2a5c] text-sm underline underline-offset-2"
                 >
                   Send another message
@@ -256,16 +202,10 @@ export default function Contact() {
                   </select>
                 </div>
                 <div>
-<<<<<<< HEAD
                   <label className="text-xs font-semibold text-gray-600 mb-1 block">Message *</label>
                   <textarea
                     name="message"
                     required
-=======
-                  <label className="text-xs font-semibold text-gray-600 mb-1 block">Message</label>
-                  <textarea
-                    name="message"
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
                     rows={4}
                     value={form.message}
                     onChange={handleChange}
@@ -278,7 +218,6 @@ export default function Contact() {
                     {error}
                   </div>
                 )}
-<<<<<<< HEAD
                 {!canSubmitContact && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-900 text-xs space-y-2">
                     <p>
@@ -293,11 +232,6 @@ export default function Contact() {
                 <button
                   type="submit"
                   disabled={loading || !canSubmitContact}
-=======
-                <button
-                  type="submit"
-                  disabled={loading}
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
                   className="w-full bg-[#f5a623] text-[#0f2a5c] font-bold py-3 rounded-lg hover:bg-[#e09010] disabled:bg-gray-400 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-[#f5a623]/30 hover:-translate-y-0.5"
                 >
                   <Send size={17} />

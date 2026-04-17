@@ -1,5 +1,4 @@
 /// <reference types="vite/client" />
-<<<<<<< HEAD
 
 interface ImportMetaEnv {
   /** Optional: enables thumbnail grid via YouTube Data API v3 (free quota). */
@@ -13,5 +12,3 @@ interface ImportMetaEnv {
   /** Web3Forms access key — alternative to Supabase; emails go to the address you set on web3forms.com */
   readonly VITE_WEB3FORMS_ACCESS_KEY?: string;
 }
-=======
->>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
