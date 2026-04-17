@@ -12,14 +12,72 @@ import {
 } from '../lib/youtubeVideos';
 
 const REFRESH_MS = 15 * 60 * 1000;
+const LATEST_VIDEO_FETCH_COUNT = 20;
 const LATEST_VIDEO_COUNT = 4;
+
+const VIDEO_CATEGORIES = [
+  {
+    id: 'math',
+    title: 'Math',
+    searchQuery: 'math',
+    keywords: [
+      'math',
+      'ganit',
+      'algebra',
+      'geometry',
+      'trigonometry',
+      'calculus',
+      'arithmetic',
+      'numbers',
+      'equation',
+      'formula',
+      'class 9',
+      'class 10',
+      'board exam',
+      'cbse',
+    ],
+  },
+  {
+    id: 'science',
+    title: 'Science',
+    searchQuery: 'science',
+    keywords: [
+      'science',
+      'physics',
+      'chemistry',
+      'biology',
+      'jeev',
+      'rasaayan',
+      'bhautik',
+      'vigyan',
+      'atom',
+      'molecule',
+      'cell',
+      'force',
+      'light',
+      'heat',
+    ],
+  },
+];
 
 function getChannelId(): string {
   return import.meta.env.VITE_YOUTUBE_CHANNEL_ID || YOUTUBE_CHANNEL_ID;
 }
 
+function getVideoCategory(video: YouTubeVideo) {
+  const lowerTitle = video.title.toLowerCase();
+
+  for (const category of VIDEO_CATEGORIES) {
+    if (category.keywords.some((keyword) => lowerTitle.includes(keyword))) {
+      return category.id;
+    }
+  }
+
+  return null;
+}
+
 export default function Videos() {
-  const [videos, setVideos] = useState<YouTubeVideo[]>([]);
+  const [categoryVideos, setCategoryVideos] = useState<Record<string, YouTubeVideo[]>>({});
   const [loading, setLoading] = useState(true);
   const [useEmbedFallback, setUseEmbedFallback] = useState(false);
 
@@ -27,30 +85,34 @@ export default function Videos() {
     setLoading(true);
     const channelId = getChannelId();
     const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
-
-    let list: YouTubeVideo[] = [];
+    const nextCategoryVideos: Record<string, YouTubeVideo[]> = {
+      math: [],
+      science: [],
+    };
 
     try {
-      try {
-        list = await fetchLatestVideosFromRss(channelId, LATEST_VIDEO_COUNT);
-      } catch (rssErr) {
-        console.warn('YouTube RSS (no API) failed:', rssErr);
+      let latestVideos: YouTubeVideo[] = [];
+      if (apiKey) {
+        latestVideos = await fetchLatestVideosFromApi(channelId, apiKey, LATEST_VIDEO_FETCH_COUNT);
       }
 
-      if (list.length === 0 && apiKey) {
-        list = await fetchLatestVideosFromApi(channelId, apiKey, LATEST_VIDEO_COUNT);
+      if (latestVideos.length === 0) {
+        latestVideos = await fetchLatestVideosFromRss(channelId, LATEST_VIDEO_FETCH_COUNT);
       }
 
-      if (list.length > 0) {
-        setVideos(list);
-        setUseEmbedFallback(false);
-      } else {
-        setVideos([]);
-        setUseEmbedFallback(true);
-      }
+      latestVideos.forEach((video) => {
+        const categoryId = getVideoCategory(video);
+        if (!categoryId) return;
+        if (nextCategoryVideos[categoryId].length < LATEST_VIDEO_COUNT) {
+          nextCategoryVideos[categoryId].push(video);
+        }
+      });
+
+      setCategoryVideos(nextCategoryVideos);
+      setUseEmbedFallback(!Object.values(nextCategoryVideos).some((videosList) => videosList.length > 0));
     } catch (e) {
       console.error(e);
-      setVideos([]);
+      setCategoryVideos({ math: [], science: [] });
       setUseEmbedFallback(true);
     } finally {
       setLoading(false);
@@ -135,40 +197,71 @@ export default function Videos() {
             />
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {videos.map((video) => (
-              <a
-                key={video.id}
-                href={`https://www.youtube.com/watch?v=${video.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-pointer block"
-              >
-                <div className="relative overflow-hidden aspect-video">
-                  <img
-                    src={video.thumbnail}
-                    alt=""
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-[#0f2a5c]/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="w-14 h-14 bg-red-600 rounded-full flex items-center justify-center shadow-lg">
-                      <Play size={22} className="text-white ml-1" fill="white" />
+          <div className="space-y-14">
+            {VIDEO_CATEGORIES.map((category) => {
+              const videosForCategory = categoryVideos[category.id] || [];
+              return (
+                <div key={category.id} className="rounded-3xl border border-gray-200 bg-white shadow-sm p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+                    <div>
+                      <p className="text-[#f5a623] text-xs font-semibold uppercase tracking-widest">{category.title}</p>
+                      <h3 className="text-2xl font-extrabold text-[#0f2a5c] mt-2">{category.title} Videos</h3>
                     </div>
+                    <a
+                      href={`${YOUTUBE_CHANNEL_URL}/search?query=${encodeURIComponent(category.searchQuery)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 border border-[#0f2a5c] text-[#0f2a5c] font-semibold px-4 py-3 rounded-2xl hover:bg-[#0f2a5c] hover:text-white transition-all duration-200"
+                    >
+                      See more
+                      <ExternalLink size={14} />
+                    </a>
                   </div>
-                  <div className="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded flex items-center gap-1">
-                    <Youtube size={12} />
-                    YouTube
-                  </div>
+
+                  {videosForCategory.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                      {videosForCategory.map((video) => (
+                        <a
+                          key={video.id}
+                          href={`https://www.youtube.com/watch?v=${video.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-pointer block"
+                        >
+                          <div className="relative overflow-hidden aspect-video">
+                            <img
+                              src={video.thumbnail}
+                              alt=""
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                            <div className="absolute inset-0 bg-[#0f2a5c]/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <div className="w-14 h-14 bg-red-600 rounded-full flex items-center justify-center shadow-lg">
+                                <Play size={22} className="text-white ml-1" fill="white" />
+                              </div>
+                            </div>
+                            <div className="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                              <Youtube size={12} />
+                              YouTube
+                            </div>
+                          </div>
+                          <div className="p-4">
+                            <span className="text-[#f5a623] text-xs font-semibold uppercase tracking-wide">@sunriseclasses81</span>
+                            <h4 className="text-[#0f2a5c] font-bold text-sm mt-1 leading-snug line-clamp-2">{video.title}</h4>
+                            <div className="flex items-center justify-end mt-3">
+                              <span className="text-gray-400 text-xs">{formatDate(video.publishedAt)}</span>
+                            </div>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-3xl border border-dashed border-gray-200 bg-gray-50 p-10 text-center">
+                      <p className="text-gray-500">No {category.title} videos available right now. Refresh the page or visit the full channel.</p>
+                    </div>
+                  )}
                 </div>
-                <div className="p-4">
-                  <span className="text-[#f5a623] text-xs font-semibold uppercase tracking-wide">@sunriseclasses81</span>
-                  <h4 className="text-[#0f2a5c] font-bold text-sm mt-1 leading-snug line-clamp-2">{video.title}</h4>
-                  <div className="flex items-center justify-end mt-3">
-                    <span className="text-gray-400 text-xs">{formatDate(video.publishedAt)}</span>
-                  </div>
-                </div>
-              </a>
-            ))}
+              );
+            })}
           </div>
         )}
 
