@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -28,6 +29,27 @@ function App() {
         <Footer />
       </div>
     </Router>
+=======
+import Navbar from './components/Navbar';
+import Hero from './components/Hero';
+import About from './components/About';
+import Courses from './components/Courses';
+import Videos from './components/Videos';
+import Contact from './components/Contact';
+import Footer from './components/Footer';
+
+function App() {
+  return (
+    <div className="min-h-screen font-sans antialiased">
+      <Navbar />
+      <Hero />
+      <About />
+      <Courses />
+      <Videos />
+      <Contact />
+      <Footer />
+    </div>
+>>>>>>> 2aca30a6daa0a386edac1934849eaacd553f62ed
   );
 }
 
