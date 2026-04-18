@@ -1,4 +1,4 @@
-import { Youtube, Play, Bell, ExternalLink, Loader } from 'lucide-react';
+import { Youtube, Play, Bell, ExternalLink, Loader, BookOpen, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
   YOUTUBE_CHANNEL_ID,
@@ -19,6 +19,7 @@ const VIDEO_CATEGORIES = [
   {
     id: 'math',
     title: 'Math',
+    description: 'Formula, practice questions aur board exam ke important concepts.',
     searchQuery: 'math',
     keywords: [
       'math',
@@ -40,6 +41,7 @@ const VIDEO_CATEGORIES = [
   {
     id: 'science',
     title: 'Science',
+    description: 'Physics, Chemistry aur Biology ke simple explanation videos.',
     searchQuery: 'science',
     keywords: [
       'science',
@@ -139,7 +141,7 @@ export default function Videos() {
   };
 
   return (
-    <section id="videos" className="py-20 bg-gray-50">
+    <section id="videos" className="py-20 bg-gradient-to-b from-white via-[#fff8ec] to-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14">
           <div className="flex justify-center mb-4">
@@ -149,28 +151,31 @@ export default function Videos() {
               className="h-14 w-14 sm:h-16 sm:w-16 object-contain drop-shadow-md"
             />
           </div>
-          <span className="text-[#f5a623] text-sm font-semibold uppercase tracking-widest">Daily Learning</span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5c] mt-2">Educational YouTube Videos for Board Exams</h2>
+          <span className="inline-flex items-center gap-2 text-[#f5a623] text-sm font-semibold uppercase tracking-widest">
+            <Sparkles size={16} />
+            Daily Learning
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5c] mt-2">Board Exams ke liye Free YouTube Classes</h2>
           <div className="w-16 h-1 bg-[#f5a623] mx-auto mt-4 rounded-full" />
           <p className="text-gray-500 mt-4 max-w-xl mx-auto text-sm">
-            Daily educational videos for Class 9 & 10 board exam preparation in Purnia, Bihar. Subscribe to our YouTube channel for free coaching videos.
+            Class 9 & 10 ke Math aur Science videos, easy explanation ke saath. Latest lectures yahin se watch karein ya channel par subscribe karein.
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto mb-10">
           <a
             href={YOUTUBE_CHANNEL_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-red-500/30 hover:-translate-y-0.5"
+            className="sm:col-span-2 flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-4 rounded-2xl transition-all duration-200 shadow-lg hover:shadow-red-500/30 hover:-translate-y-0.5"
           >
             <Youtube size={20} />
-            Visit Our Channel
+            Subscribe on YouTube
             <ExternalLink size={14} />
           </a>
-          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-5 py-3 shadow-sm">
+          <div className="flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-2xl px-5 py-4 shadow-sm">
             <Bell size={18} className="text-[#f5a623]" />
-            <span className="text-gray-600 text-sm font-medium">New videos on the channel</span>
+            <span className="text-gray-600 text-sm font-semibold">Latest uploads</span>
           </div>
         </div>
 
@@ -197,21 +202,27 @@ export default function Videos() {
             />
           </div>
         ) : (
-          <div className="space-y-14">
+          <div className="space-y-10">
             {VIDEO_CATEGORIES.map((category) => {
               const videosForCategory = categoryVideos[category.id] || [];
               return (
-                <div key={category.id} className="rounded-3xl border border-gray-200 bg-white shadow-sm p-6">
+                <div key={category.id} className="rounded-3xl border border-gray-200 bg-white/90 shadow-sm p-5 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
-                    <div>
-                      <p className="text-[#f5a623] text-xs font-semibold uppercase tracking-widest">{category.title}</p>
-                      <h3 className="text-2xl font-extrabold text-[#0f2a5c] mt-2">{category.title} Videos</h3>
+                    <div className="flex items-start gap-4">
+                      <div className="h-12 w-12 rounded-2xl bg-[#f5a623]/15 flex items-center justify-center shrink-0">
+                        <BookOpen size={22} className="text-[#f5a623]" />
+                      </div>
+                      <div>
+                        <p className="text-[#f5a623] text-xs font-semibold uppercase tracking-widest">{category.title}</p>
+                        <h3 className="text-2xl font-extrabold text-[#0f2a5c] mt-1">{category.title} Videos</h3>
+                        <p className="text-gray-500 text-sm mt-1 max-w-xl">{category.description}</p>
+                      </div>
                     </div>
                     <a
                       href={`${YOUTUBE_CHANNEL_URL}/search?query=${encodeURIComponent(category.searchQuery)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 border border-[#0f2a5c] text-[#0f2a5c] font-semibold px-4 py-3 rounded-2xl hover:bg-[#0f2a5c] hover:text-white transition-all duration-200"
+                      className="inline-flex items-center justify-center gap-2 border border-[#0f2a5c] text-[#0f2a5c] font-semibold px-4 py-3 rounded-2xl hover:bg-[#0f2a5c] hover:text-white transition-all duration-200"
                     >
                       See more
                       <ExternalLink size={14} />
@@ -226,7 +237,7 @@ export default function Videos() {
                           href={`https://www.youtube.com/watch?v=${video.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-pointer block"
+                          className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer block"
                         >
                           <div className="relative overflow-hidden aspect-video">
                             <img
@@ -247,7 +258,11 @@ export default function Videos() {
                           <div className="p-4">
                             <span className="text-[#f5a623] text-xs font-semibold uppercase tracking-wide">@sunriseclasses81</span>
                             <h4 className="text-[#0f2a5c] font-bold text-sm mt-1 leading-snug line-clamp-2">{video.title}</h4>
-                            <div className="flex items-center justify-end mt-3">
+                            <div className="flex items-center justify-between mt-3">
+                              <span className="inline-flex items-center gap-1 text-red-600 text-xs font-bold">
+                                <Play size={12} fill="currentColor" />
+                                Watch now
+                              </span>
                               <span className="text-gray-400 text-xs">{formatDate(video.publishedAt)}</span>
                             </div>
                           </div>
@@ -256,7 +271,7 @@ export default function Videos() {
                     </div>
                   ) : (
                     <div className="rounded-3xl border border-dashed border-gray-200 bg-gray-50 p-10 text-center">
-                      <p className="text-gray-500">No {category.title} videos available right now. Refresh the page or visit the full channel.</p>
+                      <p className="text-gray-500">Abhi {category.title} videos load nahi ho paaye. Refresh karein ya full channel visit karein.</p>
                     </div>
                   )}
                 </div>
