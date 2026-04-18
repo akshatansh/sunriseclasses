@@ -120,8 +120,11 @@ export default function Footer() {
           <p className="text-gray-500 text-xs text-center sm:text-left">
             &copy; {new Date().getFullYear()} Sunrise Classes & Academy, Champanagar, Purnia, Bihar. Best coaching for board exams in rural Bihar.
           </p>
-          <p className="text-gray-600 text-xs flex items-center gap-1">
-            Made with Akshat Ansh
+          <p className="text-gray-500 text-xs flex items-center gap-1.5">
+            <span>Made with</span>
+            <span className="inline-flex items-center rounded-full border border-[#f5a623]/40 bg-[#f5a623]/10 px-3 py-1 font-bold text-[#f5a623] shadow-sm shadow-[#f5a623]/10 transition-all duration-200 hover:bg-[#f5a623] hover:text-[#08193a]">
+              Akshat Ansh
+            </span>
           </p>
         </div>
       </div>
