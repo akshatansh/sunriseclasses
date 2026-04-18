@@ -6,6 +6,7 @@
 export interface YouTubeVideo {
   id: string;
   title: string;
+  description: string;
   thumbnail: string;
   publishedAt: string;
 }
@@ -50,6 +51,10 @@ export async function fetchLatestVideosFromRss(
 
     const titleEl = entry.getElementsByTagName('title')[0];
     const title = titleEl?.textContent?.trim() || 'Video';
+    const description =
+      entry.getElementsByTagName('media:description')[0]?.textContent?.trim() ||
+      entry.querySelector('description')?.textContent?.trim() ||
+      '';
     const published =
       entry.getElementsByTagName('published')[0]?.textContent ||
       entry.getElementsByTagName('updated')[0]?.textContent ||
@@ -58,6 +63,7 @@ export async function fetchLatestVideosFromRss(
     out.push({
       id,
       title,
+      description,
       thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
       publishedAt: published,
     });
@@ -92,6 +98,7 @@ export async function fetchLatestVideosFromApi(
       id?: { videoId?: string };
       snippet?: {
         title?: string;
+        description?: string;
         publishedAt?: string;
         thumbnails?: { high?: { url?: string }; medium?: { url?: string }; default?: { url?: string } };
       };
@@ -113,6 +120,7 @@ export async function fetchLatestVideosFromApi(
       return {
         id,
         title: sn?.title || 'Video',
+        description: sn?.description || '',
         thumbnail: thumb,
         publishedAt: sn?.publishedAt || new Date().toISOString(),
       };

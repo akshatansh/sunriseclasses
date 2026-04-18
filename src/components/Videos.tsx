@@ -23,7 +23,10 @@ const VIDEO_CATEGORIES = [
     searchQuery: 'math',
     keywords: [
       'math',
+      'maths',
+      'mathematics',
       'ganit',
+      'गणित',
       'algebra',
       'geometry',
       'trigonometry',
@@ -32,10 +35,17 @@ const VIDEO_CATEGORIES = [
       'numbers',
       'equation',
       'formula',
-      'class 9',
-      'class 10',
-      'board exam',
-      'cbse',
+      'coordinate',
+      'distance formula',
+      'section formula',
+      'area of triangle',
+      'दूरी',
+      'सूत्र',
+      'विभाजन',
+      'त्रिभुज',
+      'क्षेत्रफल',
+      'निर्देशांक',
+      'ज्यामिति',
     ],
   },
   {
@@ -58,26 +68,57 @@ const VIDEO_CATEGORIES = [
       'force',
       'light',
       'heat',
+      'human eye',
+      'eye',
+      'colourful world',
+      'मानव',
+      'नेत्र',
+      'रंग',
+      'संसार',
     ],
   },
 ];
 
-const LATEST_SECTION = {
-  id: 'latest',
-  title: 'Latest',
-  description: 'Channel ke naye uploads ek jagah, bina kisi category filter ke.',
-  searchQuery: '',
-};
+const FALLBACK_LATEST_VIDEOS: YouTubeVideo[] = [
+  {
+    id: 'fI1BE3anzeU',
+    title: 'दूरी सूत्र | Distance Formula | Questions, Answers & Objective | Coordinate Geometry BSEB Bihar Board',
+    description: 'Class 10 Bihar Board Maths distance formula questions and answers.',
+    thumbnail: 'https://i.ytimg.com/vi/fI1BE3anzeU/hqdefault.jpg',
+    publishedAt: '2026-04-18T02:50:19+00:00',
+  },
+  {
+    id: 'pl1QdO5TpSU',
+    title: 'मानव नेत्र तथा रंग बिरंगा संसार | Human Eye And Colourful World | Class 10th | Bihar Board',
+    description: 'Class 10 Bihar Board Science human eye and colourful world explanation.',
+    thumbnail: 'https://i.ytimg.com/vi/pl1QdO5TpSU/hqdefault.jpg',
+    publishedAt: '2026-04-18T02:50:01+00:00',
+  },
+  {
+    id: 'pawn1Br2szg',
+    title: 'दूरी सूत्र | Distance Formula | Questions & Answers | BSEB Bihar Board | Class 10th',
+    description: 'Maths coordinate geometry distance formula practice for Class 10.',
+    thumbnail: 'https://i.ytimg.com/vi/pawn1Br2szg/hqdefault.jpg',
+    publishedAt: '2026-04-17T02:40:00+00:00',
+  },
+  {
+    id: 'FSMPBuAxzfU',
+    title: 'त्रिभुज का क्षेत्रफल | Class 10th BSEB Board | Area Of Triangle',
+    description: 'Maths area of triangle and coordinate geometry for BSEB board.',
+    thumbnail: 'https://i.ytimg.com/vi/FSMPBuAxzfU/hqdefault.jpg',
+    publishedAt: '2026-04-16T02:45:03+00:00',
+  },
+];
 
 function getChannelId(): string {
   return import.meta.env.VITE_YOUTUBE_CHANNEL_ID || YOUTUBE_CHANNEL_ID;
 }
 
 function getVideoCategory(video: YouTubeVideo) {
-  const lowerTitle = video.title.toLowerCase();
+  const searchableText = `${video.title} ${video.description}`.toLowerCase();
 
   for (const category of VIDEO_CATEGORIES) {
-    if (category.keywords.some((keyword) => lowerTitle.includes(keyword))) {
+    if (category.keywords.some((keyword) => searchableText.includes(keyword.toLowerCase()))) {
       return category.id;
     }
   }
@@ -87,7 +128,6 @@ function getVideoCategory(video: YouTubeVideo) {
 
 export default function Videos() {
   const [categoryVideos, setCategoryVideos] = useState<Record<string, YouTubeVideo[]>>({});
-  const [latestVideos, setLatestVideos] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [useEmbedFallback, setUseEmbedFallback] = useState(false);
 
@@ -119,13 +159,24 @@ export default function Videos() {
       });
 
       setCategoryVideos(nextCategoryVideos);
-      setLatestVideos(latestVideos.slice(0, LATEST_VIDEO_COUNT));
       setUseEmbedFallback(latestVideos.length === 0);
     } catch (e) {
       console.error(e);
-      setCategoryVideos({ math: [], science: [] });
-      setLatestVideos([]);
-      setUseEmbedFallback(true);
+      const fallbackCategoryVideos: Record<string, YouTubeVideo[]> = {
+        math: [],
+        science: [],
+      };
+
+      FALLBACK_LATEST_VIDEOS.forEach((video) => {
+        const categoryId = getVideoCategory(video);
+        if (!categoryId) return;
+        if (fallbackCategoryVideos[categoryId].length < LATEST_VIDEO_COUNT) {
+          fallbackCategoryVideos[categoryId].push(video);
+        }
+      });
+
+      setCategoryVideos(fallbackCategoryVideos);
+      setUseEmbedFallback(false);
     } finally {
       setLoading(false);
     }
@@ -150,17 +201,10 @@ export default function Videos() {
     return `${Math.floor(diffDays / 30)} months ago`;
   };
 
-  const videoSections = Object.values(categoryVideos).some((videosList) => videosList.length > 0)
-    ? VIDEO_CATEGORIES.map((category) => ({
-        ...category,
-        videos: categoryVideos[category.id] || [],
-      })).filter((category) => category.videos.length > 0)
-    : [
-        {
-          ...LATEST_SECTION,
-          videos: latestVideos,
-        },
-      ];
+  const videoSections = VIDEO_CATEGORIES.map((category) => ({
+    ...category,
+    videos: categoryVideos[category.id] || [],
+  }));
 
   return (
     <section id="videos" className="py-20 bg-gradient-to-b from-white via-[#fff8ec] to-gray-50">
