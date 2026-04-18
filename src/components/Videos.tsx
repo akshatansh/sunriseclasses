@@ -62,6 +62,13 @@ const VIDEO_CATEGORIES = [
   },
 ];
 
+const LATEST_SECTION = {
+  id: 'latest',
+  title: 'Latest',
+  description: 'Channel ke naye uploads ek jagah, bina kisi category filter ke.',
+  searchQuery: '',
+};
+
 function getChannelId(): string {
   return import.meta.env.VITE_YOUTUBE_CHANNEL_ID || YOUTUBE_CHANNEL_ID;
 }
@@ -80,6 +87,7 @@ function getVideoCategory(video: YouTubeVideo) {
 
 export default function Videos() {
   const [categoryVideos, setCategoryVideos] = useState<Record<string, YouTubeVideo[]>>({});
+  const [latestVideos, setLatestVideos] = useState<YouTubeVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [useEmbedFallback, setUseEmbedFallback] = useState(false);
 
@@ -111,10 +119,12 @@ export default function Videos() {
       });
 
       setCategoryVideos(nextCategoryVideos);
-      setUseEmbedFallback(!Object.values(nextCategoryVideos).some((videosList) => videosList.length > 0));
+      setLatestVideos(latestVideos.slice(0, LATEST_VIDEO_COUNT));
+      setUseEmbedFallback(latestVideos.length === 0);
     } catch (e) {
       console.error(e);
       setCategoryVideos({ math: [], science: [] });
+      setLatestVideos([]);
       setUseEmbedFallback(true);
     } finally {
       setLoading(false);
@@ -139,6 +149,18 @@ export default function Videos() {
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
     return `${Math.floor(diffDays / 30)} months ago`;
   };
+
+  const videoSections = Object.values(categoryVideos).some((videosList) => videosList.length > 0)
+    ? VIDEO_CATEGORIES.map((category) => ({
+        ...category,
+        videos: categoryVideos[category.id] || [],
+      })).filter((category) => category.videos.length > 0)
+    : [
+        {
+          ...LATEST_SECTION,
+          videos: latestVideos,
+        },
+      ];
 
   return (
     <section id="videos" className="py-20 bg-gradient-to-b from-white via-[#fff8ec] to-gray-50">
@@ -181,9 +203,7 @@ export default function Videos() {
 
         {useEmbedFallback && (
           <p className="text-center text-gray-500 text-sm max-w-2xl mx-auto mb-6">
-            Thumbnail list could not load right now — your channel playlist is below. Refresh the page or try again later.
-            Optional backup: set <code className="text-xs bg-gray-100 px-1 rounded">VITE_YOUTUBE_API_KEY</code> in{' '}
-            <code className="text-xs bg-gray-100 px-1 rounded">.env</code>.
+            Abhi latest thumbnails load nahi ho paaye, isliye channel playlist neeche dikh rahi hai. Page refresh karein ya thodi der baad try karein.
           </p>
         )}
 
@@ -203,8 +223,8 @@ export default function Videos() {
           </div>
         ) : (
           <div className="space-y-10">
-            {VIDEO_CATEGORIES.map((category) => {
-              const videosForCategory = categoryVideos[category.id] || [];
+            {videoSections.map((category) => {
+              const videosForCategory = category.videos;
               return (
                 <div key={category.id} className="rounded-3xl border border-gray-200 bg-white/90 shadow-sm p-5 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
@@ -219,7 +239,11 @@ export default function Videos() {
                       </div>
                     </div>
                     <a
-                      href={`${YOUTUBE_CHANNEL_URL}/search?query=${encodeURIComponent(category.searchQuery)}`}
+                      href={
+                        category.searchQuery
+                          ? `${YOUTUBE_CHANNEL_URL}/search?query=${encodeURIComponent(category.searchQuery)}`
+                          : YOUTUBE_CHANNEL_URL
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center justify-center gap-2 border border-[#0f2a5c] text-[#0f2a5c] font-semibold px-4 py-3 rounded-2xl hover:bg-[#0f2a5c] hover:text-white transition-all duration-200"
