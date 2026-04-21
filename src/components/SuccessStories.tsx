@@ -372,7 +372,8 @@ export default function SuccessStories() {
 
                           {/* Feedback */}
                           <div className="bg-gradient-to-br from-blue-50 to-gray-50 rounded-lg p-3 border border-blue-100">
-                            <p className="text-gray-700 text-xs leading-relaxed italic">"{student.story}"</p>
+                            <p className="text-gray-700 text-xs leading-relaxed italic line-clamp-3 md:line-clamp-none">"{student.story}"</p>
+                            <p className="text-[#f5a623] text-xs font-semibold mt-2 md:hidden">Read More...</p>
                           </div>
 
                           {/* Star Rating */}
