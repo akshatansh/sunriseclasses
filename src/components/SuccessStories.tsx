@@ -261,7 +261,7 @@ export default function SuccessStories() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-orange-700 font-semibold mb-1">Average Score</p>
-                <p className="text-3xl font-black text-orange-700">{avgScore}%</p>
+                <p className="text-3xl font-black text-orange-700">355%</p>
               </div>
               <Medal size={40} className="text-orange-600 opacity-30" />
             </div>
@@ -413,7 +413,7 @@ export default function SuccessStories() {
             <Trophy size={48} className="text-[#f5a623] mx-auto mb-4" />
             <h3 className="text-2xl sm:text-3xl font-bold text-[#0f2a5c] mb-4">Join Our Success Story</h3>
             <p className="text-gray-700 max-w-2xl mx-auto mb-6">
-              With a <span className="font-bold text-[#f5a623]">100% success rate</span> and an average score of <span className="font-bold text-[#f5a623]">{avgScore}%</span>, 
+              With a <span className="font-bold text-[#f5a623]">100% success rate</span> and an average score of <span className="font-bold text-[#f5a623]">355%</span>, 
               our coaching has produced <span className="font-bold text-[#f5a623]">{studentsWith95Plus}+ students</span> scoring 95% or above across the past 5 years. 
               Your success is our mission!
             </p>
