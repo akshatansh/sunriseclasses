@@ -122,9 +122,14 @@ export default function Footer() {
           </p>
           <p className="text-gray-500 text-xs flex items-center gap-1.5">
             <span>Made with</span>
-            <span className="inline-flex items-center rounded-full border border-[#f5a623]/40 bg-[#f5a623]/10 px-3 py-1 font-bold text-[#f5a623] shadow-sm shadow-[#f5a623]/10 transition-all duration-200 hover:bg-[#f5a623] hover:text-[#08193a]">
+            <a
+              href="https://www.instagram.com/mr._akshat_ansh/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center rounded-full border border-[#f5a623]/40 bg-[#f5a623]/10 px-3 py-1 font-bold text-[#f5a623] shadow-sm shadow-[#f5a623]/10 transition-all duration-200 hover:bg-[#f5a623] hover:text-[#08193a] cursor-pointer"
+            >
               Akshat Ansh
-            </span>
+            </a>
           </p>
         </div>
       </div>

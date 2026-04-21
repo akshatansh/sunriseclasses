@@ -365,11 +365,11 @@ export default function SuccessStories() {
                         )}
 
                         {/* Photo */}
-                        <div className="relative h-48 sm:h-56 overflow-hidden bg-gray-100">
+                        <div className="relative h-72 sm:h-96 md:h-56 lg:h-64 overflow-hidden bg-gray-100">
                           <img
                             src={student.photo}
                             alt={student.name}
-                            className="w-full h-full object-contain object-center sm:object-cover group-hover:scale-105 transition-transform duration-300"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => {
                               e.currentTarget.src = '/sunrise-logo.png';
                             }}
