@@ -211,7 +211,7 @@ export default function SuccessStories() {
             <img
               src="/sunrise-logo.png"
               alt=""
-              className="h-14 w-14 sm:h-16 sm:w-16 object-contain drop-shadow-md"
+              className="h-14 w-14 sm:h-16 sm:w-16 object-contain object-center sm:object-cover drop-shadow-md"
             />
           </div>
           <span className="text-[#f5a623] text-sm font-semibold uppercase tracking-widest">Student Achievements</span>
@@ -350,18 +350,18 @@ export default function SuccessStories() {
                         )}
 
                         {/* Photo */}
-                        <div className="relative h-56 overflow-hidden bg-gray-300">
+                        <div className="relative h-48 sm:h-56 overflow-hidden bg-gray-100">
                           <img
                             src={student.photo}
                             alt={student.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            className="w-full h-full object-contain object-center sm:object-cover group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => {
                               e.currentTarget.src = '/sunrise-logo.png';
                             }}
                           />
                           {/* Score Overlay */}
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#0f2a5c] via-[#0f2a5c] to-transparent pt-12 pb-4 px-4">
-                            <p className="text-white text-4xl font-black">{student.score}</p>
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#0f2a5c] via-[#0f2a5c] to-transparent pt-8 sm:pt-12 pb-3 sm:pb-4 px-3 sm:px-4">
+                            <p className="text-white text-2xl sm:text-4xl font-black">{student.score}</p>
                           </div>
                         </div>
 
