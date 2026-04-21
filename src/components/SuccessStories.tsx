@@ -36,14 +36,6 @@ const successStories = [
     photo: '/gallery/20260415_174533.jpg',
     story: 'Sir\'s teaching methodology is excellent. Complex topics became easy to understand. The offline batches helped me clear all my doubts instantly.',
   },
-  {
-    name: 'Anjali Singh',
-    class: 'Class 9',
-    score: '95%',
-    year: '2026',
-    photo: '/gallery/20260415_174652.jpg',
-    story: 'Best decision ever to join Sunrise Classes. My confidence in board exams completely transformed!',
-  },
   // 2025
   {
     name: 'Neha Patel',
