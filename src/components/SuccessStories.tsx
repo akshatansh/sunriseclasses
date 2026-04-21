@@ -102,40 +102,36 @@ const successStories = [
   },
   // 2023
   {
-    name: 'Mithi Kumari',
+    name: 'Pooja Nair',
     class: 'Class 10',
-    score: '431/500',
-    percentage: '86.2%',
+    score: '95%',
     year: '2023',
-    photo: '/gallery/meethi-kumari.jpg',
-    story: 'Main Mithi Kumari..... Hamari coaching Sunrise Classes & Academy sirf padhne ka nahi, balki students ke future ko mazboot banane ka sthaan hai..... Humne apni coaching se bahut saari cheezein seekhi hain, jo hamare future ke liye bahut zaroori hai..... Top result yun hi nahi aate, iske peeche hamari coaching ka sahi guidance aur lagataar mehnat chhupi hoti hai. Dil se dhanyavaad Sir aapko humein itna kuch sikhane ke liye....✨❤️',
+    photo: '/gallery/20260415_174519.jpg',
+    story: 'Never thought I could score this high. Amazing teaching methodology and support!',
   },
   {
-    name: 'Ayush Kumar',
+    name: 'Harsh Agarwal',
     class: 'Class 10',
-    score: '408/500',
-    percentage: '81.6%',
+    score: '94%',
     year: '2023',
-    photo: '/gallery/ayush kumar.jpg',
-    story: 'Main Ayush.... Sunrise Coaching Classes mein padhai ratkar nahi, samajhkar karai jaati hai. Yahan har subject ko aasan tareeke se samjhaya jaata hai, jisse padhai mein ruchi bani rehti hai. Har concept achhe se clear hua, isliye question solve karna aasan ho gaya. Yeh coaching students ko sahi disha aur mazboot aadhar deti hai. Isi sahi margdarshan aur mehnat se maine achhe ank prapt kiye.',
+    photo: '/gallery/20260415_174533.jpg',
+    story: 'The mock tests and feedback sessions were incredibly helpful for exam preparation.',
   },
   {
-    name: 'Raunak Kumari',
+    name: 'Sneha Roy',
     class: 'Class 10',
-    score: '400/500',
-    percentage: '80%',
+    score: '93%',
     year: '2023',
-    photo: '/gallery/raunak-kumari.jpg',
-    story: 'Ye Sir aur unke institute ke liye mere dil se bahut respect hai. Sir sirf padhate hi nahi, balki har topic ko itni achhi tarah samjhate hain ki concepts easily clear ho jaate hain. Jab bhi koi problem aati hai, chahe padhai se related ho ya kisi aur cheez se, sir hamesha patiently uska solution dete hain. Unka support aur guidance students ke liye bahut valuable hai. Institute ka environment bhi bahut positive aur motivating hai, jahan padhai karne ka mann khud hi karta hai. Sach me, aise teacher aur aisa institute milna bahut lucky baat hai... thank you so much sir for everything🙏',
+    photo: '/gallery/20260415_174652.jpg',
+    story: 'Personalized attention and care throughout my board exam preparation journey.',
   },
   {
-    name: 'Muskan Kumari',
-    class: 'Class 10',
-    score: '393/500',
-    percentage: '78.6%',
+    name: 'Aryan Verma',
+    class: 'Class 9',
+    score: '92%',
     year: '2023',
-    photo: '/gallery/muskan-kumari.jpg',
-    story: 'Mai Muskan Kumari.... Mere coaching Sansthan Sunrise Classes and Academy mein sirf acche bacchon per nahin balki sabhi kamjor bacchon per bhi Dhyan Diya jata hai sabhi ko ek najar se dekha jata hai padhaane ka tarika har kamjor bacchon ke liye sahi hai unka concept itna easy hota hai ki koi bhi aasani se samajh le. Hamare Sir Surya Prakash Jha jo hamesha kamjor bacchon ke support mein rahte hain, unhen inspired karte hain ki taki vah achche se padhai kar saken aur vah jyada se jyada kamjor bacchon par dhyan dete hain taki unka bhavishya ujjwal ho. Wo hame students ke tarah hamen treat karke ek friend ke tarah treat kiya jata hai.',
+    photo: '/gallery/20260415_174654.jpg',
+    story: 'Excellent faculty and study environment. Really proud of my progress!',
   },
   // 2022
   {
@@ -173,17 +169,6 @@ const successStories = [
 ];
 
 export default function SuccessStories() {
-  // Helper function to get numeric score for sorting/comparison
-  const getNumericScore = (score: string): number => {
-    if (score.includes('/')) {
-      // Handle "431/500" format
-      const [obtained, total] = score.split('/').map(Number);
-      return (obtained / total) * 100;
-    }
-    // Handle "95%" format
-    return parseInt(score);
-  };
-
   // Group stories by year in descending order
   const groupedByYear = successStories.reduce((acc: { [key: string]: typeof successStories }, story) => {
     if (!acc[story.year]) {
@@ -195,7 +180,7 @@ export default function SuccessStories() {
 
   // Sort students by score within each year
   Object.keys(groupedByYear).forEach((year) => {
-    groupedByYear[year].sort((a, b) => getNumericScore(b.score) - getNumericScore(a.score));
+    groupedByYear[year].sort((a, b) => parseInt(b.score) - parseInt(a.score));
   });
 
   const sortedYears = Object.keys(groupedByYear).sort((a, b) => parseInt(b) - parseInt(a));
@@ -209,9 +194,9 @@ export default function SuccessStories() {
   };
 
   const totalStudents = successStories.length;
-  const studentsWith95Plus = successStories.filter(s => getNumericScore(s.score) >= 95).length;
-  const studentsWith90Plus = successStories.filter(s => getNumericScore(s.score) >= 90).length;
-  const avgScore = (successStories.reduce((sum, s) => sum + getNumericScore(s.score), 0) / totalStudents).toFixed(1);
+  const studentsWith95Plus = successStories.filter(s => parseInt(s.score) >= 95).length;
+  const studentsWith90Plus = successStories.filter(s => parseInt(s.score) >= 90).length;
+  const avgScore = (successStories.reduce((sum, s) => sum + parseInt(s.score), 0) / totalStudents).toFixed(1);
 
   return (
     <section id="success" className="py-20 bg-gradient-to-b from-white via-blue-50 to-white">
@@ -373,7 +358,6 @@ export default function SuccessStories() {
                           {/* Score Overlay */}
                           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#0f2a5c] via-[#0f2a5c] to-transparent pt-12 pb-4 px-4">
                             <p className="text-white text-4xl font-black">{student.score}</p>
-                            {student.percentage && <p className="text-white text-sm font-semibold">{student.percentage}</p>}
                           </div>
                         </div>
 
