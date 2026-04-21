@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Star, Trophy, Medal } from 'lucide-react';
 
 const successStories = [
@@ -173,6 +174,18 @@ const successStories = [
 ];
 
 export default function SuccessStories() {
+  const [expandedReviews, setExpandedReviews] = useState<Set<string>>(new Set());
+
+  const toggleReview = (key: string) => {
+    const newSet = new Set(expandedReviews);
+    if (newSet.has(key)) {
+      newSet.delete(key);
+    } else {
+      newSet.add(key);
+    }
+    setExpandedReviews(newSet);
+  };
+
   // Group stories by year in descending order
   const groupedByYear = successStories.reduce((acc: { [key: string]: typeof successStories }, story) => {
     if (!acc[story.year]) {
@@ -334,6 +347,8 @@ export default function SuccessStories() {
                 {yearStudents.map((student, rank) => {
                   const medal = getMedalColor(rank);
                   const isTopRank = rank < 3;
+                  const reviewKey = `${year}-${student.name}`;
+                  const isExpanded = expandedReviews.has(reviewKey);
 
                   return (
                     <div key={rank} className="group h-full">
@@ -372,8 +387,13 @@ export default function SuccessStories() {
 
                           {/* Feedback */}
                           <div className="bg-gradient-to-br from-blue-50 to-gray-50 rounded-lg p-3 border border-blue-100">
-                            <p className="text-gray-700 text-xs leading-relaxed italic line-clamp-3 md:line-clamp-none">"{student.story}"</p>
-                            <p className="text-[#f5a623] text-xs font-semibold mt-2 md:hidden">Read More...</p>
+                            <p className={`text-gray-700 text-xs leading-relaxed italic ${isExpanded ? '' : 'line-clamp-3 md:line-clamp-none'}`}>"{student.story}"</p>
+                            <button
+                              onClick={() => toggleReview(reviewKey)}
+                              className="text-[#f5a623] text-xs font-semibold mt-2 md:hidden hover:text-[#e59200] cursor-pointer"
+                            >
+                              {isExpanded ? 'Show Less' : 'Read More...'}
+                            </button>
                           </div>
 
                           {/* Star Rating */}
