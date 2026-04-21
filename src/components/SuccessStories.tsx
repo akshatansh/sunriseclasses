@@ -4,6 +4,15 @@ import { Star, Trophy, Medal } from 'lucide-react';
 const successStories = [
   // 2026
   {
+    name: 'Swati Kumari',
+    class: 'Class 10',
+    score: '456/500',
+    percentage: '91.2%',
+    year: '2026',
+    photo: '/gallery/WhatsApp Image 2026-04-21 at 16.02.29.jpeg',
+    story: 'Sir, aapki coaching mein padhkar humein bahut achha laga. Aapka padhane ka tareeka bahut hi alag aur achha hai. Aap har topic ko itni aasani se samjhate hain ki padhai interesting lagti hai.\n\nAapne humein sirf padhai hi nahi, discipline aur sabka respect karna bhi sikhaya hai. Aap har student ko motivate karte hain aur hamesha support karte hain.\n\nSir, aap jaise teacher milna hamare liye bahut khushi ki baat hai. Dil se thank you Sir.✨',
+  },
+  {
     name: 'Priya Sharma',
     class: 'Class 10',
     score: '98%',
