@@ -30,17 +30,17 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
             <img
               src="/sunrise-logo.png"
               alt="Sunrise Classes Logo"
               width={44}
               height={44}
-              className="h-11 w-11 rounded-xl object-contain bg-white border-2 border-[#f5a623] shadow-sm"
+              className="h-9 w-9 sm:h-11 sm:w-11 rounded-xl object-contain bg-white border-2 border-[#f5a623] shadow-sm flex-shrink-0"
             />
-            <div className="hidden sm:block">
-              <p className="text-white font-bold text-sm leading-tight">Sunrise Classes</p>
-              <p className="text-[#f5a623] text-xs">& Academy, Champanagar</p>
+            <div className="min-w-0">
+              <p className="text-white font-bold text-[11px] sm:text-sm leading-tight truncate">Sunrise Classes</p>
+              <p className="text-[#f5a623] text-[8px] sm:text-xs leading-tight truncate">& Academy, Champanagar</p>
             </div>
           </Link>
 

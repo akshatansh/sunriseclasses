@@ -216,21 +216,21 @@ export default function SuccessStories() {
   const avgScore = (successStories.reduce((sum, s) => sum + parseInt(s.score), 0) / totalStudents).toFixed(1);
 
   return (
-    <section id="success" className="py-20 bg-gradient-to-b from-white via-blue-50 to-white">
+    <section id="success" className="py-16 sm:py-20 bg-gradient-to-b from-white via-blue-50 to-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-16">
-          <div className="flex justify-center mb-4">
+        <div className="text-center mb-10 sm:mb-16">
+          <div className="flex justify-center mb-3 sm:mb-4">
             <img
               src="/sunrise-logo.png"
               alt=""
-              className="h-14 w-14 sm:h-16 sm:w-16 object-contain object-center sm:object-cover drop-shadow-md"
+              className="h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 object-contain object-center drop-shadow-md"
             />
           </div>
-          <span className="text-[#f5a623] text-sm font-semibold uppercase tracking-widest">Student Achievements</span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5c] mt-2">Success Stories from Our Students</h2>
-          <div className="w-16 h-1 bg-[#f5a623] mx-auto mt-4 rounded-full" />
-          <p className="text-gray-500 mt-4 max-w-2xl mx-auto text-sm">
+          <span className="text-[#f5a623] text-xs sm:text-sm font-semibold uppercase tracking-widest">Student Achievements</span>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0f2a5c] mt-2">Success Stories from Our Students</h2>
+          <div className="w-12 sm:w-16 h-1 bg-[#f5a623] mx-auto mt-3 sm:mt-4 rounded-full" />
+          <p className="text-gray-500 mt-3 sm:mt-4 max-w-2xl mx-auto text-xs sm:text-sm">
             Join hundreds of successful students who transformed their academic performance through our dedicated coaching and personalized guidance.
           </p>
         </div>

@@ -13,23 +13,23 @@ export default function Gallery() {
   return (
     <section id="gallery" className="py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-14">
-          <div className="flex justify-center mb-4">
+        <div className="text-center mb-10 sm:mb-14">
+          <div className="flex justify-center mb-3 sm:mb-4">
             <img
               src="/sunrise-logo.png"
               alt=""
-              className="h-14 w-14 sm:h-16 sm:w-16 object-contain drop-shadow-md"
+              className="h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 object-contain drop-shadow-md"
             />
           </div>
-          <span className="text-[#f5a623] text-sm font-semibold uppercase tracking-widest">Our Gallery</span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5c] mt-2">Sunrise Classes & Academy</h2>
-          <div className="w-16 h-1 bg-[#f5a623] mx-auto mt-4 rounded-full" />
-          <p className="text-gray-500 mt-4 max-w-xl mx-auto text-sm">
+          <span className="text-[#f5a623] text-xs sm:text-sm font-semibold uppercase tracking-widest">Our Gallery</span>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0f2a5c] mt-2">Sunrise Classes & Academy</h2>
+          <div className="w-12 sm:w-16 h-1 bg-[#f5a623] mx-auto mt-3 sm:mt-4 rounded-full" />
+          <p className="text-gray-500 mt-3 sm:mt-4 max-w-xl mx-auto text-xs sm:text-sm">
             Take a glimpse of our classrooms, students, and faculty at Sunrise Classes in Champanagar, Purnia.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {images.map((src, index) => (
             <div
               key={index}

@@ -7,22 +7,22 @@ const courses = [
 
 export default function Courses() {
   return (
-    <section id="courses" className="py-20 bg-white">
+    <section id="courses" className="py-16 sm:py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-14">
-          <div className="flex justify-center mb-4">
+        <div className="text-center mb-10 sm:mb-14">
+          <div className="flex justify-center mb-3 sm:mb-4">
             <img
               src="/sunrise-logo.png"
               alt=""
-              className="h-14 w-14 sm:h-16 sm:w-16 object-contain drop-shadow-md"
+              className="h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 object-contain drop-shadow-md"
             />
           </div>
-          <span className="text-[#f5a623] text-sm font-semibold uppercase tracking-widest">What We Offer</span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5c] mt-2">Board Exam Coaching Classes in Purnia, Bihar</h2>
-          <div className="w-16 h-1 bg-[#f5a623] mx-auto mt-4 rounded-full" />
+          <span className="text-[#f5a623] text-xs sm:text-sm font-semibold uppercase tracking-widest">What We Offer</span>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0f2a5c] mt-2">Board Exam Coaching Classes in Purnia, Bihar</h2>
+          <div className="w-12 sm:w-16 h-1 bg-[#f5a623] mx-auto mt-3 sm:mt-4 rounded-full" />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           {courses.map(({ icon: Icon, title, sub, desc, color }) => (
             <div
               key={title}

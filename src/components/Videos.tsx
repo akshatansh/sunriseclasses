@@ -207,41 +207,41 @@ export default function Videos() {
   }));
 
   return (
-    <section id="videos" className="py-20 bg-gradient-to-b from-white via-[#fff8ec] to-gray-50">
+    <section id="videos" className="py-16 sm:py-20 bg-gradient-to-b from-white via-[#fff8ec] to-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-14">
-          <div className="flex justify-center mb-4">
+        <div className="text-center mb-10 sm:mb-14">
+          <div className="flex justify-center mb-3 sm:mb-4">
             <img
               src="/sunrise-logo.png"
               alt=""
-              className="h-14 w-14 sm:h-16 sm:w-16 object-contain drop-shadow-md"
+              className="h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 object-contain drop-shadow-md"
             />
           </div>
           <span className="inline-flex items-center gap-2 text-[#f5a623] text-sm font-semibold uppercase tracking-widest">
-            <Sparkles size={16} />
+            <Sparkles size={14} />
             Daily Learning
           </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5c] mt-2">Board Exams ke liye Free YouTube Classes</h2>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0f2a5c] mt-2">Board Exams ke liye Free YouTube Classes</h2>
           <div className="w-16 h-1 bg-[#f5a623] mx-auto mt-4 rounded-full" />
           <p className="text-gray-500 mt-4 max-w-xl mx-auto text-sm">
             Class 9 & 10 ke Math aur Science videos, easy explanation ke saath. Latest lectures yahin se watch karein ya channel par subscribe karein.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto mb-8 sm:mb-10">
           <a
             href={YOUTUBE_CHANNEL_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="sm:col-span-2 flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-4 rounded-2xl transition-all duration-200 shadow-lg hover:shadow-red-500/30 hover:-translate-y-0.5"
+            className="col-span-1 sm:col-span-2 flex items-center justify-center gap-2 sm:gap-3 bg-red-600 hover:bg-red-700 text-white font-bold px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-2xl text-sm sm:text-base transition-all duration-200 shadow-lg hover:shadow-red-500/30 hover:-translate-y-0.5"
           >
-            <Youtube size={20} />
+            <Youtube size={18} />
             Subscribe on YouTube
-            <ExternalLink size={14} />
+            <ExternalLink size={12} />
           </a>
-          <div className="flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-2xl px-5 py-4 shadow-sm">
-            <Bell size={18} className="text-[#f5a623]" />
-            <span className="text-gray-600 text-sm font-semibold">Latest uploads</span>
+          <div className="flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-lg sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 shadow-sm">
+            <Bell size={16} className="text-[#f5a623]" />
+            <span className="text-gray-600 text-xs sm:text-sm font-semibold">Latest uploads</span>
           </div>
         </div>
 

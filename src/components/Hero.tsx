@@ -19,8 +19,8 @@ export default function Hero() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#f5a623]/5 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
-        <div className="flex flex-col lg:flex-row items-center gap-12">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-12 sm:pb-16">
+        <div className="flex flex-col lg:flex-row items-center gap-8 sm:gap-12">
           <div className="flex-1 text-center lg:text-left">
             <div className="inline-flex items-center gap-2 bg-[#f5a623]/20 border border-[#f5a623]/30 rounded-full px-4 py-1.5 mb-6">
               <span className="w-2 h-2 bg-[#f5a623] rounded-full animate-pulse" />
@@ -29,7 +29,7 @@ export default function Hero() {
               </span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-4">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-4">
               Best Coaching Classes in Purnia, Bihar
               <span className="block text-[#f5a623]">Sunrise Classes & Academy</span>
             </h1>
@@ -74,15 +74,15 @@ export default function Hero() {
           </div>
         </div>
 
-        <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6">
+        <div className="mt-12 sm:mt-16 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6">
           {stats.map(({ icon: Icon, value, label }) => (
             <div
               key={label}
-              className="bg-white/5 border border-white/10 rounded-2xl p-5 text-center hover:bg-white/10 hover:border-[#f5a623]/30 transition-all duration-300 group"
+              className="bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center hover:bg-white/10 hover:border-[#f5a623]/30 transition-all duration-300 group"
             >
-              <Icon className="mx-auto mb-3 text-[#f5a623] group-hover:scale-110 transition-transform duration-300" size={28} />
-              <p className="text-2xl font-extrabold text-white">{value}</p>
-              <p className="text-[#8ba8d4] text-xs mt-1">{label}</p>
+              <Icon className="mx-auto mb-2 sm:mb-3 text-[#f5a623] group-hover:scale-110 transition-transform duration-300" size={22} />
+              <p className="text-lg sm:text-2xl font-extrabold text-white">{value}</p>
+              <p className="text-[#8ba8d4] text-[10px] sm:text-xs mt-1">{label}</p>
             </div>
           ))}
         </div>
