@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import { Star, Trophy, Medal } from 'lucide-react';
+import { Star, Trophy, Medal, ChevronUp, ChevronDown } from 'lucide-react';
 
 const successStories = [
   // 2026
   {
     name: 'Swati Kumari',
     class: 'Class 10',
-    score: '456/500',
-    percentage: '91.2%',
+    score: '91.2%',
     year: '2026',
     photo: '/gallery/WhatsApp Image 2026-04-21 at 16.02.29.jpeg',
     story: 'Sir, aapki coaching mein padhkar humein bahut achha laga. Aapka padhane ka tareeka bahut hi alag aur achha hai. Aap har topic ko itni aasani se samjhate hain ki padhai interesting lagti hai.\n\nAapne humein sirf padhai hi nahi, discipline aur sabka respect karna bhi sikhaya hai. Aap har student ko motivate karte hain aur hamesha support karte hain.\n\nSir, aap jaise teacher milna hamare liye bahut khushi ki baat hai. Dil se thank you Sir.✨',
@@ -106,8 +105,7 @@ const successStories = [
   {
     name: 'Mithi Kumari',
     class: 'Class 10',
-    score: '431/500',
-    percentage: '86.2%',
+    score: '86.2%',
     year: '2023',
     photo: '/gallery/meethi-kumari.jpg',
     story: 'Main Mithi Kumari..... Hamari coaching Sunrise Classes & Academy sirf padhne ka nahi, balki students ke future ko mazboot banane ka sthaan hai..... Humne apni coaching se bahut saari cheezein seekhi hain, jo hamare future ke liye bahut zaroori hai..... Top result yun hi nahi aate, iske peeche hamari coaching ka sahi guidance aur lagataar mehnat chhupi hoti hai. Dil se dhanyavaad Sir aapko humein itna kuch sikhane ke liye....✨❤️',
@@ -115,8 +113,7 @@ const successStories = [
   {
     name: 'Ayush Kumar',
     class: 'Class 10',
-    score: '408/500',
-    percentage: '81.6%',
+    score: '81.6%',
     year: '2023',
     photo: '/gallery/ayush kumar.jpg',
     story: 'Main Ayush.... Sunrise Coaching Classes mein padhai ratkar nahi, samajhkar karai jaati hai. Yahan har subject ko aasan tareeke se samjhaya jaata hai, jisse padhai mein ruchi bani rehti hai. Har concept achhe se clear hua, isliye question solve karna aasan ho gaya. Yeh coaching students ko sahi disha aur mazboot aadhar deti hai. Isi sahi margdarshan aur mehnat se maine achhe ank prapt kiye.',
@@ -124,8 +121,7 @@ const successStories = [
   {
     name: 'Raunak Kumari',
     class: 'Class 10',
-    score: '400/500',
-    percentage: '80%',
+    score: '80%',
     year: '2023',
     photo: '/gallery/raunak-kumari.jpg',
     story: 'Ye Sir aur unke institute ke liye mere dil se bahut respect hai. Sir sirf padhate hi nahi, balki har topic ko itni achhi tarah samjhate hain ki concepts easily clear ho jaate hain. Jab bhi koi problem aati hai, chahe padhai se related ho ya kisi aur cheez se, sir hamesha patiently uska solution dete hain. Unka support aur guidance students ke liye bahut valuable hai. Institute ka environment bhi bahut positive aur motivating hai, jahan padhai karne ka mann khud hi karta hai. Sach me, aise teacher aur aisa institute milna bahut lucky baat hai... thank you so much sir for everything🙏',
@@ -133,8 +129,7 @@ const successStories = [
   {
     name: 'Muskan Kumari',
     class: 'Class 10',
-    score: '393/500',
-    percentage: '78.6%',
+    score: '78.6%',
     year: '2023',
     photo: '/gallery/muskan-kumari.jpg',
     story: 'Mai Muskan Kumari.... Mere coaching Sansthan Sunrise Classes and Academy mein sirf acche bacchon per nahin balki sabhi kamjor bacchon per bhi Dhyan Diya jata hai sabhi ko ek najar se dekha jata hai padhaane ka tarika har kamjor bacchon ke liye sahi hai unka concept itna easy hota hai ki koi bhi aasani se samajh le. Hamare Sir Surya Prakash Jha jo hamesha kamjor bacchon ke support mein rahte hain, unhen inspired karte hain ki taki vah achche se padhai kar saken aur vah jyada se jyada kamjor bacchon par dhyan dete hain taki unka bhavishya ujjwal ho. Wo hame students ke tarah hamen treat karke ek friend ke tarah treat kiya jata hai.',
@@ -177,14 +172,14 @@ const successStories = [
 export default function SuccessStories() {
   const [expandedReviews, setExpandedReviews] = useState<Set<string>>(new Set());
 
-  const toggleReview = (key: string) => {
-    const newSet = new Set(expandedReviews);
-    if (newSet.has(key)) {
-      newSet.delete(key);
+  const toggleReview = (id: string) => {
+    const newExpanded = new Set(expandedReviews);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
     } else {
-      newSet.add(key);
+      newExpanded.add(id);
     }
-    setExpandedReviews(newSet);
+    setExpandedReviews(newExpanded);
   };
 
   // Group stories by year in descending order
@@ -217,21 +212,21 @@ export default function SuccessStories() {
   const avgScore = (successStories.reduce((sum, s) => sum + parseInt(s.score), 0) / totalStudents).toFixed(1);
 
   return (
-    <section id="success" className="py-16 sm:py-20 bg-gradient-to-b from-white via-blue-50 to-white">
+    <section id="success" className="py-20 bg-gradient-to-b from-white via-blue-50 to-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-10 sm:mb-16">
-          <div className="flex justify-center mb-3 sm:mb-4">
+        <div className="text-center mb-16">
+          <div className="flex justify-center mb-4">
             <img
               src="/sunrise-logo.png"
               alt=""
-              className="h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 object-contain object-center drop-shadow-md"
+              className="h-14 w-14 sm:h-16 sm:w-16 object-contain drop-shadow-md"
             />
           </div>
-          <span className="text-[#f5a623] text-xs sm:text-sm font-semibold uppercase tracking-widest">Student Achievements</span>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0f2a5c] mt-2">Success Stories from Our Students</h2>
-          <div className="w-12 sm:w-16 h-1 bg-[#f5a623] mx-auto mt-3 sm:mt-4 rounded-full" />
-          <p className="text-gray-500 mt-3 sm:mt-4 max-w-2xl mx-auto text-xs sm:text-sm">
+          <span className="text-[#f5a623] text-sm font-semibold uppercase tracking-widest">Student Achievements</span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5c] mt-2">Success Stories from Our Students</h2>
+          <div className="w-16 h-1 bg-[#f5a623] mx-auto mt-4 rounded-full" />
+          <p className="text-gray-500 mt-4 max-w-2xl mx-auto text-sm">
             Join hundreds of successful students who transformed their academic performance through our dedicated coaching and personalized guidance.
           </p>
         </div>
@@ -264,7 +259,7 @@ export default function SuccessStories() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-orange-700 font-semibold mb-1">Average Score</p>
-                <p className="text-3xl font-black text-orange-700">355%</p>
+                <p className="text-3xl font-black text-orange-700">{avgScore}%</p>
               </div>
               <Medal size={40} className="text-orange-600 opacity-30" />
             </div>
@@ -348,8 +343,6 @@ export default function SuccessStories() {
                 {yearStudents.map((student, rank) => {
                   const medal = getMedalColor(rank);
                   const isTopRank = rank < 3;
-                  const reviewKey = `${year}-${student.name}`;
-                  const isExpanded = expandedReviews.has(reviewKey);
 
                   return (
                     <div key={rank} className="group h-full">
@@ -366,7 +359,7 @@ export default function SuccessStories() {
                         )}
 
                         {/* Photo */}
-                        <div className="relative h-72 sm:h-96 md:h-56 lg:h-64 overflow-hidden bg-gray-100">
+                        <div className="relative h-[24rem] md:h-[20rem] lg:h-[18rem] overflow-hidden bg-gray-300">
                           <img
                             src={student.photo}
                             alt={student.name}
@@ -376,8 +369,8 @@ export default function SuccessStories() {
                             }}
                           />
                           {/* Score Overlay */}
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#0f2a5c] via-[#0f2a5c] to-transparent pt-8 sm:pt-12 pb-3 sm:pb-4 px-3 sm:px-4">
-                            <p className="text-white text-2xl sm:text-4xl font-black">{student.score}</p>
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#0f2a5c] via-[#0f2a5c] to-transparent pt-2 pb-4 px-4">
+                            <p className="text-white text-4xl font-black">{student.score}</p>
                           </div>
                         </div>
 
@@ -388,13 +381,33 @@ export default function SuccessStories() {
 
                           {/* Feedback */}
                           <div className="bg-gradient-to-br from-blue-50 to-gray-50 rounded-lg p-3 border border-blue-100">
-                            <p className={`text-gray-700 text-xs leading-relaxed italic ${isExpanded ? '' : 'line-clamp-3 md:line-clamp-none'}`}>"{student.story}"</p>
-                            <button
-                              onClick={() => toggleReview(reviewKey)}
-                              className="text-[#f5a623] text-xs font-semibold mt-2 md:hidden hover:text-[#e59200] cursor-pointer"
-                            >
-                              {isExpanded ? 'Show Less' : 'Read More...'}
-                            </button>
+                            {/* Desktop - Show Full Story */}
+                            <p className="text-gray-700 text-xs leading-relaxed italic hidden lg:block">
+                              "{student.story}"
+                            </p>
+                            
+                            {/* Mobile/Tablet - Show Truncated with Read More */}
+                            <p className="text-gray-700 text-xs leading-relaxed italic lg:hidden">
+                              "{student.story.length > 150 && !expandedReviews.has(`${student.name}-${student.year}`) ? 
+                                `${student.story.substring(0, 150)}...` : 
+                                student.story}"
+                            </p>
+                            {student.story.length > 150 && (
+                              <button
+                                onClick={() => toggleReview(`${student.name}-${student.year}`)}
+                                className="text-[#f5a623] text-xs font-semibold mt-2 flex items-center gap-1 hover:text-orange-600 transition-colors lg:hidden"
+                              >
+                                {expandedReviews.has(`${student.name}-${student.year}`) ? (
+                                  <>
+                                    Read Less <ChevronUp size={12} />
+                                  </>
+                                ) : (
+                                  <>
+                                    Read More <ChevronDown size={12} />
+                                  </>
+                                )}
+                              </button>
+                            )}
                           </div>
 
                           {/* Star Rating */}
@@ -423,7 +436,7 @@ export default function SuccessStories() {
             <Trophy size={48} className="text-[#f5a623] mx-auto mb-4" />
             <h3 className="text-2xl sm:text-3xl font-bold text-[#0f2a5c] mb-4">Join Our Success Story</h3>
             <p className="text-gray-700 max-w-2xl mx-auto mb-6">
-              With a <span className="font-bold text-[#f5a623]">100% success rate</span> and an average score of <span className="font-bold text-[#f5a623]">355%</span>, 
+              With a <span className="font-bold text-[#f5a623]">100% success rate</span> and an average score of <span className="font-bold text-[#f5a623]">{avgScore}%</span>, 
               our coaching has produced <span className="font-bold text-[#f5a623]">{studentsWith95Plus}+ students</span> scoring 95% or above across the past 5 years. 
               Your success is our mission!
             </p>
