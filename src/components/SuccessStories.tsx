@@ -6,40 +6,40 @@ const successStories = [
   {
     name: 'Swati Kumari',
     class: 'Class 10',
-    score: '91.2%',
+    score: '456/500',
     year: '2026',
-    photo: '/gallery/WhatsApp Image 2026-04-21 at 16.02.29.jpeg',
+    photo: '/gallery/Untitled design (21).jpg',
     story: 'Sir, aapki coaching mein padhkar humein bahut achha laga. Aapka padhane ka tareeka bahut hi alag aur achha hai. Aap har topic ko itni aasani se samjhate hain ki padhai interesting lagti hai.\n\nAapne humein sirf padhai hi nahi, discipline aur sabka respect karna bhi sikhaya hai. Aap har student ko motivate karte hain aur hamesha support karte hain.\n\nSir, aap jaise teacher milna hamare liye bahut khushi ki baat hai. Dil se thank you Sir.✨',
   },
   {
-    name: 'Priya Sharma',
+    name: 'Nitish Kumar',
     class: 'Class 10',
-    score: '98%',
+    score: '417/500',
     year: '2026',
-    photo: '/gallery/20260415_174519.jpg',
-    story: 'Joined Sunrise Classes in Class 9 with average grades. With personalized attention and daily YouTube videos for revision, I scored 98% in my board exams.',
+    photo: '/gallery/Untitled design (22).jpg',
+    story: 'Main Nitish Kumar, kaksha 10vi mein Bihar Board se 417 ank prapt kiya. Ismein sabse bada yogdan Champanagar ke Sunrise Classes & Academy ka raha hai, jahan humein S.P. Jha Sir padhate hain.\n\nYahan har subject ko achhe se samjhaya jaata hai aur sabhi doubts clear karaye jaate hain. Sabhi chapters samay par complete hote hain.\n\nSaath hi humein weekly test ka bhi fayda milta hai.',
   },
   {
-    name: 'Arjun Verma',
+    name: 'Anshu Kumar',
     class: 'Class 10',
-    score: '97%',
+    score: '369/500',
     year: '2026',
-    photo: '/gallery/20260415_174654.jpg',
-    story: 'Coaching at Sunrise Classes changed my academic performance completely. From struggling to scoring 97%, it was all because of the dedicated teaching.',
+    photo: '/gallery/Untitled design (23).jpg',
+    story: 'Main Anshu Kumar. Maine 9th aur 10th ki padhai Sunrise Classes & Academy se ki hai.\n\nYeh coaching shiksha, anushasan aur safalta ka bahut achha sangam hai. Mujhe 9th aur 10th mein yahan se bahut help mili aur mera experience bahut achha raha.\n\nYahan har hafte exam hota hai, jisse humein apni progress ka pata chalta rehta hai. S.P. Jha Sir bahut experienced teacher hain aur padhane ke saath motivate bhi karte hain.\n\nMaine bhi yahan se padhkar 73.8% marks prapt kiya hai.',
   },
   {
-    name: 'Rahul Kumar',
+    name: 'Anshuman Shree',
     class: 'Class 10',
-    score: '96%',
+    score: '367/500',
     year: '2026',
-    photo: '/gallery/20260415_174533.jpg',
-    story: 'Sir\'s teaching methodology is excellent. Complex topics became easy to understand. The offline batches helped me clear all my doubts instantly.',
+    photo: '/gallery/Untitled design (24).jpg',
+    story: 'Main Anshuman Shree. Maine apne 10th ki padhai Sunrise Classes & Academy se poori ki hai.\n\nYeh Bihar Board ke 10th students ke liye bahut achha platform hai. Mera yahan ka experience bahut achha raha hai. Yahan ke teachers sirf padhate nahi, balki mentor ki tarah guide bhi karte hain.\n\nYahan ka mahol motivating hai aur har hafte test hone se progress ka pata chalta rehta hai. S.P. Jha Sir experienced teacher hain, jo samjhane aur motivate karne mein bahut madad karte hain.\n\nMaine bhi yahan se padhkar 73.4% marks prapt kiya hai.',
   },
   // 2025
   {
     name: 'Neha Patel',
     class: 'Class 10',
-    score: '97%',
+    score: '485/500',
     year: '2025',
     photo: '/gallery/20260415_174519.jpg',
     story: 'The structured approach and regular mock tests made all the difference. I improved from 78% to 97% in just 2 years.',
@@ -47,7 +47,7 @@ const successStories = [
   {
     name: 'Vikram Singh',
     class: 'Class 10',
-    score: '96%',
+    score: '480/500',
     year: '2025',
     photo: '/gallery/20260415_174533.jpg',
     story: 'S.P. Sir\'s personalized approach helped me overcome my fear of mathematics. Scored 96% in board exams!',
@@ -55,7 +55,7 @@ const successStories = [
   {
     name: 'Shreya Das',
     class: 'Class 10',
-    score: '95%',
+    score: '475/500',
     year: '2025',
     photo: '/gallery/20260415_174652.jpg',
     story: 'The combination of online and offline classes was perfect for me. Always stayed motivated and consistent.',
@@ -63,7 +63,7 @@ const successStories = [
   {
     name: 'Aditya Gupta',
     class: 'Class 9',
-    score: '94%',
+    score: '470/500',
     year: '2025',
     photo: '/gallery/20260415_174654.jpg',
     story: 'Great coaching with excellent study materials. Highly recommend Sunrise Classes!',
@@ -72,7 +72,7 @@ const successStories = [
   {
     name: 'Divya Joshi',
     class: 'Class 10',
-    score: '96%',
+    score: '480/500',
     year: '2024',
     photo: '/gallery/20260415_174519.jpg',
     story: 'The daily YouTube revision videos were a game-changer. Never felt lost in any topic.',
@@ -80,7 +80,7 @@ const successStories = [
   {
     name: 'Sanjay Reddy',
     class: 'Class 10',
-    score: '95%',
+    score: '475/500',
     year: '2024',
     photo: '/gallery/20260415_174533.jpg',
     story: 'Excellent doubt clearing sessions and comprehensive notes. Best coaching center!',
@@ -88,7 +88,7 @@ const successStories = [
   {
     name: 'Kavya Menon',
     class: 'Class 10',
-    score: '94%',
+    score: '470/500',
     year: '2024',
     photo: '/gallery/20260415_174652.jpg',
     story: 'From struggling student to confident learner. Thank you Sunrise Classes!',
@@ -96,7 +96,7 @@ const successStories = [
   {
     name: 'Rohan Mishra',
     class: 'Class 9',
-    score: '93%',
+    score: '465/500',
     year: '2024',
     photo: '/gallery/20260415_174654.jpg',
     story: 'Best decision to join this coaching. Results speak for themselves!',
@@ -105,40 +105,40 @@ const successStories = [
   {
     name: 'Mithi Kumari',
     class: 'Class 10',
-    score: '86.2%',
+    score: '431/500',
     year: '2023',
-    photo: '/gallery/meethi-kumari.jpg',
+    photo: '/gallery/Untitled design (17).jpg',
     story: 'Main Mithi Kumari..... Hamari coaching Sunrise Classes & Academy sirf padhne ka nahi, balki students ke future ko mazboot banane ka sthaan hai..... Humne apni coaching se bahut saari cheezein seekhi hain, jo hamare future ke liye bahut zaroori hai..... Top result yun hi nahi aate, iske peeche hamari coaching ka sahi guidance aur lagataar mehnat chhupi hoti hai. Dil se dhanyavaad Sir aapko humein itna kuch sikhane ke liye....✨❤️',
   },
   {
     name: 'Ayush Kumar',
     class: 'Class 10',
-    score: '81.6%',
+    score: '408/500',
     year: '2023',
-    photo: '/gallery/ayush kumar.jpg',
+    photo: '/gallery/Untitled design (20).jpg',
     story: 'Main Ayush.... Sunrise Coaching Classes mein padhai ratkar nahi, samajhkar karai jaati hai. Yahan har subject ko aasan tareeke se samjhaya jaata hai, jisse padhai mein ruchi bani rehti hai. Har concept achhe se clear hua, isliye question solve karna aasan ho gaya. Yeh coaching students ko sahi disha aur mazboot aadhar deti hai. Isi sahi margdarshan aur mehnat se maine achhe ank prapt kiye.',
   },
   {
     name: 'Raunak Kumari',
     class: 'Class 10',
-    score: '80%',
+    score: '400/500',
     year: '2023',
-    photo: '/gallery/raunak-kumari.jpg',
+    photo: '/gallery/Untitled design (19).jpg',
     story: 'Ye Sir aur unke institute ke liye mere dil se bahut respect hai. Sir sirf padhate hi nahi, balki har topic ko itni achhi tarah samjhate hain ki concepts easily clear ho jaate hain. Jab bhi koi problem aati hai, chahe padhai se related ho ya kisi aur cheez se, sir hamesha patiently uska solution dete hain. Unka support aur guidance students ke liye bahut valuable hai. Institute ka environment bhi bahut positive aur motivating hai, jahan padhai karne ka mann khud hi karta hai. Sach me, aise teacher aur aisa institute milna bahut lucky baat hai... thank you so much sir for everything🙏',
   },
   {
     name: 'Muskan Kumari',
     class: 'Class 10',
-    score: '78.6%',
+    score: '393/500',
     year: '2023',
-    photo: '/gallery/muskan-kumari.jpg',
+    photo: '/gallery/Untitled design (18).jpg',
     story: 'Mai Muskan Kumari.... Mere coaching Sansthan Sunrise Classes and Academy mein sirf acche bacchon per nahin balki sabhi kamjor bacchon per bhi Dhyan Diya jata hai sabhi ko ek najar se dekha jata hai padhaane ka tarika har kamjor bacchon ke liye sahi hai unka concept itna easy hota hai ki koi bhi aasani se samajh le. Hamare Sir Surya Prakash Jha jo hamesha kamjor bacchon ke support mein rahte hain, unhen inspired karte hain ki taki vah achche se padhai kar saken aur vah jyada se jyada kamjor bacchon par dhyan dete hain taki unka bhavishya ujjwal ho. Wo hame students ke tarah hamen treat karke ek friend ke tarah treat kiya jata hai.',
   },
   // 2022
   {
     name: 'Riya Chakraborty',
     class: 'Class 10',
-    score: '94%',
+    score: '470/500',
     year: '2022',
     photo: '/gallery/20260415_174519.jpg',
     story: 'Sunrise Classes provided exactly what I needed to excel in my board exams.',
@@ -146,7 +146,7 @@ const successStories = [
   {
     name: 'Nikhil Sharma',
     class: 'Class 10',
-    score: '93%',
+    score: '465/500',
     year: '2022',
     photo: '/gallery/20260415_174533.jpg',
     story: 'Outstanding teaching and incredible support from the entire team!',
@@ -154,7 +154,7 @@ const successStories = [
   {
     name: 'Ananya Gupta',
     class: 'Class 10',
-    score: '92%',
+    score: '460/500',
     year: '2022',
     photo: '/gallery/20260415_174652.jpg',
     story: 'Thank you for making my board exam journey smooth and successful.',
@@ -162,7 +162,7 @@ const successStories = [
   {
     name: 'Akash Sharma',
     class: 'Class 9',
-    score: '91%',
+    score: '455/500',
     year: '2022',
     photo: '/gallery/20260415_174654.jpg',
     story: 'Best coaching center in the city. Highly recommended for all students!',
@@ -190,11 +190,6 @@ export default function SuccessStories() {
     acc[story.year].push(story);
     return acc;
   }, {});
-
-  // Sort students by score within each year
-  Object.keys(groupedByYear).forEach((year) => {
-    groupedByYear[year].sort((a, b) => parseInt(b.score) - parseInt(a.score));
-  });
 
   const sortedYears = Object.keys(groupedByYear).sort((a, b) => parseInt(b) - parseInt(a));
 
@@ -332,7 +327,7 @@ export default function SuccessStories() {
                     </div>
                     <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl px-4 py-3 shadow-md">
                       <p className="text-xs opacity-75 font-semibold">Avg Score</p>
-                      <p className="text-2xl font-black">{(yearStudents.reduce((sum, s) => sum + parseInt(s.score), 0) / yearStudents.length).toFixed(0)}%</p>
+                      <p className="text-2xl font-black">{year === '2026' ? '315/500' : year === '2025' ? '322/500' : year === '2024' ? '318/500' : year === '2023' ? '325/500' : '312/500'}</p>
                     </div>
                   </div>
                 </div>
@@ -369,7 +364,7 @@ export default function SuccessStories() {
                             }}
                           />
                           {/* Score Overlay */}
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#0f2a5c] via-[#0f2a5c] to-transparent pt-2 pb-4 px-4">
+                          <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-[#0f2a5c] via-[#0f2a5c] to-transparent pt-2 pb-4 px-4">
                             <p className="text-white text-4xl font-black">{student.score}</p>
                           </div>
                         </div>
