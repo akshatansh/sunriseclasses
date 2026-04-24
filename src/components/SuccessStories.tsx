@@ -202,6 +202,8 @@ export default function SuccessStories() {
   };
 
   const totalStudents = successStories.length;
+  const maxScore = Math.max(...successStories.map(s => parseInt(s.score)));
+  const maxScorePercentage = ((maxScore / 500) * 100).toFixed(0);
   const studentsWith95Plus = successStories.filter(s => parseInt(s.score) >= 95).length;
   const studentsWith90Plus = successStories.filter(s => parseInt(s.score) >= 90).length;
   const avgScore = (successStories.reduce((sum, s) => sum + parseInt(s.score), 0) / totalStudents).toFixed(1);
@@ -231,12 +233,12 @@ export default function SuccessStories() {
           <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-2xl p-6 border-2 border-yellow-300 shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-yellow-700 font-semibold mb-1">Students Scored</p>
-                <p className="text-3xl font-black text-yellow-700">95%+</p>
+                <p className="text-sm text-yellow-700 font-semibold mb-1">Highest Score</p>
+                <p className="text-3xl font-black text-yellow-700">91%</p>
               </div>
               <Trophy size={40} className="text-yellow-600 opacity-30" />
             </div>
-            <p className="text-xs text-yellow-600 mt-3">{studentsWith95Plus} out of {totalStudents} students</p>
+            <p className="text-xs text-yellow-600 mt-3">{maxScore}/500 marks</p>
           </div>
 
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 border-2 border-blue-300 shadow-lg">
@@ -247,29 +249,27 @@ export default function SuccessStories() {
               </div>
               <Star size={40} className="text-blue-600 opacity-30" />
             </div>
-            <p className="text-xs text-blue-600 mt-3">{studentsWith90Plus} out of {totalStudents} students</p>
           </div>
 
           <div className="bg-gradient-to-br from-[#f5a623]/10 to-orange-100 rounded-2xl p-6 border-2 border-[#f5a623] shadow-lg">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-orange-700 font-semibold mb-1">Average Score</p>
-                <p className="text-3xl font-black text-orange-700">{avgScore}%</p>
+                <p className="text-3xl font-black text-orange-700">314</p>
               </div>
               <Medal size={40} className="text-orange-600 opacity-30" />
             </div>
-            <p className="text-xs text-orange-600 mt-3">All {totalStudents} students</p>
+            <p className="text-xs text-orange-600 mt-3">All Students</p>
           </div>
 
           <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-6 border-2 border-green-300 shadow-lg">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-green-700 font-semibold mb-1">Success Rate</p>
-                <p className="text-3xl font-black text-green-700">100%</p>
+                <p className="text-3xl font-black text-green-700">99%</p>
               </div>
               <Star size={40} className="text-green-600 opacity-30 fill-current" />
             </div>
-            <p className="text-xs text-green-600 mt-3">All students achieved 90%+</p>
           </div>
         </div>
 
