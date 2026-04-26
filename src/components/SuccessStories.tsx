@@ -172,6 +172,14 @@ const successStories = [
 export default function SuccessStories() {
   const [expandedReviews, setExpandedReviews] = useState<Set<string>>(new Set());
 
+  const getOptimizedPhoto = (photo: string) => {
+    if (!photo.startsWith('/gallery/')) {
+      return photo;
+    }
+
+    return photo.replace('/gallery/', '/gallery/optimized/');
+  };
+
   const toggleReview = (id: string) => {
     const newExpanded = new Set(expandedReviews);
     if (newExpanded.has(id)) {
@@ -229,46 +237,64 @@ export default function SuccessStories() {
         </div>
 
         {/* Overall Success Metrics - Featured Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
-          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-2xl p-6 border-2 border-yellow-300 shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-yellow-700 font-semibold mb-1">Highest Score</p>
-                <p className="text-3xl font-black text-yellow-700">91%</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-16">
+          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-2xl p-4 sm:p-6 border-2 border-yellow-300 shadow-lg min-h-[140px] sm:min-h-[168px]">
+            <div className="flex h-full flex-col justify-between">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs sm:text-sm text-yellow-700 font-semibold mb-1">Highest Score</p>
+                  <p className="text-2xl sm:text-3xl font-black text-yellow-700">91%</p>
+                </div>
+                <Trophy size={32} className="text-yellow-600 opacity-30 sm:h-10 sm:w-10 shrink-0" />
               </div>
-              <Trophy size={40} className="text-yellow-600 opacity-30" />
-            </div>
-            <p className="text-xs text-yellow-600 mt-3">{maxScore}/500 marks</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 border-2 border-blue-300 shadow-lg">
-            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-blue-700 font-semibold mb-1">Students Scored</p>
-                <p className="text-3xl font-black text-blue-700">90%+</p>
+                <p className="text-xs text-yellow-600 mt-3">{maxScore}/500 marks</p>
               </div>
-              <Star size={40} className="text-blue-600 opacity-30" />
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-[#f5a623]/10 to-orange-100 rounded-2xl p-6 border-2 border-[#f5a623] shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-orange-700 font-semibold mb-1">Average Score</p>
-                <p className="text-3xl font-black text-orange-700">314</p>
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 sm:p-6 border-2 border-blue-300 shadow-lg min-h-[140px] sm:min-h-[168px]">
+            <div className="flex h-full flex-col justify-between">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs sm:text-sm text-blue-700 font-semibold mb-1">Students Scored</p>
+                  <p className="text-2xl sm:text-3xl font-black text-blue-700">90%+</p>
+                </div>
+                <Star size={32} className="text-blue-600 opacity-30 sm:h-10 sm:w-10 shrink-0" />
               </div>
-              <Medal size={40} className="text-orange-600 opacity-30" />
+              <div>
+                <p className="text-xs text-blue-600 mt-3">Top performers</p>
+              </div>
             </div>
-            <p className="text-xs text-orange-600 mt-3">All Students</p>
           </div>
 
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-6 border-2 border-green-300 shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-green-700 font-semibold mb-1">Success Rate</p>
-                <p className="text-3xl font-black text-green-700">99%</p>
+          <div className="bg-gradient-to-br from-[#f5a623]/10 to-orange-100 rounded-2xl p-4 sm:p-6 border-2 border-[#f5a623] shadow-lg min-h-[140px] sm:min-h-[168px]">
+            <div className="flex h-full flex-col justify-between">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs sm:text-sm text-orange-700 font-semibold mb-1">Average Score</p>
+                  <p className="text-2xl sm:text-3xl font-black text-orange-700">314</p>
+                </div>
+                <Medal size={32} className="text-orange-600 opacity-30 sm:h-10 sm:w-10 shrink-0" />
               </div>
-              <Star size={40} className="text-green-600 opacity-30 fill-current" />
+              <div>
+                <p className="text-xs text-orange-600 mt-3">All Students</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-4 sm:p-6 border-2 border-green-300 shadow-lg min-h-[140px] sm:min-h-[168px]">
+            <div className="flex h-full flex-col justify-between">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs sm:text-sm text-green-700 font-semibold mb-1">Success Rate</p>
+                  <p className="text-2xl sm:text-3xl font-black text-green-700">99%</p>
+                </div>
+                <Star size={32} className="text-green-600 opacity-30 fill-current sm:h-10 sm:w-10 shrink-0" />
+              </div>
+              <div>
+                <p className="text-xs text-green-600 mt-3">Consistent results</p>
+              </div>
             </div>
           </div>
         </div>
@@ -328,6 +354,7 @@ export default function SuccessStories() {
                     <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl px-4 py-3 shadow-md">
                       <p className="text-xs opacity-75 font-semibold">Avg Score</p>
                       <p className="text-2xl font-black">{year === '2026' ? '315/500' : year === '2025' ? '322/500' : year === '2024' ? '318/500' : year === '2023' ? '325/500' : '312/500'}</p>
+                      <p className="text-[10px] opacity-75 mt-1 font-medium">Overall Student</p>
                     </div>
                   </div>
                 </div>
@@ -356,10 +383,18 @@ export default function SuccessStories() {
                         {/* Photo */}
                         <div className="relative h-[24rem] md:h-[20rem] lg:h-[18rem] overflow-hidden bg-gray-300">
                           <img
-                            src={student.photo}
+                            src={getOptimizedPhoto(student.photo)}
                             alt={student.name}
+                            loading="lazy"
+                            decoding="async"
+                            fetchPriority="low"
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => {
+                              if (e.currentTarget.src.includes('/gallery/optimized/')) {
+                                e.currentTarget.src = student.photo;
+                                return;
+                              }
+
                               e.currentTarget.src = '/sunrise-logo.png';
                             }}
                           />
