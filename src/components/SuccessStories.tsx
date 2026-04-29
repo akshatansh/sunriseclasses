@@ -37,42 +37,58 @@ const successStories = [
   },
   // 2025
   {
-    name: 'Neha Patel',
+    name: 'Lakshi Raj',
     class: 'Class 10',
-    score: '485/500',
+    score: '432/500',
     year: '2025',
-    photo: '/gallery/20260415_174519.jpg',
-    story: 'The structured approach and regular mock tests made all the difference. I improved from 78% to 97% in just 2 years.',
+    photo: '/gallery/Untitled design (28).jpg',
+    story: 'Mera naam Lakshi Raj hai aur maine apni 10th ki padhai Sunrise Coaching Centre se ki thi. Jisse mujhe board exam mein 432 marks mile.\n\nHamare guru S.P. Sir Champanagar ke best teachers mein se ek hain. Sir bachchon ko shiksha ke saath sanskar bhi sikhate hain. Unhone humein padhai ke saath life mein mehnat, vinamrata aur dusron ki madad karna bhi sikhaya hai.\n\nSir hamesha motivate karte hain ki asafalta se ghabrana nahi chahiye, khud par vishwas rakhkar hard work karna chahiye. S.P. Sir mere liye inspiration hain.',
   },
   {
-    name: 'Vikram Singh',
+    name: 'Shabnam Kumari',
     class: 'Class 10',
-    score: '480/500',
+    score: '429/500',
     year: '2025',
-    photo: '/gallery/20260415_174533.jpg',
-    story: 'S.P. Sir\'s personalized approach helped me overcome my fear of mathematics. Scored 96% in board exams!',
+    photo: '/gallery/Untitled design (29).jpg',
+    story: 'Pranaam sir 🙏Mera naam Shabnam Kumari hai. Maine 10th Board mein 429 ank prapt kiye. Ye sab aapki wajah se hi ho paya, kyunki aapne hume 0 se nahi balki minus (-) se padhaya jiski wajah se main itna achha marks la paayi. Coaching ka environment bahut hi achha aur disciplined hai jahan padhai ke liye positive mahaul milta hai. Aap har student par personal dhyaan dete hain aur mushkil topics ko bhi bahut easily samjha dete hain. Jo student aapki classes regular attend kare aur aapki baaton ko follow kare wo board mein zarur achha karega. Thank you so much sir 😊🙏❤️ hamare liye itne efforts lagane ke liye.',
   },
   {
     name: 'Shreya Das',
     class: 'Class 10',
-    score: '475/500',
+    score: '411/500',
     year: '2025',
     photo: '/gallery/20260415_174652.jpg',
     story: 'The combination of online and offline classes was perfect for me. Always stayed motivated and consistent.',
   },
   {
-    name: 'Aditya Gupta',
-    class: 'Class 9',
-    score: '470/500',
+    name: 'Laxmi Kumari',
+    class: 'Class 10',
+    score: '408/500',
     year: '2025',
-    photo: '/gallery/20260415_174654.jpg',
-    story: 'Great coaching with excellent study materials. Highly recommend Sunrise Classes!',
+    photo: '/gallery/Untitled design (27).jpg',
+    story: 'Pranam Sir,\n\nMera naam Laxmi Kumari hai. Maine class 10th mein 81.6% (408 marks) score kiya hai. Is safalta ka bada shrey aapko jata hai Sir.\n\nAap bahut achha padhate hain aur har topic ko aasaan tareeke se samjhate hain. Aapka padhane ka style clear aur interesting hai.\n\nAap hamesha students ko motivate karte hain aur coaching ka environment bhi positive aur disciplined hai. Aapki wajah se mujhme confidence aaya aur main apna best de payi.\n\nDil se dhanyavaad Sir.',
   },
   // 2024
   {
+    name: 'Priya Rani',
+    class: 'Class 10',
+    score: '412/500',
+    year: '2024',
+    photo: '/gallery/Untitled design (17) copy.jpg',
+    story: 'Mera naam Priya hai aur maine 10th me 412 marks prapt kiye hain. Main Sunrise Classes and Academic ki student hoon. Yahan discipline ko bahut achhe se follow kiya jata hai. Sir bahut achhe se padhate hain aur sabhi students par barabar dhyan dete hain. Coaching me regular tests aur year-wise question bank ka practice karwaya jata hai. Yahan sabhi subjects achhe se padhaye jate hain, jisse result bahut achha aata hai.',
+  },
+  {
+    name: 'Anju Kumari',
+    class: 'Class 10',
+    score: '390/500',
+    year: '2024',
+    photo: '/gallery/Untitled design (26).jpg',
+    story: 'Mera naam Anju hai aur maine apni 10th ki padhai Sunrise Classes and Academy se ki hu. Ye coaching centre padhai ke liye bahot achha h. Yha ka mahol anushasit or padhai ke liye bahot achha h. Sir ne mujhe padhai ko aasani se samajhne me madad kiye. Unke padhane ka tarika Saral or prabhavi h. Jisse meri padhai me kafi sudhar hua or main achhe number se pass hui. Thankyou sir.',
+  },
+  {
     name: 'Divya Joshi',
     class: 'Class 10',
-    score: '480/500',
+    score: '380/500',
     year: '2024',
     photo: '/gallery/20260415_174519.jpg',
     story: 'The daily YouTube revision videos were a game-changer. Never felt lost in any topic.',
@@ -80,26 +96,10 @@ const successStories = [
   {
     name: 'Sanjay Reddy',
     class: 'Class 10',
-    score: '475/500',
+    score: '375/500',
     year: '2024',
     photo: '/gallery/20260415_174533.jpg',
     story: 'Excellent doubt clearing sessions and comprehensive notes. Best coaching center!',
-  },
-  {
-    name: 'Kavya Menon',
-    class: 'Class 10',
-    score: '470/500',
-    year: '2024',
-    photo: '/gallery/20260415_174652.jpg',
-    story: 'From struggling student to confident learner. Thank you Sunrise Classes!',
-  },
-  {
-    name: 'Rohan Mishra',
-    class: 'Class 9',
-    score: '465/500',
-    year: '2024',
-    photo: '/gallery/20260415_174654.jpg',
-    story: 'Best decision to join this coaching. Results speak for themselves!',
   },
   // 2023
   {
@@ -300,23 +300,23 @@ export default function SuccessStories() {
         </div>
 
         {/* Achievement Highlights Banner */}
-        <div className="bg-gradient-to-r from-[#0f2a5c] via-[#1a3a6f] to-[#0f2a5c] rounded-2xl p-8 mb-16 shadow-xl border border-[#f5a623]/30">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center text-white">
+        <div className="bg-gradient-to-r from-[#0f2a5c] via-[#1a3a6f] to-[#0f2a5c] rounded-2xl p-5 sm:p-8 mb-16 shadow-xl border border-[#f5a623]/30">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 text-center text-white">
             <div>
-              <p className="text-4xl font-black text-[#f5a623] mb-2">{sortedYears.length}</p>
-              <p className="text-sm opacity-90">Years of Excellence</p>
+              <p className="text-3xl sm:text-4xl font-black text-[#f5a623] mb-2">{sortedYears.length}</p>
+              <p className="text-xs sm:text-sm opacity-90">Years of Excellence</p>
             </div>
             <div>
-              <p className="text-4xl font-black text-[#f5a623] mb-2">{totalStudents}+</p>
-              <p className="text-sm opacity-90">Success Stories</p>
+              <p className="text-3xl sm:text-4xl font-black text-[#f5a623] mb-2">{totalStudents}+</p>
+              <p className="text-xs sm:text-sm opacity-90">Success Stories</p>
             </div>
             <div>
-              <p className="text-4xl font-black text-[#f5a623] mb-2">98%</p>
-              <p className="text-sm opacity-90">Max Score</p>
+              <p className="text-3xl sm:text-4xl font-black text-[#f5a623] mb-2">98%</p>
+              <p className="text-xs sm:text-sm opacity-90">Max Score</p>
             </div>
             <div>
-              <p className="text-4xl font-black text-[#f5a623] mb-2">100%</p>
-              <p className="text-sm opacity-90">Success Rate</p>
+              <p className="text-3xl sm:text-4xl font-black text-[#f5a623] mb-2">100%</p>
+              <p className="text-xs sm:text-sm opacity-90">Success Rate</p>
             </div>
           </div>
         </div>
@@ -325,12 +325,13 @@ export default function SuccessStories() {
         {sortedYears.map((year) => {
           const yearStudents = groupedByYear[year];
           const yearStarCount = yearStudents.filter((s) => parseInt(s.score) >= 95).length;
+          const yearHighestMark = Math.max(...yearStudents.map((student) => parseInt(student.score)));
 
           return (
             <div key={year} className="mb-20">
               {/* Year Header with Badge */}
               <div className="mb-10">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <div>
                       <h3 className="text-3xl sm:text-4xl font-bold text-[#0f2a5c] mb-2">Year {year}</h3>
@@ -342,16 +343,16 @@ export default function SuccessStories() {
                       ))}
                     </div>
                   </div>
-                  <div className="flex gap-3 flex-wrap sm:flex-nowrap">
+                  <div className="grid grid-cols-2 lg:flex gap-3">
                     <div className="bg-gradient-to-br from-[#0f2a5c] to-[#1a3a6f] text-white rounded-xl px-4 py-3 shadow-md">
                       <p className="text-xs opacity-75 font-semibold">Total Toppers</p>
                       <p className="text-2xl font-black">{yearStudents.length}</p>
                     </div>
                     <div className="bg-gradient-to-br from-[#f5a623] to-yellow-500 text-white rounded-xl px-4 py-3 shadow-md">
                       <p className="text-xs opacity-75 font-semibold">Highest Mark</p>
-                      <p className="text-2xl font-black">{yearStudents[0].score}</p>
+                      <p className="text-2xl font-black">{yearHighestMark}/500</p>
                     </div>
-                    <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl px-4 py-3 shadow-md">
+                    <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl px-4 py-3 shadow-md col-span-2 lg:col-span-1">
                       <p className="text-xs opacity-75 font-semibold">Avg Score</p>
                       <p className="text-2xl font-black">{year === '2026' ? '315/500' : year === '2025' ? '322/500' : year === '2024' ? '318/500' : year === '2023' ? '325/500' : '312/500'}</p>
                       <p className="text-[10px] opacity-75 mt-1 font-medium">Overall Student</p>
@@ -361,7 +362,7 @@ export default function SuccessStories() {
               </div>
 
               {/* Toppers Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                 {yearStudents.map((student, rank) => {
                   const medal = getMedalColor(rank);
                   const isTopRank = rank < 3;
@@ -381,7 +382,7 @@ export default function SuccessStories() {
                         )}
 
                         {/* Photo */}
-                        <div className="relative h-[24rem] md:h-[20rem] lg:h-[18rem] overflow-hidden bg-gray-300">
+                        <div className="relative h-[24rem] md:h-[18rem] xl:h-[18rem] overflow-hidden bg-gray-300">
                           <img
                             src={getOptimizedPhoto(student.photo)}
                             alt={student.name}
