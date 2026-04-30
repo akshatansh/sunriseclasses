@@ -1399,7 +1399,17 @@ export default function AdminResultsPage() {
         </div> {/* end tab content */}
 
         {/* ── BOTTOM NAVIGATION BAR — fixed to screen bottom ── */}
-        <div style={{position:'fixed', bottom:0, left:0, right:0, zIndex:9999, background:'#fff', borderTop:'2px solid #e2e8f0', boxShadow:'0 -4px 20px rgba(0,0,0,0.10)'}}>
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 9999,
+          background: '#fff',
+          borderTop: '2px solid #e2e8f0',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.10)',
+          paddingBottom: 'env(safe-area-inset-bottom)'
+        }}>
           <div className="flex items-stretch justify-around max-w-lg mx-auto">
             <button onClick={() => setActiveTab('marks')}
               className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'marks' ? 'border-[#f5a623] text-[#f5a623]' : 'border-transparent text-slate-400'}`}>
