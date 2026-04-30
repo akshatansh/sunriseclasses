@@ -10,14 +10,13 @@ const FeeManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Payment Modal State
+  // Default Fee State
+  const [defaultFee, setDefaultFee] = useState('500');
+
+  // Payment Modal State (kept for custom amounts if needed)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentFeeStatus | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('500');
-
-  // Phone Edit State
-  const [editingPhoneId, setEditingPhoneId] = useState<string | null>(null);
-  const [editPhoneValue, setEditPhoneValue] = useState('');
 
   const monthsList = [
     'January 2026', 'February 2026', 'March 2026', 'April 2026', 'May 2026', 'June 2026',
@@ -35,13 +34,28 @@ const FeeManagement = () => {
     loadData();
   }, [month]);
 
-  const handlePhoneSave = async (studentId: string) => {
-    const success = await updateStudentPhone(studentId, editPhoneValue);
+  const handlePhoneSave = async (studentId: string, newPhone: string) => {
+    // Only save if it changed and has some length
+    const student = students.find(s => s.id === studentId);
+    if (student?.parent_phone === newPhone) return;
+    
+    const success = await updateStudentPhone(studentId, newPhone);
     if (success) {
-      setStudents(students.map(s => s.id === studentId ? { ...s, parent_phone: editPhoneValue } : s));
-      setEditingPhoneId(null);
+      setStudents(students.map(s => s.id === studentId ? { ...s, parent_phone: newPhone } : s));
     } else {
       alert('Failed to update phone number.');
+    }
+  };
+
+  const handleQuickPay = async (student: StudentFeeStatus) => {
+    const amountNum = Number(defaultFee);
+    if (!amountNum) return alert('Invalid default fee amount');
+    
+    const receiptId = await recordFeePayment(student.id, amountNum, month);
+    if (receiptId) {
+      loadData(); // Reload to reflect changes
+    } else {
+      alert('Failed to record payment.');
     }
   };
 
@@ -146,7 +160,16 @@ const FeeManagement = () => {
               placeholder="Search student..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-64 pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-green-500 text-sm"
+              className="w-full sm:w-48 pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-green-500 text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl border border-slate-200">
+            <span className="text-xs font-bold text-slate-500">Quick Fee: ₹</span>
+            <input 
+              type="number"
+              value={defaultFee}
+              onChange={(e) => setDefaultFee(e.target.value)}
+              className="w-16 bg-transparent outline-none font-bold text-sm text-[#0f2a5c]"
             />
           </div>
           <select 
@@ -196,29 +219,13 @@ const FeeManagement = () => {
                   <td className="px-4 py-3 font-semibold text-[#0f2a5c]">{student.name}</td>
                   <td className="px-4 py-3 text-slate-600">{student.className}</td>
                   <td className="px-4 py-3">
-                    {editingPhoneId === student.id ? (
-                      <div className="flex items-center gap-2">
-                        <input 
-                          type="text" 
-                          value={editPhoneValue}
-                          onChange={(e) => setEditPhoneValue(e.target.value)}
-                          className="border border-slate-300 rounded px-2 py-1 w-32 text-xs"
-                          placeholder="10 digit number"
-                        />
-                        <button onClick={() => handlePhoneSave(student.id)} className="bg-blue-500 text-white px-2 py-1 rounded text-xs">Save</button>
-                        <button onClick={() => setEditingPhoneId(null)} className="bg-slate-200 px-2 py-1 rounded text-xs">Cancel</button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-600">{student.parent_phone || 'Not Set'}</span>
-                        <button 
-                          onClick={() => { setEditingPhoneId(student.id); setEditPhoneValue(student.parent_phone || ''); }}
-                          className="text-xs text-blue-500 underline"
-                        >
-                          Edit
-                        </button>
-                      </div>
-                    )}
+                    <input 
+                      type="text" 
+                      defaultValue={student.parent_phone || ''}
+                      onBlur={(e) => handlePhoneSave(student.id, e.target.value)}
+                      className="border border-transparent hover:border-slate-300 focus:border-blue-500 focus:bg-white bg-slate-50 rounded px-2 py-1 w-32 text-xs outline-none transition-all"
+                      placeholder="Type & click away..."
+                    />
                   </td>
                   <td className="px-4 py-3">
                     {student.feePaid ? (
@@ -237,15 +244,22 @@ const FeeManagement = () => {
                         <>
                           <button 
                             onClick={() => handleSendReminder(student)}
-                            className="inline-flex items-center gap-1 bg-[#25D366] text-white hover:bg-[#20bd5a] px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                            className="inline-flex items-center gap-1 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366] hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                           >
                             <MessageCircle size={14} /> Reminder
                           </button>
                           <button 
-                            onClick={() => { setSelectedStudent(student); setPaymentModalOpen(true); }}
+                            onClick={() => handleQuickPay(student)}
                             className="bg-blue-500 text-white hover:bg-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                           >
-                            Record Payment
+                            Quick Pay ₹{defaultFee}
+                          </button>
+                          <button 
+                            onClick={() => { setSelectedStudent(student); setPaymentAmount(''); setPaymentModalOpen(true); }}
+                            className="text-slate-400 hover:text-blue-500 px-2 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                            title="Custom Amount"
+                          >
+                            ...
                           </button>
                         </>
                       ) : (
