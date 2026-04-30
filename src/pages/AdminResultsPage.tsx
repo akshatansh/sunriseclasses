@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle } from 'lucide-react';
+import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Seo from '../components/Seo';
@@ -15,6 +15,7 @@ import {
   type TestResultRecord,
 } from '../lib/resultsPortal';
 import { supabase } from '../lib/supabase';
+import { getNotificationText, updateNotificationText } from '../lib/siteSettings';
 
 const ADMIN_SESSION_KEY = 'sunrise-admin-authenticated';
 const ADMIN_ROLE_KEY = 'sunrise-admin-role';
@@ -59,6 +60,8 @@ export default function AdminResultsPage() {
 
   const [adminList, setAdminList] = useState<any[]>([]);
   const [newAdminForm, setNewAdminForm] = useState({ username: '', password: '', role: 'admin', class_access: 'all' });
+  const [notificationText, setNotificationText] = useState('');
+  const [isSavingNotification, setIsSavingNotification] = useState(false);
 
   const fetchAdmins = async () => {
     const { data } = await supabase.from('admins').select('*').order('created_at', { ascending: false });
@@ -75,7 +78,10 @@ export default function AdminResultsPage() {
         const classAccess = window.localStorage.getItem(ADMIN_CLASS_KEY) || 'all';
         setLoginRole(role);
         setLoginClassAccess(classAccess);
-        if (role === 'superadmin') fetchAdmins();
+        if (role === 'superadmin') {
+          fetchAdmins();
+          getNotificationText().then(setNotificationText).catch(console.error);
+        }
       }
     }
   }, []);
@@ -563,6 +569,18 @@ export default function AdminResultsPage() {
       alert('Failed to promote Class 9. Try again.');
     } finally {
       setBatchLoading(null);
+    }
+  };
+
+  const handleSaveNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingNotification(true);
+    const success = await updateNotificationText(notificationText);
+    setIsSavingNotification(false);
+    if (success) {
+      showMessage('✅ Notification text updated successfully!');
+    } else {
+      alert('Failed to update notification text. Please try again.');
     }
   };
 
@@ -1084,6 +1102,45 @@ export default function AdminResultsPage() {
                     ))}
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── WEBSITE SETTINGS (Super Admin Only) ── */}
+          {loginRole === 'superadmin' && (
+            <div className="mt-10 rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500 text-white">
+                  <Megaphone size={22} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-[#0f2a5c]">Website Settings</h2>
+                  <p className="text-sm text-slate-500">Global site features manage karein</p>
+                </div>
+              </div>
+              <div className="max-w-2xl">
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Top Notification Bar</h3>
+                <form onSubmit={handleSaveNotification} className="space-y-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">Scrolling Text</label>
+                    <input
+                      type="text"
+                      value={notificationText}
+                      onChange={(e) => setNotificationText(e.target.value)}
+                      placeholder="e.g. 10th Batch is starting On 3 May 2026. Book Your Seat Now!"
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623]"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSavingNotification}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#0f2a5c] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#173873] disabled:opacity-70"
+                  >
+                    <Save size={16} />
+                    {isSavingNotification ? 'Saving...' : 'Save Notification'}
+                  </button>
+                  <p className="text-xs text-slate-500">Ye text website ke sabse upar scroll hota dikhega. Agar nahi dikhana hai to isko khaali (empty) karke save kar dein.</p>
+                </form>
               </div>
             </div>
           )}
