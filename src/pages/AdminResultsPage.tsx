@@ -701,42 +701,12 @@ export default function AdminResultsPage() {
           </div>
         </section>
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4">
-          <div className="rounded-[2rem] border border-white bg-white/90 p-6 sm:p-8 shadow-[0_24px_80px_rgba(15,42,92,0.08)]">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5c]">Admin Results Panel</h1>
-                <p className="mt-3 max-w-3xl text-sm sm:text-base text-slate-600">
-                  Yahan se aap students add kar sakte hain, har test ka marks upload kar sakte hain, aur public results page
-                  ko direct update kar sakte hain. Student login ki zarurat nahi hai.
-                </p>
-                {loginClassAccess !== 'all' && (
-                  <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                    🔷 Class {loginClassAccess} Access
-                  </span>
-                )}
-                {loginRole === 'superadmin' && (
-                  <span className="mt-3 ml-2 inline-flex items-center gap-1.5 rounded-full border border-[#f5a623]/30 bg-[#fff8e6] px-3 py-1 text-xs font-semibold text-[#9a5b00]">
-                    ⭐ Super Admin — All Classes
-                  </span>
-                )}
-              </div>
 
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-              >
-                <LogOut size={16} />
-                Logout
-              </button>
+          {message && (
+            <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              ✅ {message}
             </div>
-
-            {message && (
-              <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                {message}
-              </div>
-            )}
-          </div>
+          )}
 
           <div className={`grid gap-6 ${loginRole === 'superadmin' ? 'xl:grid-cols-2' : 'max-w-4xl mx-auto xl:grid-cols-1'}`}>
             {loginRole === 'superadmin' && (
