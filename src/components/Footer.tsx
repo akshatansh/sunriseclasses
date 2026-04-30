@@ -1,5 +1,5 @@
 import { Youtube, Phone, MapPin, Instagram, Facebook } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { YOUTUBE_CHANNEL_URL } from '../config/youtube';
 
 const quickLinks = [
@@ -19,6 +19,11 @@ const courses = [
 ];
 
 export default function Footer() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  if (isAdminRoute) return null;
+
   return (
     <footer className="bg-[linear-gradient(180deg,_#08193a_0%,_#061227_100%)] text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
