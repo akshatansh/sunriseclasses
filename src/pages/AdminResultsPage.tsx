@@ -594,7 +594,7 @@ export default function AdminResultsPage() {
       />
 
       {!isAuthenticated ? (
-        <section className="pt-36 pb-16 sm:pb-20 bg-[linear-gradient(180deg,_#f8fbff_0%,_#ffffff_48%,_#fffaf0_100%)]">
+        <section className="pt-28 pb-16 sm:pb-20 bg-[linear-gradient(180deg,_#f8fbff_0%,_#ffffff_48%,_#fffaf0_100%)]">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="rounded-[2rem] border border-white bg-white/90 p-6 sm:p-8 shadow-[0_24px_80px_rgba(15,42,92,0.08)] text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#0f2a5c] text-white shadow-lg">
@@ -647,7 +647,7 @@ export default function AdminResultsPage() {
           </div>
         </section>
       ) : (
-      <section className="pt-36 pb-16 sm:pb-20 bg-[linear-gradient(180deg,_#f8fbff_0%,_#ffffff_48%,_#fffaf0_100%)]">
+      <section className="pt-28 pb-16 sm:pb-20 bg-[linear-gradient(180deg,_#f8fbff_0%,_#ffffff_48%,_#fffaf0_100%)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="rounded-[2rem] border border-white bg-white/90 p-6 sm:p-8 shadow-[0_24px_80px_rgba(15,42,92,0.08)]">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

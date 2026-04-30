@@ -3,7 +3,7 @@ import SuccessStories from '../components/SuccessStories';
 
 export default function SuccessStoriesPage() {
   return (
-    <div className="pt-28">
+    <div>
       <Seo
         title="Success Stories"
         description="Discover top achievers from Sunrise Classes & Academy in Champanagar, Purnia, Bihar, with year-wise board exam success stories, high scorers, and coaching results."
