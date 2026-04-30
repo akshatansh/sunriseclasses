@@ -1142,9 +1142,9 @@ export default function AdminResultsPage() {
                   </div>
                 </div>
               </div>
-              </div>
             </div>
-          </div>)} {/* end settings tab part 1 */}
+          </div>
+          )} {/* end settings tab part 1 */}
 
           {/* ── NOTICES TAB ── super admin only */}
           {activeTab === 'notices' && loginRole === 'superadmin' && (
