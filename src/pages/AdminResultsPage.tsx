@@ -16,6 +16,7 @@ import {
 } from '../lib/resultsPortal';
 import { supabase } from '../lib/supabase';
 import { getNotificationText, updateNotificationText } from '../lib/siteSettings';
+import { getNotices, addNotice, deleteNotice, type NoticeRecord } from '../lib/noticePortal';
 
 const ADMIN_SESSION_KEY = 'sunrise-admin-authenticated';
 const ADMIN_ROLE_KEY = 'sunrise-admin-role';
@@ -62,6 +63,8 @@ export default function AdminResultsPage() {
   const [newAdminForm, setNewAdminForm] = useState({ username: '', password: '', role: 'admin', class_access: 'all' });
   const [notificationText, setNotificationText] = useState('');
   const [isSavingNotification, setIsSavingNotification] = useState(false);
+  const [notices, setNotices] = useState<NoticeRecord[]>([]);
+  const [newNoticeForm, setNewNoticeForm] = useState<{title: string, content: string, type: 'exam' | 'holiday' | 'general'}>({ title: '', content: '', type: 'general' });
 
   const fetchAdmins = async () => {
     const { data } = await supabase.from('admins').select('*').order('created_at', { ascending: false });
@@ -81,6 +84,7 @@ export default function AdminResultsPage() {
         if (role === 'superadmin') {
           fetchAdmins();
           getNotificationText().then(setNotificationText).catch(console.error);
+          getNotices().then(setNotices).catch(console.error);
         }
       }
     }
@@ -581,6 +585,33 @@ export default function AdminResultsPage() {
       showMessage('✅ Notification text updated successfully!');
     } else {
       alert('Failed to update notification text. Please try again.');
+    }
+  };
+
+  const handleAddNotice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newNoticeForm.title.trim() || !newNoticeForm.content.trim()) return;
+    
+    const success = await addNotice({
+      ...newNoticeForm,
+      date: new Date().toISOString().split('T')[0]
+    });
+    
+    if (success) {
+      showMessage('✅ Notice added successfully!');
+      setNewNoticeForm({ title: '', content: '', type: 'general' });
+      getNotices().then(setNotices);
+    } else {
+      alert('Failed to add notice.');
+    }
+  };
+
+  const handleDeleteNotice = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this notice?')) return;
+    const success = await deleteNotice(id);
+    if (success) {
+      showMessage('🗑️ Notice deleted.');
+      setNotices(notices.filter(n => n.id !== id));
     }
   };
 
@@ -1108,39 +1139,115 @@ export default function AdminResultsPage() {
 
           {/* ── WEBSITE SETTINGS (Super Admin Only) ── */}
           {loginRole === 'superadmin' && (
-            <div className="mt-10 rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500 text-white">
-                  <Megaphone size={22} />
+            <div className="mt-10 grid gap-8 lg:grid-cols-2">
+              <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500 text-white">
+                    <Megaphone size={22} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-[#0f2a5c]">Website Settings</h2>
+                    <p className="text-sm text-slate-500">Global site features manage karein</p>
+                  </div>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-[#0f2a5c]">Website Settings</h2>
-                  <p className="text-sm text-slate-500">Global site features manage karein</p>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">Top Notification Bar</h3>
+                  <form onSubmit={handleSaveNotification} className="space-y-4">
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-slate-600">Scrolling Text</label>
+                      <input
+                        type="text"
+                        value={notificationText}
+                        onChange={(e) => setNotificationText(e.target.value)}
+                        placeholder="e.g. 10th Batch is starting On 3 May 2026. Book Your Seat Now!"
+                        className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623]"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={isSavingNotification}
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#0f2a5c] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#173873] disabled:opacity-70"
+                    >
+                      <Save size={16} />
+                      {isSavingNotification ? 'Saving...' : 'Save Notification'}
+                    </button>
+                    <p className="text-xs text-slate-500">Ye text website ke sabse upar scroll hota dikhega. Agar nahi dikhana hai to isko khaali (empty) karke save kar dein.</p>
+                  </form>
                 </div>
               </div>
-              <div className="max-w-2xl">
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">Top Notification Bar</h3>
-                <form onSubmit={handleSaveNotification} className="space-y-4">
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-slate-600">Scrolling Text</label>
-                    <input
-                      type="text"
-                      value={notificationText}
-                      onChange={(e) => setNotificationText(e.target.value)}
-                      placeholder="e.g. 10th Batch is starting On 3 May 2026. Book Your Seat Now!"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623]"
-                    />
+
+              <div className="rounded-[2rem] border border-indigo-200 bg-white/90 p-6 sm:p-8 shadow-sm flex flex-col max-h-[600px]">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500 text-white">
+                    <Megaphone size={22} />
                   </div>
-                  <button
-                    type="submit"
-                    disabled={isSavingNotification}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#0f2a5c] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#173873] disabled:opacity-70"
-                  >
-                    <Save size={16} />
-                    {isSavingNotification ? 'Saving...' : 'Save Notification'}
-                  </button>
-                  <p className="text-xs text-slate-500">Ye text website ke sabse upar scroll hota dikhega. Agar nahi dikhana hai to isko khaali (empty) karke save kar dein.</p>
+                  <div>
+                    <h2 className="text-2xl font-bold text-[#0f2a5c]">Notice Board</h2>
+                    <p className="text-sm text-slate-500">Add or remove public notices</p>
+                  </div>
+                </div>
+                
+                <form onSubmit={handleAddNotice} className="mb-6 space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <input
+                    type="text"
+                    value={newNoticeForm.title}
+                    onChange={(e) => setNewNoticeForm({...newNoticeForm, title: e.target.value})}
+                    placeholder="Notice Title"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+                    required
+                  />
+                  <textarea
+                    value={newNoticeForm.content}
+                    onChange={(e) => setNewNoticeForm({...newNoticeForm, content: e.target.value})}
+                    placeholder="Notice Content..."
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-indigo-400 h-20 resize-none"
+                    required
+                  />
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={newNoticeForm.type}
+                      onChange={(e) => setNewNoticeForm({...newNoticeForm, type: e.target.value as any})}
+                      className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+                    >
+                      <option value="general">General</option>
+                      <option value="exam">Exam</option>
+                      <option value="holiday">Holiday</option>
+                    </select>
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-indigo-700"
+                    >
+                      <Plus size={16} />
+                      Add Notice
+                    </button>
+                  </div>
                 </form>
+
+                <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+                  {notices.map((notice) => (
+                    <div key={notice.id} className="flex items-start justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-white">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-slate-400">{notice.date}</span>
+                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
+                            notice.type === 'exam' ? 'bg-red-50 text-red-600' :
+                            notice.type === 'holiday' ? 'bg-green-50 text-green-600' :
+                            'bg-blue-50 text-blue-600'
+                          }`}>
+                            {notice.type}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-sm text-slate-800">{notice.title}</h4>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteNotice(notice.id)}
+                        className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

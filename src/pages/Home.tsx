@@ -1,5 +1,6 @@
 import Seo from '../components/Seo';
 import Hero from '../components/Hero';
+import NoticeBoard from '../components/NoticeBoard';
 import About from '../components/About';
 import Courses from '../components/Courses';
 import Videos from '../components/Videos';
@@ -16,6 +17,11 @@ export default function Home() {
         url="/"
       />
       <Hero />
+      <section className="bg-[linear-gradient(180deg,_#143772_0%,_#f8fbff_100%)] pt-10 pb-6 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <NoticeBoard />
+        </div>
+      </section>
       <About />
       <Courses />
       <Videos />

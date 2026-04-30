@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { Medal, Search, Sparkles, Trophy, BookOpen } from 'lucide-react';
+import { Medal, Search, Sparkles, Trophy, BookOpen, TrendingUp } from 'lucide-react';
 import Seo from '../components/Seo';
+import StudentProgressChart from '../components/StudentProgressChart';
 import {
   getAllStudentResults,
   getCurrentMonthLabel,
@@ -21,6 +22,7 @@ export default function ResultsPage() {
   const [data, setData] = useState<ResultsPortalData>({ students: [], results: [] });
   const [query, setQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState<'9th' | '10th'>('10th');
+  const [selectedStudentForChart, setSelectedStudentForChart] = useState<{name: string, data: any[]} | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -282,7 +284,25 @@ export default function ResultsPage() {
                             />
                             <div className="min-w-0">
                               <p className="font-bold text-[#0f2a5c] truncate text-xs sm:text-sm">{summary.student.name}</p>
-                              <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-500">{summary.student.className}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-500">{summary.student.className}</p>
+                                <button
+                                  onClick={() => {
+                                    const chartData = summary.allTests
+                                      .sort((a, b) => new Date(a.testDate).getTime() - new Date(b.testDate).getTime())
+                                      .map((t, idx) => ({
+                                        testNumber: idx + 1,
+                                        date: new Date(t.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                                        percentage: Math.round((t.marksObtained / t.totalMarks) * 100)
+                                      }));
+                                    setSelectedStudentForChart({ name: summary.student.name, data: chartData });
+                                  }}
+                                  className="text-[#f5a623] hover:text-[#e09010] bg-[#fff8e8] hover:bg-[#ffe2ae] p-1 rounded transition-colors"
+                                  title="View Progress Chart"
+                                >
+                                  <TrendingUp size={12} />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -317,6 +337,14 @@ export default function ResultsPage() {
           </div>
         </div>
       </section>
+
+      {selectedStudentForChart && (
+        <StudentProgressChart
+          studentName={selectedStudentForChart.name}
+          data={selectedStudentForChart.data}
+          onClose={() => setSelectedStudentForChart(null)}
+        />
+      )}
     </div>
   );
 }
