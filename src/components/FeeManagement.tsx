@@ -83,8 +83,15 @@ const FeeManagement = () => {
       alert('Pehle student ka phone number set kijiye.');
       return;
     }
+    let cleanPhone = student.parent_phone.replace(/\D/g, '');
+    if (cleanPhone.length === 10) {
+      cleanPhone = '91' + cleanPhone;
+    } else if (cleanPhone.startsWith('0') && cleanPhone.length === 11) {
+      cleanPhone = '91' + cleanPhone.slice(1);
+    }
+    
     const message = `Dear Parent, \nSunrise Classes & Academy inform karta hai ki student *${student.name}* (Class ${student.className}) ki *${month}* mahine ki fees due hai. Kripya samay par jama karein.\n- Sunrise Classes`;
-    const whatsappUrl = `https://wa.me/91${student.parent_phone}?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 
