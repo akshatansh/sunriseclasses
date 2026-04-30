@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell } from 'lucide-react';
+import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Seo from '../components/Seo';
@@ -67,6 +67,7 @@ export default function AdminResultsPage() {
   const [isSavingNotification, setIsSavingNotification] = useState(false);
   const [notices, setNotices] = useState<NoticeRecord[]>([]);
   const [newNoticeForm, setNewNoticeForm] = useState<{title: string, content: string, type: 'exam' | 'holiday' | 'general'}>({ title: '', content: '', type: 'general' });
+  const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'settings'>('marks');
 
   const fetchAdmins = async () => {
     const { data } = await supabase.from('admins').select('*').order('created_at', { ascending: false });
@@ -700,7 +701,7 @@ export default function AdminResultsPage() {
             </button>
           </div>
         </section>
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4">
+        <div className="max-w-2xl mx-auto px-3 pt-4 pb-28">
 
           {message && (
             <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
@@ -708,7 +709,9 @@ export default function AdminResultsPage() {
             </div>
           )}
 
-          <div className={`grid gap-6 ${loginRole === 'superadmin' ? 'xl:grid-cols-2' : 'max-w-4xl mx-auto xl:grid-cols-1'}`}>
+          {/* ── MARKS TAB ── all admins */}
+          {activeTab === 'marks' && (
+          <div className="space-y-4">
             {loginRole === 'superadmin' && (
               <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
               <div className="mb-6 flex items-center gap-3">
@@ -934,8 +937,12 @@ export default function AdminResultsPage() {
               </form>
             </div>
           </div>
+          )} {/* end marks tab */}
 
-          <div className="mt-10 grid gap-8 xl:grid-cols-[0.95fr_1.05fr]">
+          {/* ── STUDENTS TAB ── super admin only */}
+          {activeTab === 'students' && loginRole === 'superadmin' && (
+          <div className="space-y-4">
+          <div className="mt-4 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
             <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 sm:p-8 shadow-sm overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
                 <h2 className="text-2xl font-bold text-[#0f2a5c]">Students List</h2>
@@ -1054,9 +1061,18 @@ export default function AdminResultsPage() {
               </div>
             </div>
           </div>
-          {loginRole === 'superadmin' && (
-            <div className="mt-10 rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
-              <h2 className="text-2xl font-bold text-[#0f2a5c] mb-6">Manage Admins (Super Admin Only)</h2>
+          </div>)} {/* end students tab */}
+
+          {/* ── FEES TAB ── super admin only */}
+          {activeTab === 'fees' && loginRole === 'superadmin' && (
+          <div><FeeManagement /></div>
+          )}
+
+          {/* ── SETTINGS TAB ── super admin only */}
+          {activeTab === 'settings' && loginRole === 'superadmin' && (
+          <div className="space-y-4">
+            <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 shadow-sm">
+              <h2 className="text-2xl font-bold text-[#0f2a5c] mb-6">Manage Admins</h2>
               <div className="grid gap-8 md:grid-cols-2">
                 <div>
                   <h3 className="text-lg font-semibold text-slate-800 mb-4">Create New Admin</h3>
@@ -1125,10 +1141,9 @@ export default function AdminResultsPage() {
                 </div>
               </div>
             </div>
-          )}
 
-          {/* ── WEBSITE SETTINGS (Super Admin Only) ── */}
-          {loginRole === 'superadmin' && (
+          {/* ── NOTICES TAB ── super admin only */}
+          {(activeTab as string) === 'notices' && loginRole === 'superadmin' && (
             <div className="mt-10 grid gap-8 lg:grid-cols-2">
               <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
                 <div className="flex items-center gap-3 mb-6">
@@ -1242,15 +1257,8 @@ export default function AdminResultsPage() {
             </div>
           )}
 
-          {/* ── FEE MANAGEMENT (Super Admin Only) ── */}
-          {loginRole === 'superadmin' && (
-            <div className="mt-8">
-              <FeeManagement />
-            </div>
-          )}
-
-          {/* ── BATCH MANAGEMENT (Super Admin Only) ── */}
-          {loginRole === 'superadmin' && (
+          {/* ── BATCH MANAGEMENT in settings ── */}
+          {activeTab === 'settings' && loginRole === 'superadmin' && (
             <div className="mt-10 rounded-[2rem] border border-orange-200 bg-[linear-gradient(135deg,_#fff7ed,_#ffffff)] p-6 sm:p-8 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                 <div className="flex items-center gap-3">
@@ -1384,7 +1392,43 @@ export default function AdminResultsPage() {
               </div>
             </div>
           )}
+          </div>)} {/* end settings tab */}
+
+        </div> {/* end tab content */}
+
+        {/* ── BOTTOM NAVIGATION BAR ── */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.07)]">
+          <div className="flex items-stretch justify-around max-w-lg mx-auto">
+            <button onClick={() => setActiveTab('marks')}
+              className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'marks' ? 'border-[#f5a623] text-[#f5a623]' : 'border-transparent text-slate-400'}`}>
+              <Upload size={20} strokeWidth={activeTab === 'marks' ? 2.5 : 1.8} />
+              <span className="text-[9px] font-bold uppercase tracking-wide">Marks</span>
+            </button>
+            {loginRole === 'superadmin' && (<>
+              <button onClick={() => setActiveTab('students')}
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'students' ? 'border-[#0f2a5c] text-[#0f2a5c]' : 'border-transparent text-slate-400'}`}>
+                <Users size={20} strokeWidth={activeTab === 'students' ? 2.5 : 1.8} />
+                <span className="text-[9px] font-bold uppercase tracking-wide">Students</span>
+              </button>
+              <button onClick={() => setActiveTab('fees')}
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'fees' ? 'border-green-600 text-green-600' : 'border-transparent text-slate-400'}`}>
+                <IndianRupee size={20} strokeWidth={activeTab === 'fees' ? 2.5 : 1.8} />
+                <span className="text-[9px] font-bold uppercase tracking-wide">Fees</span>
+              </button>
+              <button onClick={() => setActiveTab('notices')}
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'notices' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400'}`}>
+                <Bell size={20} strokeWidth={activeTab === 'notices' ? 2.5 : 1.8} />
+                <span className="text-[9px] font-bold uppercase tracking-wide">Notices</span>
+              </button>
+              <button onClick={() => setActiveTab('settings')}
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'settings' ? 'border-slate-700 text-slate-700' : 'border-transparent text-slate-400'}`}>
+                <Settings size={20} strokeWidth={activeTab === 'settings' ? 2.5 : 1.8} />
+                <span className="text-[9px] font-bold uppercase tracking-wide">Settings</span>
+              </button>
+            </>)}
+          </div>
         </div>
+
       </div>
       )}
     </div>
