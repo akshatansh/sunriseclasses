@@ -627,8 +627,8 @@ export default function AdminResultsPage() {
       />
 
       {!isAuthenticated ? (
-        <section className="pt-28 pb-16 sm:pb-20 bg-[linear-gradient(180deg,_#f8fbff_0%,_#ffffff_48%,_#fffaf0_100%)]">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="min-h-screen flex items-center bg-[linear-gradient(180deg,_#0f2a5c_0%,_#f8fbff_40%,_#ffffff_100%)] py-10">
+          <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 lg:px-8">
             <div className="rounded-[2rem] border border-white bg-white/90 p-6 sm:p-8 shadow-[0_24px_80px_rgba(15,42,92,0.08)] text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#0f2a5c] text-white shadow-lg">
                 <LockKeyhole size={28} />
@@ -682,7 +682,7 @@ export default function AdminResultsPage() {
       ) : (
       <div className="min-h-screen bg-slate-50 pb-6">
         <section className="bg-[#0f2a5c] text-white shadow-xl">
-          <div className="max-w-7xl mx-auto px-4 py-4 pt-16 flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f5a623]">
                 <ShieldCheck size={18} className="text-white" />

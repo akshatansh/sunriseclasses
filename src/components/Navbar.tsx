@@ -29,6 +29,10 @@ export default function Navbar() {
     setOpen(false);
   }, [location.pathname]);
 
+  // Hide main navbar on admin pages – admin has its own header
+  const isAdminPage = location.pathname.startsWith('/admin');
+  if (isAdminPage) return null;
+
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 flex flex-col ${
