@@ -10,13 +10,10 @@ const FeeManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Default Fee State
-  const [defaultFee, setDefaultFee] = useState('500');
-
-  // Payment Modal State (kept for custom amounts if needed)
+  // Payment Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentFeeStatus | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState('500');
+  const [paymentAmount, setPaymentAmount] = useState('');
 
   const monthsList = [
     'January 2026', 'February 2026', 'March 2026', 'April 2026', 'May 2026', 'June 2026',
@@ -47,9 +44,15 @@ const FeeManagement = () => {
     }
   };
 
+  const getStudentDefaultFee = (className: string) => {
+    const c = className.toLowerCase().replace(/\s+/g, '');
+    if (c.includes('9')) return 500;
+    if (c.includes('10')) return 700;
+    return 500; // fallback
+  };
+
   const handleQuickPay = async (student: StudentFeeStatus) => {
-    const amountNum = Number(defaultFee);
-    if (!amountNum) return alert('Invalid default fee amount');
+    const amountNum = getStudentDefaultFee(student.className);
     
     const receiptId = await recordFeePayment(student.id, amountNum, month);
     if (receiptId) {
@@ -160,16 +163,7 @@ const FeeManagement = () => {
               placeholder="Search student..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-48 pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-green-500 text-sm"
-            />
-          </div>
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl border border-slate-200">
-            <span className="text-xs font-bold text-slate-500">Quick Fee: ₹</span>
-            <input 
-              type="number"
-              value={defaultFee}
-              onChange={(e) => setDefaultFee(e.target.value)}
-              className="w-16 bg-transparent outline-none font-bold text-sm text-[#0f2a5c]"
+              className="w-full sm:w-64 pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-green-500 text-sm"
             />
           </div>
           <select 
@@ -252,7 +246,7 @@ const FeeManagement = () => {
                             onClick={() => handleQuickPay(student)}
                             className="bg-blue-500 text-white hover:bg-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                           >
-                            Quick Pay ₹{defaultFee}
+                            Quick Pay ₹{getStudentDefaultFee(student.className)}
                           </button>
                           <button 
                             onClick={() => { setSelectedStudent(student); setPaymentAmount(''); setPaymentModalOpen(true); }}
