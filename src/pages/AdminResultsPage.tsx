@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone } from 'lucide-react';
+import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Seo from '../components/Seo';
@@ -680,8 +680,27 @@ export default function AdminResultsPage() {
           </div>
         </section>
       ) : (
-      <section className="pt-28 pb-16 sm:pb-20 bg-[linear-gradient(180deg,_#f8fbff_0%,_#ffffff_48%,_#fffaf0_100%)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-slate-50 pb-6">
+        <section className="bg-[#0f2a5c] text-white shadow-xl">
+          <div className="max-w-7xl mx-auto px-4 py-4 pt-16 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f5a623]">
+                <ShieldCheck size={18} className="text-white" />
+              </div>
+              <div>
+                <p className="font-extrabold text-sm leading-none">Admin Panel</p>
+                <p className="text-[10px] text-blue-200 mt-0.5 leading-none">
+                  {loginRole === 'superadmin' ? '⭐ Super Admin' : `📘 Class ${loginClassAccess}`}
+                </p>
+              </div>
+            </div>
+            <button type="button" onClick={handleLogout}
+              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-xs font-bold">
+              <LogOut size={13} /> Logout
+            </button>
+          </div>
+        </section>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4">
           <div className="rounded-[2rem] border border-white bg-white/90 p-6 sm:p-8 shadow-[0_24px_80px_rgba(15,42,92,0.08)]">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -719,8 +738,7 @@ export default function AdminResultsPage() {
             )}
           </div>
 
-
-          <div className={`mt-10 grid gap-8 ${loginRole === 'superadmin' ? 'xl:grid-cols-2' : 'max-w-4xl mx-auto xl:grid-cols-1'}`}>
+          <div className={`grid gap-6 ${loginRole === 'superadmin' ? 'xl:grid-cols-2' : 'max-w-4xl mx-auto xl:grid-cols-1'}`}>
             {loginRole === 'superadmin' && (
               <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
               <div className="mb-6 flex items-center gap-3">
@@ -1397,7 +1415,7 @@ export default function AdminResultsPage() {
             </div>
           )}
         </div>
-      </section>
+      </div>
       )}
     </div>
   );
