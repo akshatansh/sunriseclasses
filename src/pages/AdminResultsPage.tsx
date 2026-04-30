@@ -24,8 +24,9 @@ const ADMIN_ROLE_KEY = 'sunrise-admin-role';
 const ADMIN_CLASS_KEY = 'sunrise-admin-class';
 
 /** Normalize className string to '9th' | '10th' | 'other' */
-function normalizeClass(className: string): '9th' | '10th' | 'other' {
-  const c = className.toLowerCase().replace(/\s+/g, '');
+function normalizeClass(className?: string | null): '9th' | '10th' | 'other' {
+  if (!className) return 'other';
+  const c = String(className).toLowerCase().replace(/\s+/g, '');
   if (c.includes('9')) return '9th';
   if (c.includes('10')) return '10th';
   return 'other';

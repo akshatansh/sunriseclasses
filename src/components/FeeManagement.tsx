@@ -44,8 +44,9 @@ const FeeManagement = () => {
     }
   };
 
-  const getStudentDefaultFee = (className: string) => {
-    const c = className.toLowerCase().replace(/\s+/g, '');
+  const getStudentDefaultFee = (className?: string | null) => {
+    if (!className) return 500;
+    const c = String(className).toLowerCase().replace(/\s+/g, '');
     if (c.includes('9')) return 500;
     if (c.includes('10')) return 700;
     return 500; // fallback
@@ -142,8 +143,8 @@ const FeeManagement = () => {
   };
 
   const filteredStudents = students.filter(s => 
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    s.className.toLowerCase().includes(searchQuery.toLowerCase())
+    (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (s.className || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const totalPaid = students.filter(s => s.feePaid).reduce((acc, s) => acc + (s.paymentAmount || 0), 0);
