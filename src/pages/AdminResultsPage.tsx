@@ -58,6 +58,7 @@ export default function AdminResultsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginRole, setLoginRole] = useState<string | null>(null);
   const [loginClassAccess, setLoginClassAccess] = useState<string>('all');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   // For super-admin: which class is active in the upload/students panel
   const [activeUploadClass, setActiveUploadClass] = useState<'9th' | '10th'>('10th');
 
@@ -113,6 +114,34 @@ export default function AdminResultsPage() {
       : data.results.filter(r => studentIds.has(r.studentId));
     return [...filtered].sort((a, b) => new Date(b.testDate).getTime() - new Date(a.testDate).getTime());
   }, [data.results, sortedStudents, loginClassAccess]);
+
+  // ── AUTO LOGOUT LOGIC (15 Minutes Inactivity) ──
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    let timeoutId: NodeJS.Timeout;
+    
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      // Auto logout after 15 minutes (900000 ms) of inactivity
+      timeoutId = setTimeout(() => {
+        handleLogout();
+        alert('Session expired due to inactivity. Please login again.');
+      }, 900000);
+    };
+
+    // Attach activity listeners
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, resetTimer));
+    
+    // Initial start
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  }, [isAuthenticated]);
 
   const showMessage = (successMessage: string) => {
     setMessage(successMessage);
@@ -402,6 +431,10 @@ export default function AdminResultsPage() {
     }
 
     try {
+      setIsLoggingIn(true);
+      // Add a slight artificial delay for perceived security & anti-brute-force
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
       const { data: adminData, error } = await supabase
         .from('admins')
         .select('*')
@@ -411,6 +444,7 @@ export default function AdminResultsPage() {
 
       if (error || !adminData) {
         setLoginError('Incorrect username or password.');
+        setIsLoggingIn(false);
         return;
       }
 
@@ -426,9 +460,11 @@ export default function AdminResultsPage() {
       setUsername('');
       setPassword('');
       if (adminData.role === 'superadmin') fetchAdmins();
+      setIsLoggingIn(false);
     } catch (err) {
       console.error(err);
       setLoginError('Login failed. Please try again.');
+      setIsLoggingIn(false);
     }
   };
 
@@ -671,10 +707,11 @@ export default function AdminResultsPage() {
 
                 <button
                   type="submit"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0f2a5c] px-6 py-3 text-sm font-bold text-white hover:bg-[#173873]"
+                  disabled={isLoggingIn}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0f2a5c] px-6 py-3 text-sm font-bold text-white hover:bg-[#173873] disabled:opacity-70 disabled:cursor-not-allowed transition-all"
                 >
-                  <ShieldCheck size={16} />
-                  Login to Admin Panel
+                  <ShieldCheck size={16} className={isLoggingIn ? "animate-pulse" : ""} />
+                  {isLoggingIn ? 'Authenticating...' : 'Login to Admin Panel'}
                 </button>
               </form>
             </div>
