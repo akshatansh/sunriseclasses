@@ -81,7 +81,7 @@ const StudentProgressChart: React.FC<Props> = ({ studentName, data, onClose }) =
                     color: '#0f2a5c'
                   }}
                   itemStyle={{ color: '#f5a623' }}
-                  formatter={(value: number) => [`${value}%`, 'Score']}
+                  formatter={(value: any) => [`${value}%`, 'Score']}
                   labelStyle={{ color: '#64748b', marginBottom: '4px', fontSize: '12px', fontWeight: 'normal' }}
                 />
                 <Line

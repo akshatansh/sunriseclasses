@@ -17,6 +17,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { getNotificationText, updateNotificationText } from '../lib/siteSettings';
 import { getNotices, addNotice, deleteNotice, type NoticeRecord } from '../lib/noticePortal';
+import FeeManagement from '../components/FeeManagement';
 
 const ADMIN_SESSION_KEY = 'sunrise-admin-authenticated';
 const ADMIN_ROLE_KEY = 'sunrise-admin-role';
@@ -1249,6 +1250,13 @@ export default function AdminResultsPage() {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ── FEE MANAGEMENT (Super Admin Only) ── */}
+          {loginRole === 'superadmin' && (
+            <div className="mt-8">
+              <FeeManagement />
             </div>
           )}
 
