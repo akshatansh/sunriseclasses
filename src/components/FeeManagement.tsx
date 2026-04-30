@@ -21,11 +21,12 @@ const FeeManagement = () => {
   const [students, setStudents] = useState<StudentFeeStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'paid'>('pending');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'partial' | 'paid'>('pending');
 
   // Payment Modal
   const [paymentModalStudent, setPaymentModalStudent] = useState<StudentFeeStatus | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentModalTotalFee, setPaymentModalTotalFee] = useState('');
 
   // Phone modal
   const [phoneModalStudent, setPhoneModalStudent] = useState<StudentFeeStatus | null>(null);
@@ -54,7 +55,7 @@ const FeeManagement = () => {
 
   const handleQuickPay = async (student: StudentFeeStatus) => {
     const amount = getDefaultFee(student.className);
-    const receiptId = await recordFeePayment(student.id, amount, month);
+    const receiptId = await recordFeePayment(student.id, amount, month, amount);
     if (receiptId) loadData();
     else alert('Payment save nahi hui.');
   };
@@ -62,7 +63,11 @@ const FeeManagement = () => {
   const handleCustomPay = async () => {
     if (!paymentModalStudent || !paymentAmount) return;
     const amount = Number(paymentAmount);
-    const receiptId = await recordFeePayment(paymentModalStudent.id, amount, month);
+    const totalFee = paymentModalStudent.isPartial 
+      ? (paymentModalStudent.totalFee || getDefaultFee(paymentModalStudent.className))
+      : Number(paymentModalTotalFee || getDefaultFee(paymentModalStudent.className));
+
+    const receiptId = await recordFeePayment(paymentModalStudent.id, amount, month, totalFee);
     if (receiptId) {
       setPaymentModalStudent(null);
       loadData();
@@ -113,8 +118,10 @@ const FeeManagement = () => {
         ['Student Name', student.name],
         ['Class', student.className],
         ['Fee Month', month],
+        ['Total Monthly Fee', `Rs. ${student.totalFee}`],
         ['Amount Paid', `Rs. ${student.paymentAmount}`],
-        ['Status', 'PAID ✓'],
+        ['Balance Due', `Rs. ${student.dueAmount}`],
+        ['Status', student.dueAmount && student.dueAmount > 0 ? 'PARTIAL' : 'PAID ✓'],
       ],
       theme: 'grid',
       headStyles: { fillColor: [15, 42, 92] },
@@ -126,14 +133,16 @@ const FeeManagement = () => {
 
   const displayed = students.filter(s => {
     const matchSearch = (s.name || '').toLowerCase().includes(searchQuery.toLowerCase());
-    if (filter === 'pending') return matchSearch && !s.feePaid;
+    if (filter === 'pending') return matchSearch && !s.feePaid && !s.isPartial;
+    if (filter === 'partial') return matchSearch && s.isPartial;
     if (filter === 'paid') return matchSearch && s.feePaid;
     return matchSearch;
   });
 
-  const totalPaid = students.filter(s => s.feePaid).reduce((a, s) => a + (s.paymentAmount || 0), 0);
+  const totalPaid = students.reduce((a, s) => a + (s.paymentAmount || 0), 0);
   const paidCount = students.filter(s => s.feePaid).length;
-  const pendingCount = students.filter(s => !s.feePaid).length;
+  const partialCount = students.filter(s => s.isPartial).length;
+  const pendingCount = students.filter(s => !s.feePaid && !s.isPartial).length;
 
   return (
     <div>
@@ -150,18 +159,22 @@ const FeeManagement = () => {
       </div>
 
       {/* ── Stats Cards ── */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
-          <p className="text-[10px] font-bold text-slate-400 uppercase">Collection</p>
-          <p className="text-lg font-black text-green-600">₹{totalPaid}</p>
+      <div className="grid grid-cols-4 gap-2 mb-4">
+        <div className="bg-white rounded-2xl p-2 sm:p-3 shadow-sm text-center">
+          <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">Collection</p>
+          <p className="text-sm sm:text-lg font-black text-green-600">₹{totalPaid}</p>
         </div>
-        <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
-          <p className="text-[10px] font-bold text-slate-400 uppercase">Paid</p>
-          <p className="text-lg font-black text-blue-600">{paidCount}</p>
+        <div className="bg-white rounded-2xl p-2 sm:p-3 shadow-sm text-center">
+          <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">Paid</p>
+          <p className="text-sm sm:text-lg font-black text-blue-600">{paidCount}</p>
         </div>
-        <div className="bg-white rounded-2xl p-3 shadow-sm text-center">
-          <p className="text-[10px] font-bold text-slate-400 uppercase">Pending</p>
-          <p className="text-lg font-black text-red-500">{pendingCount}</p>
+        <div className="bg-white rounded-2xl p-2 sm:p-3 shadow-sm text-center">
+          <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">Partial</p>
+          <p className="text-sm sm:text-lg font-black text-orange-500">{partialCount}</p>
+        </div>
+        <div className="bg-white rounded-2xl p-2 sm:p-3 shadow-sm text-center">
+          <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">Pending</p>
+          <p className="text-sm sm:text-lg font-black text-red-500">{pendingCount}</p>
         </div>
       </div>
 
@@ -178,8 +191,8 @@ const FeeManagement = () => {
           />
         </div>
         <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white text-xs font-bold">
-          {(['pending', 'paid', 'all'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 capitalize transition-colors ${filter === f ? 'bg-[#0f2a5c] text-white' : 'text-slate-500'}`}>
+          {(['pending', 'partial', 'paid', 'all'] as const).map(f => (
+            <button key={f} onClick={() => setFilter(f)} className={`px-2 sm:px-3 py-2 capitalize transition-colors ${filter === f ? 'bg-[#0f2a5c] text-white' : 'text-slate-500'}`}>
               {f}
             </button>
           ))}
@@ -214,6 +227,10 @@ const FeeManagement = () => {
                   <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
                     <CheckCircle size={11} /> ₹{student.paymentAmount}
                   </span>
+                ) : student.isPartial ? (
+                  <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
+                    Partial: ₹{student.paymentAmount}
+                  </span>
                 ) : (
                   <span className="bg-red-50 text-red-600 border border-red-200 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
                     Pending
@@ -237,26 +254,38 @@ const FeeManagement = () => {
 
               {/* Action Buttons */}
               {!student.feePaid ? (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleReminder(student)}
-                    className="flex-1 flex items-center justify-center gap-1.5 bg-[#e7fbe9] text-[#25D366] hover:bg-[#25D366] hover:text-white font-bold text-xs py-2.5 rounded-xl transition-colors"
-                  >
-                    <MessageCircle size={15} /> WhatsApp
-                  </button>
-                  <button
-                    onClick={() => handleQuickPay(student)}
-                    className="flex-1 flex items-center justify-center gap-1 bg-[#0f2a5c] text-white font-bold text-xs py-2.5 rounded-xl active:opacity-80"
-                  >
-                    Quick Pay ₹{getDefaultFee(student.className)}
-                  </button>
-                  <button
-                    onClick={() => { setPaymentModalStudent(student); setPaymentAmount(''); }}
-                    className="flex items-center justify-center bg-slate-100 text-slate-500 font-bold text-xs px-3 py-2.5 rounded-xl"
-                    title="Custom Amount"
-                  >
-                    ···
-                  </button>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleReminder(student)}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-[#e7fbe9] text-[#25D366] hover:bg-[#25D366] hover:text-white font-bold text-xs py-2.5 rounded-xl transition-colors"
+                    >
+                      <MessageCircle size={15} /> WhatsApp
+                    </button>
+                    {!student.isPartial && (
+                      <button
+                        onClick={() => handleQuickPay(student)}
+                        className="flex-1 flex items-center justify-center gap-1 bg-[#0f2a5c] text-white font-bold text-xs py-2.5 rounded-xl active:opacity-80"
+                      >
+                        Quick Pay ₹{getDefaultFee(student.className)}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setPaymentModalStudent(student); setPaymentAmount(''); setPaymentModalTotalFee(''); }}
+                      className="flex items-center justify-center bg-slate-100 text-slate-500 font-bold text-xs px-3 py-2.5 rounded-xl"
+                      title="Custom Amount"
+                    >
+                      ···
+                    </button>
+                  </div>
+                  {student.isPartial && (
+                    <button
+                      onClick={() => { setPaymentModalStudent(student); setPaymentAmount(String(student.dueAmount)); setPaymentModalTotalFee(''); }}
+                      className="w-full flex items-center justify-center gap-1 bg-[#f5a623] text-[#0f2a5c] font-bold text-xs py-2.5 rounded-xl active:opacity-80 mt-1"
+                    >
+                      Pay Remaining ₹{student.dueAmount}
+                    </button>
+                  )}
                 </div>
               ) : (
                 <button
@@ -273,20 +302,56 @@ const FeeManagement = () => {
 
       {/* ── Custom Amount Modal ── */}
       {paymentModalStudent && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={() => setPaymentModalStudent(null)}>
+        <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={() => setPaymentModalStudent(null)}>
           <div className="bg-white rounded-t-3xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-5" />
             <h3 className="text-lg font-bold text-[#0f2a5c] mb-0.5">Custom Payment</h3>
             <p className="text-sm text-slate-500 mb-4">{paymentModalStudent.name} • {month}</p>
-            <input
-              type="number"
-              value={paymentAmount}
-              onChange={e => setPaymentAmount(e.target.value)}
-              placeholder="Enter amount"
-              className="w-full border border-slate-200 rounded-2xl px-4 py-3 outline-none focus:border-[#0f2a5c] text-lg font-bold mb-4"
-              autoFocus
-            />
-            <div className="flex gap-3">
+            
+            {!paymentModalStudent.isPartial ? (
+              <div className="mb-4 space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 ml-1">Total Monthly Fee (₹)</label>
+                  <input
+                    type="number"
+                    value={paymentModalTotalFee || getDefaultFee(paymentModalStudent.className)}
+                    onChange={e => setPaymentModalTotalFee(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-bold mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 ml-1">Amount Paying Now (₹)</label>
+                  <input
+                    type="number"
+                    value={paymentAmount}
+                    onChange={e => setPaymentAmount(e.target.value)}
+                    placeholder="Enter amount"
+                    className="w-full border border-[#f5a623] rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-bold text-lg mt-1"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="mb-4">
+                <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 mb-3">
+                  <p className="text-xs text-orange-800 font-bold">Total Fee: ₹{paymentModalStudent.totalFee}</p>
+                  <p className="text-xs text-orange-800 font-bold">Paid So Far: ₹{paymentModalStudent.paymentAmount}</p>
+                  <p className="text-sm text-red-600 font-black mt-1">Due Amount: ₹{paymentModalStudent.dueAmount}</p>
+                </div>
+                <label className="text-xs font-bold text-slate-500 ml-1">Amount Paying Now (₹)</label>
+                <input
+                  type="number"
+                  value={paymentAmount}
+                  onChange={e => setPaymentAmount(e.target.value)}
+                  placeholder={`Max: ${paymentModalStudent.dueAmount}`}
+                  max={paymentModalStudent.dueAmount}
+                  className="w-full border border-[#f5a623] rounded-xl px-4 py-3 outline-none focus:border-[#0f2a5c] font-bold text-lg mt-1"
+                  autoFocus
+                />
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-2">
               <button onClick={() => setPaymentModalStudent(null)} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-2xl font-bold">Cancel</button>
               <button onClick={handleCustomPay} className="flex-1 bg-green-500 text-white py-3 rounded-2xl font-bold">Confirm Paid</button>
             </div>

@@ -6,6 +6,7 @@ export interface FeePaymentRecord {
   student_id: string;
   month: string;
   amount: number;
+  total_fee: number;
   payment_date: string;
   created_at: string;
 }
@@ -14,6 +15,9 @@ export interface StudentFeeStatus extends StudentRecord {
   parent_phone?: string | null;
   feePaid: boolean;
   paymentAmount?: number;
+  totalFee?: number;
+  dueAmount?: number;
+  isPartial?: boolean;
   paymentDate?: string;
   receiptId?: string;
 }
@@ -56,10 +60,23 @@ export const getStudentsWithFeeStatus = async (month: string, className: '9th' |
 
     return (students || []).map(student => {
       const payment = statusMap.get(student.id);
+      
+      const paymentAmount = payment ? Number(payment.amount) : 0;
+      const totalFee = payment ? Number(payment.total_fee) : 0;
+      const dueAmount = payment ? Math.max(0, totalFee - paymentAmount) : 0;
+      
+      // Fully paid if payment exists and dueAmount is 0
+      const isFullyPaid = !!payment && dueAmount === 0;
+      // Partial if payment exists but dueAmount > 0
+      const isPartial = !!payment && dueAmount > 0;
+
       return {
         ...student,
-        feePaid: !!payment,
-        paymentAmount: payment?.amount,
+        feePaid: isFullyPaid,
+        isPartial: isPartial,
+        paymentAmount: paymentAmount,
+        totalFee: totalFee,
+        dueAmount: dueAmount,
         paymentDate: payment?.payment_date,
         receiptId: payment?.id
       };
@@ -70,22 +87,47 @@ export const getStudentsWithFeeStatus = async (month: string, className: '9th' |
   }
 };
 
-export const recordFeePayment = async (studentId: string, amount: number, month: string): Promise<string | null> => {
+export const recordFeePayment = async (studentId: string, amountPayingNow: number, month: string, totalFee: number): Promise<string | null> => {
   try {
     const paymentDate = new Date().toISOString().split('T')[0];
-    const { data, error } = await supabase
+    
+    // Check if record already exists for partial payment
+    const { data: existing } = await supabase
       .from('fee_payments')
-      .insert([{
-        student_id: studentId,
-        month,
-        amount,
-        payment_date: paymentDate
-      }])
-      .select('id')
+      .select('*')
+      .eq('student_id', studentId)
+      .eq('month', month)
       .single();
 
-    if (error) throw error;
-    return data?.id || null;
+    if (existing) {
+      // Add to existing amount
+      const newAmount = Number(existing.amount) + amountPayingNow;
+      const { data, error } = await supabase
+        .from('fee_payments')
+        .update({ amount: newAmount, payment_date: paymentDate })
+        .eq('id', existing.id)
+        .select('id')
+        .single();
+        
+      if (error) throw error;
+      return data?.id || null;
+    } else {
+      // Insert new record
+      const { data, error } = await supabase
+        .from('fee_payments')
+        .insert([{
+          student_id: studentId,
+          month,
+          amount: amountPayingNow,
+          total_fee: totalFee,
+          payment_date: paymentDate
+        }])
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      return data?.id || null;
+    }
   } catch (error) {
     console.error('Error recording payment:', error);
     return null;
