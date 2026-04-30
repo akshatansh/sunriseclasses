@@ -681,7 +681,9 @@ export default function AdminResultsPage() {
           </div>
         </section>
       ) : (
-      <div className="min-h-screen bg-slate-50 pb-6">
+      <div className="min-h-screen bg-slate-50">
+        {/* Spacer so content doesn't hide behind fixed bottom nav */}
+        <style>{`.admin-content{padding-bottom:5rem}`}</style>
         <section className="bg-[#0f2a5c] text-white shadow-xl">
           <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -701,7 +703,7 @@ export default function AdminResultsPage() {
             </button>
           </div>
         </section>
-        <div className="max-w-2xl mx-auto px-3 pt-4 pb-28">
+        <div className="max-w-2xl mx-auto px-3 pt-4 admin-content">
 
           {message && (
             <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
@@ -1396,8 +1398,8 @@ export default function AdminResultsPage() {
 
         </div> {/* end tab content */}
 
-        {/* ── BOTTOM NAVIGATION BAR ── */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.07)]">
+        {/* ── BOTTOM NAVIGATION BAR — fixed to screen bottom ── */}
+        <div style={{position:'fixed', bottom:0, left:0, right:0, zIndex:9999, background:'#fff', borderTop:'2px solid #e2e8f0', boxShadow:'0 -4px 20px rgba(0,0,0,0.10)'}}>
           <div className="flex items-stretch justify-around max-w-lg mx-auto">
             <button onClick={() => setActiveTab('marks')}
               className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'marks' ? 'border-[#f5a623] text-[#f5a623]' : 'border-transparent text-slate-400'}`}>
