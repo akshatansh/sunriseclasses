@@ -11,7 +11,7 @@ export default function Hero() {
   return (
     <section
       id="home"
-      className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(245,166,35,0.14),_transparent_24%),radial-gradient(circle_at_80%_20%,_rgba(120,180,255,0.12),_transparent_24%),linear-gradient(135deg,_#06162f_0%,_#0c2450_48%,_#143772_100%)]"
+      className="relative min-h-screen flex flex-col justify-start lg:justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(245,166,35,0.14),_transparent_24%),radial-gradient(circle_at_80%_20%,_rgba(120,180,255,0.12),_transparent_24%),linear-gradient(135deg,_#06162f_0%,_#0c2450_48%,_#143772_100%)]"
     >
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-32 -right-32 w-96 h-96 bg-[#f5a623]/10 rounded-full blur-3xl" />
@@ -20,7 +20,7 @@ export default function Hero() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:60px_60px] opacity-20" />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 sm:pt-36 pb-12 sm:pb-16">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-40 sm:pt-44 pb-12 sm:pb-16 mt-auto mb-auto">
         <div className="grid items-center gap-10 lg:grid-cols-[1.15fr_0.85fr]">
           <div className="text-center lg:text-left">
             <div className="inline-flex items-center gap-2 bg-[#f5a623]/15 border border-[#f5a623]/25 rounded-full px-4 py-2 mb-6 backdrop-blur">

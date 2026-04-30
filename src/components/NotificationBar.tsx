@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { getNotificationText } from '../lib/siteSettings';
 import { Sparkles, BellRing } from 'lucide-react';
 
 const NotificationBar = () => {
   const [text, setText] = useState('');
   const [isVisible, setIsVisible] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const fetchText = async () => {
@@ -17,7 +19,7 @@ const NotificationBar = () => {
     fetchText();
   }, []);
 
-  if (!isVisible) return null;
+  if (!isVisible || location.pathname.startsWith('/admin')) return null;
 
   return (
     <div className="relative overflow-hidden bg-[#0a1930] text-white py-2.5 px-4 z-50 shadow-[0_4px_20px_rgba(15,42,92,0.4)] border-b border-[#f5a623]/30">
