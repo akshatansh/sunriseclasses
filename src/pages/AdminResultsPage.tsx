@@ -897,7 +897,7 @@ export default function AdminResultsPage() {
           </div>
 
           <div className="mt-10 grid gap-8 xl:grid-cols-[0.95fr_1.05fr]">
-            <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 sm:p-8 shadow-sm">
+            <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 sm:p-8 shadow-sm overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
                 <h2 className="text-2xl font-bold text-[#0f2a5c]">Students List</h2>
                 {loginClassAccess === 'all' && (
@@ -957,7 +957,7 @@ export default function AdminResultsPage() {
               </div>
             </div>
 
-            <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 sm:p-8 shadow-sm">
+            <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 sm:p-8 shadow-sm overflow-hidden">
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0f2a5c] text-white">
                   <FileBarChart2 size={22} />
