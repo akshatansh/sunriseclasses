@@ -302,8 +302,8 @@ const FeeManagement = () => {
 
       {/* ── Custom Amount Modal ── */}
       {paymentModalStudent && (
-        <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={() => setPaymentModalStudent(null)}>
-          <div className="bg-white rounded-t-3xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={() => setPaymentModalStudent(null)}>
+          <div className="bg-white rounded-t-3xl p-6 w-full max-w-sm shadow-2xl" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }} onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-5" />
             <h3 className="text-lg font-bold text-[#0f2a5c] mb-0.5">Custom Payment</h3>
             <p className="text-sm text-slate-500 mb-4">{paymentModalStudent.name} • {month}</p>
@@ -361,8 +361,8 @@ const FeeManagement = () => {
 
       {/* ── Phone Number Modal ── */}
       {phoneModalStudent && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={() => setPhoneModalStudent(null)}>
-          <div className="bg-white rounded-t-3xl p-6 w-full max-w-sm shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={() => setPhoneModalStudent(null)}>
+          <div className="bg-white rounded-t-3xl p-6 w-full max-w-sm shadow-2xl" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }} onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-5" />
             <h3 className="text-lg font-bold text-[#0f2a5c] mb-0.5">Parent's Phone</h3>
             <p className="text-sm text-slate-500 mb-4">{phoneModalStudent.name}</p>
