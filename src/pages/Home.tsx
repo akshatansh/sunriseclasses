@@ -19,7 +19,7 @@ export default function Home() {
       <About />
       <Courses />
       <Videos />
-      <Gallery />
+      <Gallery previewCount={3} showViewAll />
       <Contact />
     </div>
   );

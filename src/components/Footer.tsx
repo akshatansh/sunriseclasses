@@ -9,6 +9,7 @@ const quickLinks = [
   { label: 'YouTube Videos', path: '/videos' },
   { label: 'Gallery', path: '/gallery' },
   { label: 'Success Stories', path: '/success-stories' },
+  { label: 'Results', path: '/results' },
   { label: 'Contact Us', path: '/contact' },
 ];
 

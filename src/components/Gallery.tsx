@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Sparkles, ImageIcon, Expand } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const images = [
   '/gallery/WhatsApp Image 2026-04-29 at 21.13.45.jpeg',
@@ -11,8 +12,14 @@ const images = [
   '/gallery/WhatsApp Image 2026-04-29 at 21.13.47 (2).jpeg',
 ];
 
-export default function Gallery() {
+interface GalleryProps {
+  previewCount?: number;
+  showViewAll?: boolean;
+}
+
+export default function Gallery({ previewCount, showViewAll = false }: GalleryProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const visibleImages = previewCount ? images.slice(0, previewCount) : images;
 
   return (
     <section id="gallery" className="py-20 bg-[linear-gradient(180deg,_#f8fbff_0%,_#ffffff_50%,_#fffaf0_100%)]">
@@ -47,14 +54,23 @@ export default function Gallery() {
                 <h3 className="text-xl font-bold text-[#0f2a5c]">Moments from classrooms, guidance, and achievements</h3>
               </div>
             </div>
-            <div className="rounded-full bg-[#fff7e6] px-4 py-2 text-sm font-semibold text-[#9a5b00]">
-              Tap any image to view larger
-            </div>
+            {showViewAll ? (
+              <Link
+                to="/gallery"
+                className="inline-flex items-center justify-center rounded-full bg-[#0f2a5c] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#173873]"
+              >
+                View Full Gallery
+              </Link>
+            ) : (
+              <div className="rounded-full bg-[#fff7e6] px-4 py-2 text-sm font-semibold text-[#9a5b00]">
+                Tap any image to view larger
+              </div>
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {images.map((src, index) => (
+          {visibleImages.map((src, index) => (
             <div
               key={index}
               className="relative overflow-hidden rounded-[1.75rem] shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 cursor-pointer group bg-white"
@@ -79,6 +95,17 @@ export default function Gallery() {
             </div>
           ))}
         </div>
+
+        {showViewAll && (
+          <div className="mt-8 text-center">
+            <Link
+              to="/gallery"
+              className="inline-flex items-center justify-center rounded-full border-2 border-[#0f2a5c] px-6 py-3 text-sm font-bold text-[#0f2a5c] transition-all hover:bg-[#0f2a5c] hover:text-white"
+            >
+              Explore All Photos
+            </Link>
+          </div>
+        )}
 
         {selectedImage && (
           <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSelectedImage(null)}>

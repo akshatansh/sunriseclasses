@@ -9,6 +9,8 @@ import GalleryPage from './pages/GalleryPage';
 import SuccessStoriesPage from './pages/SuccessStoriesPage';
 import ContactPage from './pages/ContactPage';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
+import ResultsPage from './pages/ResultsPage';
+import AdminResultsPage from './pages/AdminResultsPage';
 
 function App() {
   return (
@@ -23,7 +25,9 @@ function App() {
             <Route path="/videos" element={<VideosPage />} />
             <Route path="/gallery" element={<GalleryPage />} />
             <Route path="/success-stories" element={<SuccessStoriesPage />} />
+            <Route path="/results" element={<ResultsPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/admin/sunriseclasses" element={<AdminResultsPage />} />
           </Routes>
         </main>
         <Footer />
