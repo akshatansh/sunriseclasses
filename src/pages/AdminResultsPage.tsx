@@ -1142,10 +1142,12 @@ export default function AdminResultsPage() {
                   </div>
                 </div>
               </div>
+              </div>
             </div>
+          </div>)} {/* end settings tab part 1 */}
 
           {/* ── NOTICES TAB ── super admin only */}
-          {(activeTab as string) === 'notices' && loginRole === 'superadmin' && (
+          {activeTab === 'notices' && loginRole === 'superadmin' && (
             <div className="mt-10 grid gap-8 lg:grid-cols-2">
               <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
                 <div className="flex items-center gap-3 mb-6">
@@ -1394,7 +1396,6 @@ export default function AdminResultsPage() {
               </div>
             </div>
           )}
-          </div>)} {/* end settings tab */}
 
         </div> {/* end tab content */}
 
