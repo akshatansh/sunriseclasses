@@ -207,7 +207,7 @@ export default function Videos() {
   }));
 
   return (
-    <section id="videos" className="py-16 sm:py-20 bg-gradient-to-b from-white via-[#fff8ec] to-gray-50">
+    <section id="videos" className="py-16 sm:py-20 bg-[linear-gradient(180deg,_#fffaf0_0%,_#ffffff_35%,_#f8fbff_100%)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10 sm:mb-14">
           <div className="flex justify-center mb-3 sm:mb-4">
@@ -228,20 +228,22 @@ export default function Videos() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto mb-8 sm:mb-10">
-          <a
-            href={YOUTUBE_CHANNEL_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="col-span-1 sm:col-span-2 flex items-center justify-center gap-2 sm:gap-3 bg-red-600 hover:bg-red-700 text-white font-bold px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-2xl text-sm sm:text-base transition-all duration-200 shadow-lg hover:shadow-red-500/30 hover:-translate-y-0.5"
-          >
-            <Youtube size={18} />
-            Subscribe on YouTube
-            <ExternalLink size={12} />
-          </a>
-          <div className="flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-lg sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 shadow-sm">
-            <Bell size={16} className="text-[#f5a623]" />
-            <span className="text-gray-600 text-xs sm:text-sm font-semibold">Latest uploads</span>
+        <div className="mb-8 rounded-[2rem] border border-[#ffdca0] bg-[linear-gradient(135deg,_#fff7e8,_#ffffff)] p-5 sm:p-6 shadow-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto">
+            <a
+              href={YOUTUBE_CHANNEL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="col-span-1 sm:col-span-2 flex items-center justify-center gap-2 sm:gap-3 bg-red-600 hover:bg-red-700 text-white font-bold px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-2xl text-sm sm:text-base transition-all duration-200 shadow-lg hover:shadow-red-500/30 hover:-translate-y-0.5"
+            >
+              <Youtube size={18} />
+              Subscribe on YouTube
+              <ExternalLink size={12} />
+            </a>
+            <div className="flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-lg sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 shadow-sm">
+              <Bell size={16} className="text-[#f5a623]" />
+              <span className="text-gray-600 text-xs sm:text-sm font-semibold">Latest uploads</span>
+            </div>
           </div>
         </div>
 
@@ -270,7 +272,7 @@ export default function Videos() {
             {videoSections.map((category) => {
               const videosForCategory = category.videos;
               return (
-                <div key={category.id} className="rounded-3xl border border-gray-200 bg-white/90 shadow-sm p-5 sm:p-6">
+                <div key={category.id} className="rounded-[2rem] border border-gray-200 bg-white/90 shadow-sm p-5 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
                     <div className="flex items-start gap-4">
                       <div className="h-12 w-12 rounded-2xl bg-[#f5a623]/15 flex items-center justify-center shrink-0">
@@ -305,7 +307,7 @@ export default function Videos() {
                           href={`https://www.youtube.com/watch?v=${video.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer block"
+                          className="bg-white rounded-[1.5rem] overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer block"
                         >
                           <div className="relative overflow-hidden aspect-video">
                             <img

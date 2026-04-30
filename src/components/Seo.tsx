@@ -5,7 +5,7 @@ const SITE_NAME = 'Sunrise Classes & Academy';
 const BASE_URL = 'https://sunriseclasses.com';
 const DEFAULT_IMAGE = '/sunrise-logo.png';
 const DEFAULT_DESCRIPTION = 'Join Sunrise Classes & Academy in Champanagar, Purnia, Bihar for expert Class 9 and 10 board exam coaching with personalized support, quality notes, and proven success stories.';
-const DEFAULT_KEYWORDS = 'Sunrise Classes, coaching Purnia, Class 9 coaching, Class 10 coaching, board exam preparation, Champanagar coaching, Bihar coaching, success stories, student toppers';
+const DEFAULT_KEYWORDS = 'Sunrise Classes, coaching in Champanagar Purnia, Class 9 coaching in Champanagar Purnia, Class 10 coaching in Champanagar Purnia, board exam preparation, Champanagar coaching, Bihar coaching, success stories, student toppers';
 const DEFAULT_AUTHOR = 'Sunrise Classes & Academy';
 
 function updateMetaTag(attribute: 'name' | 'property', key: string, value: string) {

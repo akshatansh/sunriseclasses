@@ -1,4 +1,4 @@
-import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Send, Sparkles, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 
 const WEB3FORMS_KEY = 'e2c63024-5003-46ff-a44f-0356db65047f'; // Provided Web3Forms key
@@ -86,7 +86,7 @@ export default function Contact() {
   };
 
   return (
-    <section id="contact" className="py-16 sm:py-20 bg-white">
+    <section id="contact" className="py-16 sm:py-20 bg-[linear-gradient(180deg,_#ffffff_0%,_#f8fbff_40%,_#fffaf0_100%)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10 sm:mb-14">
           <div className="flex justify-center mb-3 sm:mb-4">
@@ -96,8 +96,11 @@ export default function Contact() {
               className="h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 object-contain drop-shadow-md"
             />
           </div>
-          <span className="text-[#f5a623] text-xs sm:text-sm font-semibold uppercase tracking-widest">Get In Touch</span>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0f2a5c] mt-2">Contact Sunrise Classes - Best Coaching in Purnia</h2>
+          <span className="inline-flex items-center gap-2 text-[#f5a623] text-xs sm:text-sm font-semibold uppercase tracking-widest">
+            <Sparkles size={14} />
+            Get In Touch
+          </span>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0f2a5c] mt-2">Contact Sunrise Classes - Best Coaching in Champanagar, Purnia</h2>
           <div className="w-12 sm:w-16 h-1 bg-[#f5a623] mx-auto mt-3 sm:mt-4 rounded-full" />
         </div>
 
@@ -108,7 +111,7 @@ export default function Contact() {
               {info.map(({ icon: Icon, title, lines }) => (
                 <div
                   key={title}
-                  className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-[#f5a623]/40 hover:shadow-sm transition-all duration-300"
+                  className="flex items-start gap-4 p-4 bg-white rounded-[1.5rem] border border-gray-100 hover:border-[#f5a623]/40 hover:shadow-sm transition-all duration-300"
                 >
                   <div className="w-10 h-10 bg-[#f5a623]/10 rounded-lg flex items-center justify-center flex-shrink-0">
                     <Icon size={20} className="text-[#f5a623]" />
@@ -122,10 +125,28 @@ export default function Contact() {
                 </div>
               ))}
             </div>
+
+            <div className="rounded-[2rem] overflow-hidden border border-[#d9e5ff] bg-white shadow-[0_20px_60px_rgba(15,42,92,0.08)]">
+              <div className="px-5 sm:px-6 py-4 border-b border-slate-100 bg-[linear-gradient(135deg,_#f8fbff,_#fff8ea)]">
+                <h3 className="text-lg font-bold text-[#0f2a5c]">Find Us on Map</h3>
+                <p className="text-sm text-slate-500 mt-1">Sunrise Classes & Academy, Champanagar, Purnia</p>
+              </div>
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1794.4321560835356!2d87.32824255818029!3d25.906830710435056!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39efeffa528e6173%3A0x7e5cfdea397b5429!2sSunrise%20Coaching%20Centre.!5e0!3m2!1sen!2sin!4v1777567335414!5m2!1sen!2sin"
+                width="600"
+                height="450"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="h-[320px] w-full"
+                title="Sunrise Classes & Academy location on Google Maps"
+              />
+            </div>
           </div>
 
-          <div>
-            <h3 className="text-lg sm:text-xl font-bold text-[#0f2a5c] mb-4 sm:mb-6">Enroll for Board Exam Coaching in Purnia</h3>
+          <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-[0_20px_60px_rgba(15,42,92,0.08)]">
+            <h3 className="text-lg sm:text-xl font-bold text-[#0f2a5c] mb-4 sm:mb-6">Enroll for Board Exam Coaching in Champanagar, Purnia</h3>
             {sent ? (
               <div className="bg-green-50 border border-green-200 rounded-2xl p-8 text-center">
                 <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -232,10 +253,11 @@ export default function Contact() {
                 <button
                   type="submit"
                   disabled={loading || !canSubmitContact}
-                  className="w-full bg-[#f5a623] text-[#0f2a5c] font-bold py-3 rounded-lg hover:bg-[#e09010] disabled:bg-gray-400 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-[#f5a623]/30 hover:-translate-y-0.5"
+                  className="w-full bg-[#0f2a5c] text-white font-bold py-3 rounded-full hover:bg-[#173873] disabled:bg-gray-400 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-[#0f2a5c]/20 hover:-translate-y-0.5"
                 >
                   <Send size={17} />
                   {loading ? 'Sending...' : 'Send Message'}
+                  {!loading && <ArrowRight size={16} />}
                 </button>
               </form>
             )}
