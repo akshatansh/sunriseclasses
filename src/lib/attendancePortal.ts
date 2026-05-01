@@ -44,17 +44,30 @@ export const getAttendanceByDate = async (date: string): Promise<Record<string, 
 export const upsertAttendanceRecords = async (records: Omit<AttendanceRecord, 'id' | 'createdAt'>[]): Promise<boolean> => {
   if (records.length === 0) return true;
   try {
+    const date = records[0].date;
+    const studentIds = records.map(r => r.studentId);
+
+    // Step 1: Delete existing records for these students on this date
+    const { error: deleteError } = await supabase
+      .from('attendance_records')
+      .delete()
+      .eq('date', date)
+      .in('student_id', studentIds);
+
+    if (deleteError) throw deleteError;
+
+    // Step 2: Insert fresh records
     const insertData = records.map(r => ({
       student_id: r.studentId,
       date: r.date,
       status: r.status
     }));
 
-    const { error } = await supabase.from('attendance_records').upsert(insertData, {
-      onConflict: 'student_id, date'
-    });
+    const { error: insertError } = await supabase
+      .from('attendance_records')
+      .insert(insertData);
 
-    if (error) throw error;
+    if (insertError) throw insertError;
     return true;
   } catch (error) {
     console.error('Error saving attendance records:', error);
