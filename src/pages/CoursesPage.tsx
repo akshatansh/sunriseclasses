@@ -3,7 +3,7 @@ import Courses from '../components/Courses';
 
 export default function CoursesPage() {
   return (
-    <div>
+    <div className="pt-[116px]">
       <Seo
         title="Courses"
         description="Explore Sunrise Classes coaching programs for Class 9 and 10 board exam preparation, competitive exam readiness, and spoken English training in Champanagar, Purnia, Bihar."

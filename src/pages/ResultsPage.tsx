@@ -103,7 +103,7 @@ export default function ResultsPage() {
   }, [classFilteredData.results]);
 
   return (
-    <div>
+    <div className="pt-[116px]">
       <Seo
         title="Daily Test Results"
         description="Check Sunrise Classes & Academy daily test results, monthly toppers, and student-wise test marks for Champanagar, Purnia."
@@ -111,7 +111,7 @@ export default function ResultsPage() {
         url="/results"
       />
 
-      <section className="pt-28 pb-16 sm:pb-20 bg-[radial-gradient(circle_at_top,_rgba(245,166,35,0.16),_transparent_24%),linear-gradient(180deg,_#f8fbff_0%,_#ffffff_48%,_#fffaf0_100%)]">
+      <section className="pt-4 pb-16 sm:pb-20 bg-[radial-gradient(circle_at_top,_rgba(245,166,35,0.16),_transparent_24%),linear-gradient(180deg,_#f8fbff_0%,_#ffffff_48%,_#fffaf0_100%)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="rounded-[2rem] border border-white/70 bg-white/85 p-6 sm:p-8 shadow-[0_24px_80px_rgba(15,42,92,0.08)] backdrop-blur">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">

@@ -3,7 +3,7 @@ import About from '../components/About';
 
 export default function AboutPage() {
   return (
-    <div>
+    <div className="pt-[116px]">
       <Seo
         title="About Us"
         description="Learn about Sunrise Classes & Academy in Champanagar, Purnia, Bihar — expert teachers, proven board exam strategies, and a student-first learning environment."
