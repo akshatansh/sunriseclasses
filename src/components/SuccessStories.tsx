@@ -484,14 +484,14 @@ export default function SuccessStories() {
                         )}
 
                         {/* Photo */}
-                        <div className="relative h-[24rem] overflow-hidden bg-slate-300 md:h-[18rem] xl:h-[18rem]">
+                        <div className="relative h-[24rem] overflow-hidden bg-white md:h-[18rem] xl:h-[18rem] flex items-center justify-center">
                           <img
                             src={getOptimizedPhoto(student.photo)}
                             alt={student.name}
                             loading="lazy"
                             decoding="async"
                             fetchPriority="low"
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 p-2"
                             onError={(e) => {
                               if (e.currentTarget.src.includes('/gallery/optimized/')) {
                                 e.currentTarget.src = student.photo;
