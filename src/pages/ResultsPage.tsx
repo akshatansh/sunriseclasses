@@ -142,9 +142,9 @@ export default function ResultsPage() {
   return (
     <div className="pt-[116px]">
       <Seo
-        title="Daily Test Results"
-        description="Check Sunrise Classes & Academy daily test results, monthly toppers, and student-wise test marks for Champanagar, Purnia."
-        keywords="daily test results Champanagar Purnia, Sunrise Classes marks, monthly toppers Sunrise Classes, student test marks Champanagar Purnia, coaching test results Bihar"
+        title="Daily Test Results & Monthly Toppers - Sunrise Classes Champanagar Purnia"
+        description="Check daily test results, student rankings, monthly toppers, and performance charts at Sunrise Classes & Academy, Champanagar Purnia Bihar. Parents can track attendance, homework, and marks online."
+        keywords="daily test results Champanagar Purnia, Sunrise Classes marks, monthly toppers Sunrise Classes, student test marks Purnia, coaching test results Bihar, student attendance report Purnia, homework progress tracking Champanagar"
         url="/results"
       />
 

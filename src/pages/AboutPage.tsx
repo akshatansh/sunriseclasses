@@ -5,9 +5,9 @@ export default function AboutPage() {
   return (
     <div className="pt-[116px]">
       <Seo
-        title="About Us"
-        description="Learn about Sunrise Classes & Academy in Champanagar, Purnia, Bihar — expert teachers, proven board exam strategies, and a student-first learning environment."
-        keywords="about Sunrise Classes, coaching institute in Champanagar Purnia, best teachers in Champanagar Purnia, Bihar Board coaching institute, Class 9 and 10 coaching in Champanagar Purnia, student focused coaching academy Bihar"
+        title="About Sunrise Classes & Academy - Coaching Institute in Champanagar Purnia Bihar"
+        description="Learn about Sunrise Classes & Academy, Champanagar Purnia Bihar — expert teachers with 15+ years experience, proven board exam strategies, and a student-first coaching environment for Class 9 & 10."
+        keywords="about Sunrise Classes, coaching institute Champanagar Purnia, best teachers Champanagar Purnia, Bihar Board coaching institute, Class 9 10 coaching Champanagar Purnia, student focused coaching academy Bihar, top coaching Purnia Bihar"
         url="/about"
       />
       <About />
