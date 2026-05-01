@@ -77,12 +77,12 @@ const FeeManagement = () => {
   };
 
   const handleReminder = (student: StudentFeeStatus) => {
-    if (!student.parent_phone) {
+    if (!student.parentPhone) {
       setPhoneModalStudent(student);
       setPhoneValue('');
       return;
     }
-    let phone = student.parent_phone.replace(/\D/g, '');
+    let phone = student.parentPhone.replace(/\D/g, '');
     if (phone.length === 10) phone = '91' + phone;
     const msg = `Dear Parent, \nSunrise Classes & Academy inform karta hai ki student *${student.name}* (Class ${student.className}) ki *${month}* mahine ki fees due hai. Kripya samay par jama karein.\n- Sunrise Classes`;
     const a = document.createElement('a');
@@ -247,13 +247,13 @@ const FeeManagement = () => {
               <div className="flex items-center gap-2 mb-3">
                 <Phone size={12} className="text-slate-400 shrink-0" />
                 <span className="text-xs text-slate-500 flex-1 truncate">
-                  {student.parent_phone || <span className="italic text-slate-300">Phone not set</span>}
+                  {student.parentPhone || <span className="italic text-slate-300">Phone not set</span>}
                 </span>
                 <button
-                  onClick={() => { setPhoneModalStudent(student); setPhoneValue(student.parent_phone || ''); }}
+                  onClick={() => { setPhoneModalStudent(student); setPhoneValue(student.parentPhone || ''); }}
                   className="text-xs text-blue-500 font-semibold shrink-0"
                 >
-                  {student.parent_phone ? 'Edit' : 'Add'}
+                  {student.parentPhone ? 'Edit' : 'Add'}
                 </button>
               </div>
 

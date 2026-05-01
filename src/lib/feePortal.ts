@@ -71,7 +71,13 @@ export const getStudentsWithFeeStatus = async (month: string, className: '9th' |
       const isPartial = !!payment && dueAmount > 0;
 
       return {
-        ...student,
+        id: student.id,
+        name: student.name,
+        className: student.class_name,
+        image: student.image,
+        fatherName: student.father_name,
+        parentPhone: student.parent_phone,
+        createdAt: student.created_at,
         feePaid: isFullyPaid,
         isPartial: isPartial,
         paymentAmount: paymentAmount,
