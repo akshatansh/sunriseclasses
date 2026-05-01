@@ -29,11 +29,19 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
     const fetchAttendance = async () => {
       const records = await getAttendanceByDate(selectedDate);
       const newState: Record<string, 'present' | 'absent' | 'holiday'> = {};
-      
-      // Default all to present, then override with existing records if any
+
+      // Check if selected date is a Sunday (day === 0)
+      const dayOfWeek = new Date(selectedDate + 'T00:00:00').getDay();
+      const isSunday = dayOfWeek === 0;
+
+      // Default: Sunday → holiday, else → present. Override with existing saved records.
       students.forEach(s => {
         if (normalizeClass(s.className) === selectedClass) {
-          newState[s.id] = records[s.id] ? (records[s.id].status as any) : 'present';
+          if (records[s.id]) {
+            newState[s.id] = records[s.id].status as any;
+          } else {
+            newState[s.id] = isSunday ? 'holiday' : 'present';
+          }
         }
       });
       setAttendanceState(newState);
