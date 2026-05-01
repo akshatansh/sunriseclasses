@@ -8,7 +8,8 @@ const values = [
 
 const highlights = [
   'Specialized in Class 9 & 10 Board Exams',
-  'Director with 15+ years of teaching experience',
+  'Director with B.Ed (75%) and CTET Qualified (Paper I & II)',
+  '15+ years of teaching experience',
   'Daily YouTube educational videos',
   'Offline classroom batches available',
   'Individual attention to every student',
@@ -64,8 +65,8 @@ export default function About() {
               </div>
               <div className="text-center bg-[linear-gradient(135deg,_#0f2a5c,_#173873)] text-white px-4 sm:px-6 py-3 rounded-2xl shadow-lg text-sm sm:text-base w-full">
                 <p className="font-bold text-base sm:text-lg">S.P. Jha</p>
-                <p className="text-[#f5a623] text-xs sm:text-sm">Director & Founder</p>
-                <p className="text-gray-300 text-xs mt-1">Sunrise Classes & Academy</p>
+                <p className="text-[#f5a623] text-[11px] sm:text-xs font-semibold tracking-wider mt-0.5">B.Ed (75%) &bull; CTET Qualified</p>
+                <p className="text-gray-300 text-xs mt-1.5 pt-1 border-t border-white/10">Director & Founder</p>
               </div>
             </div>
 
@@ -76,7 +77,7 @@ export default function About() {
               <p className="text-gray-600 leading-relaxed mb-4">
                 Sunrise Classes & Academy, located in Champanagar, Purnia, Bihar, specializes in
                 Class 9 & 10 board exam preparation with a proven track record of success. Under the
-                visionary leadership of <strong>S.P. Jha</strong> with <strong>15+ years of teaching
+                visionary leadership of <strong>S.P. Jha (B.Ed Qualified with 75% and C.TET Qualified for Paper I & II: Class 1 to 5 and 6 to 8)</strong> with <strong>15+ years of teaching
                 experience in board exam coaching</strong>, the academy has become the trusted choice for serious students aiming
                 for excellence in their board exams in rural Bihar.
               </p>
