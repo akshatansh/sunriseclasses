@@ -86,20 +86,22 @@ const successStories = [
     story: 'Mera naam Anju hai aur maine apni 10th ki padhai Sunrise Classes and Academy se ki hu. Ye coaching centre padhai ke liye bahot achha h. Yha ka mahol anushasit or padhai ke liye bahot achha h. Sir ne mujhe padhai ko aasani se samajhne me madad kiye. Unke padhane ka tarika Saral or prabhavi h. Jisse meri padhai me kafi sudhar hua or main achhe number se pass hui. Thankyou sir.',
   },
   {
-    name: 'Divya Joshi',
-    class: 'Class 10',
-    score: '380/500',
+    name: 'Coming Soon',
+    class: '',
+    score: '',
     year: '2024',
-    photo: '/gallery/20260415_174519.jpg',
-    story: 'The daily YouTube revision videos were a game-changer. Never felt lost in any topic.',
+    photo: '',
+    story: 'Coming Soon',
+    comingSoon: true,
   },
   {
-    name: 'Sanjay Reddy',
-    class: 'Class 10',
-    score: '375/500',
+    name: 'Coming Soon',
+    class: '',
+    score: '',
     year: '2024',
-    photo: '/gallery/20260415_174533.jpg',
-    story: 'Excellent doubt clearing sessions and comprehensive notes. Best coaching center!',
+    photo: '',
+    story: 'Coming Soon',
+    comingSoon: true,
   },
   // 2023
   {
@@ -146,26 +148,28 @@ const successStories = [
   {
     name: 'Sakshi Kumari',
     class: 'Class 10',
-    score: '465/500',
+    score: '439/500',
     year: '2022',
     photo: '/gallery/Untitled design (32).jpg',
     story: 'Sir aapki teaching style itni clear hai ki tough topic bhi easy lagne lagta hai.\n\nSir aap sirf padhate nhi, balki istrah se samjhate hain ki koi doubt hi nahi bachta hai. Yeh aapki sabse badi quality hai.\n\nSir aapka dedication aur patience ham students ke liye inspiration hai.\n\nSir aapki coaching padhai ke liye ak perfect environment deti hai. Sath hi sath yahan concept clarity or sabse jyda focus hota hai, yahan ka discipline aur guidance success ke liye best hai.',
   },
   {
-    name: 'Ananya Gupta',
-    class: 'Class 10',
-    score: '460/500',
+    name: 'Coming Soon',
+    class: '',
+    score: '',
     year: '2022',
-    photo: '/gallery/20260415_174652.jpg',
-    story: 'Thank you for making my board exam journey smooth and successful.',
+    photo: '',
+    story: 'Coming Soon',
+    comingSoon: true,
   },
   {
-    name: 'Akash Sharma',
-    class: 'Class 9',
-    score: '455/500',
+    name: 'Coming Soon',
+    class: '',
+    score: '',
     year: '2022',
-    photo: '/gallery/20260415_174654.jpg',
-    story: 'Best coaching center in the city. Highly recommended for all students!',
+    photo: '',
+    story: 'Coming Soon',
+    comingSoon: true,
   },
 ];
 
@@ -210,15 +214,25 @@ export default function SuccessStories() {
   };
 
   const totalStudents = successStories.length;
-  const numericScores = successStories.map((story) => parseInt(story.score));
-  const maxScore = Math.max(...numericScores);
-  const maxScorePercentage = ((maxScore / 500) * 100).toFixed(0);
-  const studentsWith95Plus = successStories.filter((s) => parseInt(s.score) >= 475).length;
-  const studentsWith90Plus = successStories.filter((s) => parseInt(s.score) >= 450).length;
-  const avgMarks = (numericScores.reduce((sum, score) => sum + score, 0) / totalStudents).toFixed(0);
+  const numericScores = successStories
+    .map((story) => parseInt(story.score, 10))
+    .filter((score) => !Number.isNaN(score));
+  const totalScoredStudents = numericScores.length;
+  const maxScore = totalScoredStudents > 0 ? Math.max(...numericScores) : 0;
+  const maxScorePercentage = totalScoredStudents > 0 ? ((maxScore / 500) * 100).toFixed(0) : '0';
+  const studentsWith95Plus = successStories.filter((s) => {
+    const score = parseInt(s.score, 10);
+    return !Number.isNaN(score) && score >= 475;
+  }).length;
+  const studentsWith90Plus = successStories.filter((s) => {
+    const score = parseInt(s.score, 10);
+    return !Number.isNaN(score) && score >= 450;
+  }).length;
+  const avgMarks = totalScoredStudents > 0 ? (numericScores.reduce((sum, score) => sum + score, 0) / totalScoredStudents).toFixed(0) : '0';
   const spotlightStudents = successStories
     .slice()
-    .sort((a, b) => parseInt(b.score) - parseInt(a.score))
+    .filter((story) => !Number.isNaN(parseInt(story.score, 10)))
+    .sort((a, b) => parseInt(b.score, 10) - parseInt(a.score, 10))
     .slice(0, 3);
   const heroStats = [
     { label: 'Top Score', value: `${maxScore}/500`, hint: `${maxScorePercentage}% highest result`, accent: 'from-amber-400 via-orange-400 to-yellow-300' },
@@ -418,11 +432,12 @@ export default function SuccessStories() {
         {/* Year-wise Success Stories */}
         {sortedYears.map((year) => {
           const yearStudents = groupedByYear[year];
-          const yearStarCount = yearStudents.filter((s) => parseInt(s.score) >= 450).length;
-          const yearHighestMark = Math.max(...yearStudents.map((student) => parseInt(student.score)));
-          const yearAvgScore = Math.round(
-            yearStudents.reduce((sum, student) => sum + parseInt(student.score), 0) / yearStudents.length
-          );
+          const yearScores = yearStudents
+            .map((student) => parseInt(student.score, 10))
+            .filter((score) => !Number.isNaN(score));
+          const yearStarCount = yearScores.filter((score) => score >= 450).length;
+          const yearHighestMark = yearScores.length > 0 ? Math.max(...yearScores) : 0;
+          const yearAvgScore = yearScores.length > 0 ? Math.round(yearScores.reduce((sum, score) => sum + score, 0) / yearScores.length) : 0;
 
           return (
             <div key={year} className="mb-20">
@@ -473,7 +488,7 @@ export default function SuccessStories() {
                       <div className={`relative h-full overflow-hidden rounded-[1.75rem] border transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_24px_60px_rgba(15,42,92,0.16)] ${isTopRank ? 'border-[#f5a623]/40 bg-[linear-gradient(180deg,_rgba(255,248,231,0.88),_rgba(255,255,255,0.98))] shadow-[0_16px_40px_rgba(245,166,35,0.14)]' : 'border-slate-200/80 bg-white/90 shadow-lg shadow-slate-200/60'}`}>
                         <div className="absolute inset-x-5 top-0 h-1 rounded-b-full bg-gradient-to-r from-transparent via-[#f5a623] to-transparent opacity-70" />
                         {/* Rank Badge */}
-                        {rank < 4 && (
+                        {rank < 4 && !student.comingSoon && (
                           <div className={`absolute top-0 right-0 z-20 flex h-20 w-20 items-center justify-center rounded-bl-3xl bg-gradient-to-br ${medal.bg} shadow-lg sm:h-24 sm:w-24`}>
                             <div className="text-center">
                               {rank < 3 && <Medal size={24} className={`${medal.text} mx-auto mb-1 fill-current`} />}
@@ -485,31 +500,39 @@ export default function SuccessStories() {
 
                         {/* Photo */}
                         <div className="relative h-[24rem] overflow-hidden bg-white md:h-[18rem] xl:h-[18rem] flex items-center justify-center">
-                          <img
-                            src={getOptimizedPhoto(student.photo)}
-                            alt={student.name}
-                            loading="lazy"
-                            decoding="async"
-                            fetchPriority="low"
-                            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 p-2"
-                            onError={(e) => {
-                              if (e.currentTarget.src.includes('/gallery/optimized/')) {
-                                e.currentTarget.src = student.photo;
-                                return;
-                              }
+                          {student.comingSoon ? (
+                            <div className="flex h-full w-full items-center justify-center bg-slate-100 text-center text-xl font-bold uppercase tracking-[0.12em] text-slate-500">
+                              Coming Soon
+                            </div>
+                          ) : (
+                            <img
+                              src={getOptimizedPhoto(student.photo)}
+                              alt={student.name}
+                              loading="lazy"
+                              decoding="async"
+                              fetchPriority="low"
+                              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 p-2"
+                              onError={(e) => {
+                                if (e.currentTarget.src.includes('/gallery/optimized/')) {
+                                  e.currentTarget.src = student.photo;
+                                  return;
+                                }
 
-                              e.currentTarget.src = '/sunrise-logo.png';
-                            }}
-                          />
+                                e.currentTarget.src = '/sunrise-logo.png';
+                              }}
+                            />
+                          )}
                           <div className="absolute inset-0 bg-gradient-to-t from-[#06162f] via-[#06162f]/40 to-transparent" />
                           <div className="absolute left-4 top-4 z-10 rounded-full border border-white/25 bg-white/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white backdrop-blur">
                             {student.year}
                           </div>
                           {/* Score Overlay */}
-                          <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4 pt-10">
-                            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Board Score</p>
-                            <p className="text-white text-4xl font-black">{student.score}</p>
-                          </div>
+                          {student.score && (
+                            <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-4 pt-10">
+                              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Board Score</p>
+                              <p className="text-white text-4xl font-black">{student.score}</p>
+                            </div>
+                          )}
                         </div>
 
                         {/* Info */}
@@ -532,16 +555,16 @@ export default function SuccessStories() {
                             </div>
                             {/* Desktop - Show Full Story */}
                             <p className="hidden text-xs italic leading-relaxed text-gray-700 lg:block">
-                              "{student.story}"
+                              "{student.comingSoon ? 'Coming Soon' : student.story}"
                             </p>
                             
                             {/* Mobile/Tablet - Show Truncated with Read More */}
                             <p className="text-xs italic leading-relaxed text-gray-700 lg:hidden">
-                              "{student.story.length > 150 && !expandedReviews.has(`${student.name}-${student.year}`) ? 
+                              "{student.comingSoon ? 'Coming Soon' : (student.story.length > 150 && !expandedReviews.has(`${student.name}-${student.year}`) ? 
                                 `${student.story.substring(0, 150)}...` : 
-                                student.story}"
+                                student.story)}"
                             </p>
-                            {student.story.length > 150 && (
+                            {student.story.length > 150 && !student.comingSoon && (
                               <button
                                 onClick={() => toggleReview(`${student.name}-${student.year}`)}
                                 className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#fff4da] px-3 py-1 text-xs font-semibold text-[#9a5b00] transition-colors hover:bg-[#ffe8b0] lg:hidden"
