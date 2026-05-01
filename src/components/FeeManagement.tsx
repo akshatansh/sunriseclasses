@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { IndianRupee, MessageCircle, FileText, CheckCircle, Search, X, Phone, ChevronDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { drawPDFHeader, drawPDFFooter, drawWatermark, drawOfficialStamp } from '../lib/pdfUtils';
 import { getStudentsWithFeeStatus, recordFeePayment, updateStudentPhone, type StudentFeeStatus } from '../lib/feePortal';
 
 const MONTHS = [
@@ -94,42 +95,52 @@ const FeeManagement = () => {
     document.body.removeChild(a);
   };
 
-  const handleReceipt = (student: StudentFeeStatus) => {
+  const handleReceipt = async (student: StudentFeeStatus) => {
     if (!student.feePaid || !student.paymentAmount || !student.paymentDate) return;
     const doc = new jsPDF({ unit: 'mm', format: 'a5' });
     const pageW = doc.internal.pageSize.getWidth();
-    doc.setFillColor(15, 42, 92);
-    doc.rect(0, 0, pageW, 30, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16); doc.setFont('helvetica', 'bold');
-    doc.text('Sunrise Classes & Academy', pageW / 2, 15, { align: 'center' });
-    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-    doc.text('Champanagar, Purnia, Bihar', pageW / 2, 22, { align: 'center' });
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text('FEE RECEIPT', pageW / 2, 42, { align: 'center' });
-    doc.setFontSize(10);
-    doc.text(`Receipt No: SRC-${student.receiptId?.slice(0, 6).toUpperCase()}`, 10, 55);
-    doc.text(`Date: ${new Date(student.paymentDate).toLocaleDateString('en-IN')}`, pageW - 50, 55);
+
+    // Branded header with logo
+    const dateStr = new Date(student.paymentDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+    const startY = await drawPDFHeader(doc, 'FEE RECEIPT');
+
+    // Receipt meta row
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 42, 92);
+    doc.text(`Receipt No: SRC-${student.receiptId?.slice(0, 6).toUpperCase() ?? 'XXXXXX'}`, 10, startY + 2);
+    doc.text(`Date: ${dateStr}`, pageW - 10, startY + 2, { align: 'right' });
+
     autoTable(doc, {
-      startY: 65,
+      startY: startY + 8,
       head: [['Description', 'Details']],
       body: [
         ['Student Name', student.name],
-        ...(student.fatherName ? [['Father\'s Name', student.fatherName]] : []),
+        ...(student.fatherName ? [["Father's Name", student.fatherName]] : []),
         ...(student.parentPhone ? [['Mobile No.', student.parentPhone]] : []),
         ['Class', student.className],
         ['Fee Month', month],
         ['Total Monthly Fee', `Rs. ${student.totalFee}`],
         ['Amount Paid', `Rs. ${student.paymentAmount}`],
         ['Balance Due', `Rs. ${student.dueAmount}`],
-        ['Status', student.dueAmount && student.dueAmount > 0 ? 'PARTIAL' : 'PAID ✓'],
+        ['Status', student.dueAmount && student.dueAmount > 0 ? 'PARTIAL PAYMENT' : 'PAID ✔'],
       ],
       theme: 'grid',
-      headStyles: { fillColor: [15, 42, 92] },
+      headStyles: { fillColor: [15, 42, 92], textColor: [245, 166, 35], fontStyle: 'bold', fontSize: 9 },
+      bodyStyles: { fontSize: 9 },
+      alternateRowStyles: { fillColor: [248, 251, 255] },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } },
+      margin: { left: 10, right: 10 },
+      styles: { cellPadding: 3, lineColor: [220, 230, 245], lineWidth: 0.2 },
     });
-    doc.setFontSize(8);
-    doc.text('Computer-generated receipt. No signature required.', pageW / 2, 175, { align: 'center' });
+
+    const finalY = (doc as any).lastAutoTable.finalY;
+    
+    // Draw watermark and official stamp
+    drawWatermark(doc);
+    drawOfficialStamp(doc, finalY + 20);
+
+    drawPDFFooter(doc);
     doc.save(`Receipt_${student.name}_${month}.pdf`);
   };
 

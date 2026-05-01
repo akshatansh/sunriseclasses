@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings } from 'lucide-react';
+import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { drawPDFHeader, drawPDFFooter } from '../lib/pdfUtils';
 import Seo from '../components/Seo';
 import {
   loadResultsPortalData,
@@ -9,6 +10,7 @@ import {
   addTestResultsToDB,
   deleteStudentFromDB,
   deleteTestResultFromDB,
+  updateTestResultInDB,
   graduateClass10,
   promoteClass9To10,
   type ResultsPortalData,
@@ -18,6 +20,7 @@ import { supabase } from '../lib/supabase';
 import { getNotificationText, updateNotificationText } from '../lib/siteSettings';
 import { getNotices, addNotice, deleteNotice, type NoticeRecord } from '../lib/noticePortal';
 import FeeManagement from '../components/FeeManagement';
+import HomeworkManagement from '../components/HomeworkManagement';
 
 const ADMIN_SESSION_KEY = 'sunrise-admin-authenticated';
 const ADMIN_ROLE_KEY = 'sunrise-admin-role';
@@ -58,6 +61,9 @@ export default function AdminResultsPage() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [editResultId, setEditResultId] = useState<string | null>(null);
+  const [editMarksValue, setEditMarksValue] = useState<string>('');
   const [loginRole, setLoginRole] = useState<string | null>(null);
   const [loginClassAccess, setLoginClassAccess] = useState<string>('all');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -70,7 +76,7 @@ export default function AdminResultsPage() {
   const [isSavingNotification, setIsSavingNotification] = useState(false);
   const [notices, setNotices] = useState<NoticeRecord[]>([]);
   const [newNoticeForm, setNewNoticeForm] = useState<{title: string, content: string, type: 'exam' | 'holiday' | 'general'}>({ title: '', content: '', type: 'general' });
-  const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'settings'>('marks');
+  const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'homework' | 'settings'>('marks');
 
   const fetchAdmins = async () => {
     const { data } = await supabase.from('admins').select('*').order('created_at', { ascending: false });
@@ -155,6 +161,44 @@ export default function AdminResultsPage() {
     setData(updatedData);
   };
 
+  const handleDownloadStudentList = async () => {
+    if (studentsForUpload.length === 0) return;
+    const className = activeUploadClass === '9th' ? 'Class 9' : 'Class 10';
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+    const description = `Student List — ${className}     Generated: ${dateStr}     Total Students: ${studentsForUpload.length}`;
+    const startY = await drawPDFHeader(doc, `Student Register — ${className}`, description);
+
+    autoTable(doc, {
+      startY,
+      head: [['#', 'Student Name', 'Class', "Father's Name", 'Mobile No.', 'Added On']],
+      body: studentsForUpload.map((s, i) => [
+        i + 1,
+        s.name,
+        s.className,
+        s.fatherName || '—',
+        s.parentPhone || '—',
+        s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN') : '—'
+      ]),
+      headStyles: { fillColor: [15, 42, 92], textColor: [245, 166, 35], fontStyle: 'bold', fontSize: 9 },
+      bodyStyles: { fontSize: 9, textColor: [30, 30, 30] },
+      alternateRowStyles: { fillColor: [248, 251, 255] },
+      columnStyles: {
+        0: { cellWidth: 10, halign: 'center' },
+        2: { cellWidth: 22, halign: 'center' },
+        5: { cellWidth: 26, halign: 'center' },
+      },
+      margin: { left: 12, right: 12 },
+      styles: { cellPadding: 3.5, lineColor: [220, 230, 245], lineWidth: 0.2 },
+    });
+
+    drawPDFFooter(doc);
+    doc.save(`Sunrise_Students_${className.replace(' ', '')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    showMessage('Student list PDF downloaded!');
+  };
+
+
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentForm.name.trim() || !studentForm.className.trim()) return;
@@ -164,6 +208,8 @@ export default function AdminResultsPage() {
         name: studentForm.name.trim(),
         className: studentForm.className.trim(),
         image: studentForm.image.trim() || '/sunrise-logo.png',
+        fatherName: studentForm.fatherName.trim() || null,
+        parentPhone: studentForm.parentPhone.trim() || null,
       });
 
       await reloadData();
@@ -278,17 +324,17 @@ export default function AdminResultsPage() {
     // === ACADEMY NAME ===
     doc.setTextColor(245, 166, 35);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(24);
-    doc.text('Sunrise Classes', pageW / 2, 20, { align: 'center' });
+    doc.setFontSize(22);
+    doc.text('SUNRISE CLASSES & ACADEMY', pageW / 2, 18, { align: 'center' });
 
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-    doc.text('& Academy, Champanagar', pageW / 2, 29, { align: 'center' });
+    doc.setFontSize(9);
+    doc.text('Champanagar, Purnia, Bihar - 854201  |  Mob: 9973152070', pageW / 2, 27, { align: 'center' });
 
     doc.setTextColor(200, 215, 255);
-    doc.setFontSize(9);
-    doc.text('Test Result Report', pageW / 2, 38, { align: 'center' });
+    doc.setFontSize(8.5);
+    doc.text('Test Result Report', pageW / 2, 36, { align: 'center' });
 
     // === TEST INFO BOX ===
     doc.setFillColor(248, 251, 255);
@@ -339,22 +385,88 @@ export default function AdminResultsPage() {
     });
 
     // === FOOTER ===
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-
-      // Footer line
-      doc.setDrawColor(213, 229, 255);
-      doc.line(10, 285, pageW - 10, 285);
-
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text('Sunrise Classes & Academy  |  Champanagar', 10, 291);
-      doc.text(`Page ${i} of ${pageCount}`, pageW - 10, 291, { align: 'right' });
-    }
+    drawPDFFooter(doc);
 
     const safeName = testDetails.testName.replace(/\s+/g, '_');
     doc.save(`${safeName}_${testDetails.testDate}.pdf`);
+  };
+
+  const handleDownloadPastTestPDF = async (resultRecord: TestResultRecord) => {
+    // Find all results that match this test's unique identifiers
+    const testResults = data.results.filter(
+      r => r.testName === resultRecord.testName && 
+           r.testDate === resultRecord.testDate && 
+           r.subject === resultRecord.subject
+    );
+
+    if (testResults.length === 0) return;
+
+    const totalMarks = testResults[0].totalMarks;
+    const dateStr = new Date(resultRecord.testDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+
+    // Re-use the new pdfUtils header
+    await drawPDFHeader(doc, 'Test Result Report');
+
+    // === TEST INFO BOX ===
+    doc.setFillColor(248, 251, 255);
+    doc.setDrawColor(213, 229, 255);
+    doc.roundedRect(10, 56, pageW - 20, 22, 3, 3, 'FD');
+
+    doc.setTextColor(15, 42, 92);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text(resultRecord.testName, 16, 65);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(90, 90, 90);
+    doc.text(`Subject: ${resultRecord.subject}`, 16, 73);
+    doc.text(`Date: ${dateStr}`, 90, 73);
+    doc.text(`Total Marks: ${totalMarks}`, 155, 73);
+
+    // Prepare rows
+    let serial = 1;
+    const rows = testResults.map(r => {
+      const student = data.students.find(s => s.id === r.studentId);
+      const studentName = student ? student.name : 'Unknown';
+      const className = student ? student.className : 'Unknown';
+      const pct = totalMarks > 0 ? ((r.marksObtained / totalMarks) * 100).toFixed(1) : '0';
+      return [serial++, studentName, className, `${r.marksObtained} / ${totalMarks}`, `${pct}%`];
+    });
+
+    // === TABLE ===
+    autoTable(doc, {
+      startY: 85,
+      head: [['S.No', 'Student Name', 'Class', 'Marks', 'Percentage']],
+      body: rows,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [15, 42, 92],
+        textColor: [245, 166, 35],
+        fontStyle: 'bold',
+        fontSize: 10,
+        halign: 'center',
+      },
+      bodyStyles: { fontSize: 10, textColor: [30, 30, 30], halign: 'left' },
+      alternateRowStyles: { fillColor: [248, 251, 255] },
+      columnStyles: {
+        0: { cellWidth: 14, halign: 'center' },
+        2: { halign: 'center' },
+        3: { halign: 'center' },
+        4: { halign: 'center', fontStyle: 'bold' },
+      },
+      margin: { left: 10, right: 10 },
+    });
+
+    // === FOOTER ===
+    drawPDFFooter(doc);
+
+    const safeName = resultRecord.testName.replace(/\s+/g, '_');
+    doc.save(`${safeName}_${resultRecord.testDate}.pdf`);
+    showMessage('Test result PDF downloaded!');
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -397,11 +509,11 @@ export default function AdminResultsPage() {
   };
 
   const handleDeleteStudent = async (studentId: string) => {
-    if (!confirm("Are you sure you want to delete this student and all their results?")) return;
     try {
       await deleteStudentFromDB(studentId);
       await reloadData();
       showMessage('Student and related results removed.');
+      setDeleteConfirmId(null);
     } catch (err) {
       console.error(err);
       alert("Failed to delete student.");
@@ -409,14 +521,31 @@ export default function AdminResultsPage() {
   };
 
   const handleDeleteResult = async (resultId: string) => {
-    if (!confirm("Are you sure you want to delete this result?")) return;
     try {
       await deleteTestResultFromDB(resultId);
       await reloadData();
       showMessage('Result deleted successfully.');
+      setDeleteConfirmId(null);
     } catch (err) {
       console.error(err);
       alert("Failed to delete result.");
+    }
+  };
+
+  const handleUpdateResult = async (resultId: string) => {
+    if (!editMarksValue.trim()) return;
+    const newMarks = Number(editMarksValue);
+    if (!Number.isFinite(newMarks) || newMarks < 0) return;
+    
+    try {
+      await updateTestResultInDB(resultId, newMarks);
+      await reloadData();
+      showMessage('Result updated successfully.');
+      setEditResultId(null);
+      setEditMarksValue('');
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update result.");
     }
   };
 
@@ -720,29 +849,93 @@ export default function AdminResultsPage() {
           </div>
         </section>
       ) : (
-      <div className="min-h-screen bg-slate-50">
-        {/* Spacer so content doesn't hide behind fixed bottom nav */}
-        <style>{`.admin-content{padding-bottom:5rem}`}</style>
-        <section className="bg-[#0f2a5c] text-white shadow-xl">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f5a623]">
-                <ShieldCheck size={18} className="text-white" />
+      <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+        {/* Spacer for mobile bottom nav */}
+        <style>{`@media (max-width: 767px) { .admin-content{padding-bottom:5rem} }`}</style>
+        
+        {/* DESKTOP SIDEBAR */}
+        <aside className="hidden md:flex flex-col w-64 bg-[#0f2a5c] text-white fixed top-0 bottom-0 left-0 z-50 shadow-2xl">
+          <div className="p-6 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f5a623]">
+                <ShieldCheck size={20} className="text-white" />
               </div>
               <div>
-                <p className="font-extrabold text-sm leading-none">Admin Panel</p>
-                <p className="text-[10px] text-blue-200 mt-0.5 leading-none">
+                <p className="font-extrabold text-base leading-none">Admin Panel</p>
+                <p className="text-xs text-blue-200 mt-1 leading-none">
                   {loginRole === 'superadmin' ? '⭐ Super Admin' : `📘 Class ${loginClassAccess}`}
                 </p>
               </div>
             </div>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
+            <button onClick={() => setActiveTab('marks')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'marks' ? 'bg-white/10 text-[#f5a623]' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+              <Upload size={20} />
+              <span>Marks</span>
+            </button>
+            {loginRole === 'superadmin' && (<>
+              <button onClick={() => setActiveTab('students')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'students' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                <Users size={20} />
+                <span>Students</span>
+              </button>
+              <button onClick={() => setActiveTab('fees')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'fees' ? 'bg-white/10 text-green-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                <IndianRupee size={20} />
+                <span>Fees</span>
+              </button>
+              <button onClick={() => setActiveTab('homework')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'homework' ? 'bg-white/10 text-cyan-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                <BookOpen size={20} />
+                <span>Homework</span>
+              </button>
+              <button onClick={() => setActiveTab('notices')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'notices' ? 'bg-white/10 text-blue-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                <Bell size={20} />
+                <span>Notices</span>
+              </button>
+              <button onClick={() => setActiveTab('settings')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'settings' ? 'bg-white/10 text-orange-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                <Settings size={20} />
+                <span>Settings</span>
+              </button>
+            </>)}
+          </div>
+          
+          <div className="p-4 border-t border-white/10">
             <button type="button" onClick={handleLogout}
-              className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-xs font-bold">
-              <LogOut size={13} /> Logout
+              className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl text-sm font-bold transition-all">
+              <LogOut size={16} /> Logout
             </button>
           </div>
-        </section>
-        <div className="max-w-2xl mx-auto px-3 pt-4 admin-content">
+        </aside>
+
+        {/* MAIN CONTENT WRAPPER */}
+        <main className="flex-1 md:ml-64 flex flex-col min-h-screen relative">
+          {/* MOBILE HEADER (Hidden on Desktop) */}
+          <section className="md:hidden bg-[#0f2a5c] text-white shadow-xl">
+            <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f5a623]">
+                  <ShieldCheck size={18} className="text-white" />
+                </div>
+                <div>
+                  <p className="font-extrabold text-sm leading-none">Admin Panel</p>
+                  <p className="text-[10px] text-blue-200 mt-0.5 leading-none">
+                    {loginRole === 'superadmin' ? '⭐ Super Admin' : `📘 Class ${loginClassAccess}`}
+                  </p>
+                </div>
+              </div>
+              <button type="button" onClick={handleLogout}
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-xs font-bold">
+                <LogOut size={13} /> Logout
+              </button>
+            </div>
+          </section>
+
+          <div className="max-w-5xl w-full mx-auto px-3 sm:px-6 pt-4 md:pt-8 admin-content">
 
           {message && (
             <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
@@ -1010,26 +1203,36 @@ export default function AdminResultsPage() {
             <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 sm:p-8 shadow-sm overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
                 <h2 className="text-2xl font-bold text-[#0f2a5c]">Students List</h2>
-                {loginClassAccess === 'all' && (
-                  <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 p-1">
-                    <button
-                      type="button"
-                      onClick={() => setActiveUploadClass('9th')}
-                      className={`rounded-full px-4 py-1 text-sm font-bold transition-all ${activeUploadClass === '9th' ? 'bg-[#0f2a5c] text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      Class 9
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveUploadClass('10th')}
-                      className={`rounded-full px-4 py-1 text-sm font-bold transition-all ${activeUploadClass === '10th' ? 'bg-[#0f2a5c] text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      Class 10
-                    </button>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {loginClassAccess === 'all' && (
+                    <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 p-1">
+                      <button
+                        type="button"
+                        onClick={() => setActiveUploadClass('9th')}
+                        className={`rounded-full px-4 py-1 text-sm font-bold transition-all ${activeUploadClass === '9th' ? 'bg-[#0f2a5c] text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        Class 9
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveUploadClass('10th')}
+                        className={`rounded-full px-4 py-1 text-sm font-bold transition-all ${activeUploadClass === '10th' ? 'bg-[#0f2a5c] text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        Class 10
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleDownloadStudentList}
+                    disabled={studentsForUpload.length === 0}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-4 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 disabled:opacity-40 transition-colors"
+                  >
+                    <Download size={14} /> Download List
+                  </button>
+                </div>
               </div>
-              <div className="mt-6 space-y-3">
+              <div className="mt-6 space-y-3 max-h-[500px] overflow-y-auto pr-2">
                 {studentsForUpload.length > 0 ? (
                   studentsForUpload.map((student) => (
                     <div key={student.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
@@ -1044,27 +1247,52 @@ export default function AdminResultsPage() {
                         />
                         <div>
                           <p className="font-semibold text-[#0f2a5c]">{student.name}</p>
-                          <div className="flex flex-col text-xs text-slate-500 mt-0.5 space-y-0.5">
-                            <span>{student.className}</span>
-                            {(student.fatherName || student.parentPhone) && (
-                              <span className="flex items-center gap-1.5 mt-0.5">
-                                {student.fatherName && <span className="text-slate-600">S/O {student.fatherName}</span>}
-                                {student.fatherName && student.parentPhone && <span>•</span>}
-                                {student.parentPhone && <span className="flex items-center gap-0.5 text-blue-600"><Phone size={10} /> {student.parentPhone}</span>}
+                          <div className="flex flex-col text-[11px] sm:text-xs text-slate-500 mt-1 space-y-1">
+                            <span className="font-medium px-2 py-0.5 bg-slate-100 rounded text-slate-600 w-fit">
+                              {student.className}
+                            </span>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1">
+                              <span className="text-slate-600">
+                                Father: <span className="font-medium text-[#0f2a5c]">{student.fatherName || 'N/A'}</span>
                               </span>
-                            )}
+                              <span className="hidden sm:inline text-slate-300">•</span>
+                              <span className="flex items-center gap-1 text-slate-600">
+                                <Phone size={10} className="text-blue-500" />
+                                <span className="font-medium text-[#0f2a5c]">{student.parentPhone || 'Not provided'}</span>
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
                       {loginRole === 'superadmin' && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteStudent(student.id)}
-                          className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100"
-                        >
-                          <Trash2 size={14} />
-                          Delete
-                        </button>
+                        deleteConfirmId === student.id ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-red-600 uppercase tracking-wide mr-1">Sure?</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteStudent(student.id)}
+                              className="rounded-full bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 shadow-sm"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmId(null)}
+                              className="rounded-full bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-300 shadow-sm"
+                            >
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmId(student.id)}
+                            className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100"
+                          >
+                            <Trash2 size={14} />
+                            Delete
+                          </button>
+                        )
                       )}
                     </div>
                   ))
@@ -1087,39 +1315,87 @@ export default function AdminResultsPage() {
                 </div>
               </div>
 
-              <div className="mt-6 overflow-x-auto">
+              <div className="mt-6 max-h-[500px] overflow-y-auto overflow-x-auto rounded-xl border border-slate-100 bg-white">
                 {sortedResults.length > 0 ? (
-                  <table className="w-full min-w-[700px] text-sm">
-                    <thead>
+                  <table className="w-full min-w-[700px] text-sm relative">
+                    <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10 shadow-sm">
                       <tr className="text-left text-slate-500">
-                        <th className="pb-3 font-semibold">Student</th>
-                        <th className="pb-3 font-semibold">Test</th>
-                        <th className="pb-3 font-semibold">Subject</th>
-                        <th className="pb-3 font-semibold">Date</th>
-                        <th className="pb-3 font-semibold">Marks</th>
-                        <th className="pb-3 font-semibold">Action</th>
+                        <th className="py-3 px-4 font-semibold">Student</th>
+                        <th className="py-3 px-4 font-semibold">Test</th>
+                        <th className="py-3 px-4 font-semibold">Subject</th>
+                        <th className="py-3 px-4 font-semibold">Date</th>
+                        <th className="py-3 px-4 font-semibold">Marks</th>
+                        <th className="py-3 px-4 font-semibold text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-100">
                       {sortedResults.map((result) => (
-                        <tr key={result.id} className="border-t border-slate-100 text-slate-700">
-                          <td className="py-3 font-medium">{getStudentName(result.studentId)}</td>
-                          <td className="py-3">{result.testName}</td>
-                          <td className="py-3">{result.subject}</td>
-                          <td className="py-3">{new Date(result.testDate).toLocaleDateString('en-IN')}</td>
-                          <td className="py-3">
-                            {result.marksObtained}/{result.totalMarks}
+                        <tr key={result.id} className="text-slate-700 hover:bg-slate-50/50 transition-colors">
+                          <td className="py-3 px-4 font-medium">{getStudentName(result.studentId)}</td>
+                          <td className="py-3 px-4">{result.testName}</td>
+                          <td className="py-3 px-4">{result.subject}</td>
+                          <td className="py-3 px-4">{new Date(result.testDate).toLocaleDateString('en-IN')}</td>
+                          <td className="py-3 px-4">
+                            {editResultId === result.id ? (
+                              <div className="flex items-center gap-1 w-24">
+                                <input
+                                  type="number"
+                                  value={editMarksValue}
+                                  onChange={(e) => setEditMarksValue(e.target.value)}
+                                  className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-blue-500 text-center"
+                                  autoFocus
+                                />
+                                <span className="text-slate-400">/{result.totalMarks}</span>
+                              </div>
+                            ) : (
+                              <span>{result.marksObtained} / {result.totalMarks}</span>
+                            )}
                           </td>
-                          <td className="py-3">
+                          <td className="py-3 px-4 text-right">
                             {loginRole === 'superadmin' && (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteResult(result.id)}
-                                className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100"
-                              >
-                                <Trash2 size={14} />
-                                Delete
-                              </button>
+                              editResultId === result.id ? (
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateResult(result.id)}
+                                    className="rounded bg-green-500 px-3 py-1 text-xs font-bold text-white hover:bg-green-600"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => { setEditResultId(null); setEditMarksValue(''); }}
+                                    className="rounded bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700 hover:bg-slate-300"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownloadPastTestPDF(result)}
+                                    title="Download Test PDF"
+                                    className="inline-flex items-center gap-1 rounded border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 hover:bg-green-100"
+                                  >
+                                    <Download size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => { setEditResultId(result.id); setEditMarksValue(result.marksObtained.toString()); }}
+                                    className="rounded border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-100"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteResult(result.id)}
+                                    className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              )
                             )}
                           </td>
                         </tr>
@@ -1139,6 +1415,11 @@ export default function AdminResultsPage() {
           {/* ── FEES TAB ── super admin only */}
           {activeTab === 'fees' && loginRole === 'superadmin' && (
           <div><FeeManagement /></div>
+          )}
+
+          {/* ── HOMEWORK TAB ── super admin only */}
+          {activeTab === 'homework' && loginRole === 'superadmin' && (
+          <div><HomeworkManagement /></div>
           )}
 
           {/* ── SETTINGS TAB ── super admin only */}
@@ -1470,8 +1751,8 @@ export default function AdminResultsPage() {
 
         </div> {/* end tab content */}
 
-        {/* ── BOTTOM NAVIGATION BAR — fixed to screen bottom ── */}
-        <div style={{
+        {/* ── BOTTOM NAVIGATION BAR — fixed to screen bottom (Mobile Only) ── */}
+        <nav className="md:hidden" style={{
           position: 'fixed',
           bottom: 0,
           left: 0,
@@ -1499,6 +1780,11 @@ export default function AdminResultsPage() {
                 <IndianRupee size={20} strokeWidth={activeTab === 'fees' ? 2.5 : 1.8} />
                 <span className="text-[9px] font-bold uppercase tracking-wide">Fees</span>
               </button>
+              <button onClick={() => setActiveTab('homework')}
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'homework' ? 'border-cyan-600 text-cyan-600' : 'border-transparent text-slate-400'}`}>
+                <BookOpen size={20} strokeWidth={activeTab === 'homework' ? 2.5 : 1.8} />
+                <span className="text-[9px] font-bold uppercase tracking-wide">Homework</span>
+              </button>
               <button onClick={() => setActiveTab('notices')}
                 className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'notices' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400'}`}>
                 <Bell size={20} strokeWidth={activeTab === 'notices' ? 2.5 : 1.8} />
@@ -1511,8 +1797,9 @@ export default function AdminResultsPage() {
               </button>
             </>)}
           </div>
-        </div>
+        </nav>
 
+        </main>
       </div>
       )}
     </div>

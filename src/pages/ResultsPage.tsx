@@ -9,6 +9,7 @@ import {
   loadResultsPortalData,
   type ResultsPortalData,
 } from '../lib/resultsPortal';
+import { getStudentsWithHomework, type StudentWithHomework } from '../lib/homeworkPortal';
 
 /** Normalize className string to '9th' | '10th' | 'other' */
 function normalizeClass(className?: string | null): '9th' | '10th' | 'other' {
@@ -24,6 +25,7 @@ export default function ResultsPage() {
   const [query, setQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState<'9th' | '10th'>('10th');
   const [selectedStudentForChart, setSelectedStudentForChart] = useState<{name: string, data: any[]} | null>(null);
+  const [homeworkData, setHomeworkData] = useState<StudentWithHomework[]>([]);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,6 +43,18 @@ export default function ResultsPage() {
       }, 50);
     }
   }, [data, selectedClass]);
+
+  // Fetch homework data whenever class or month changes
+  useEffect(() => {
+    // Build the month label for the current month to fetch homework
+    const now = new Date();
+    const currentMonth = now.toLocaleString('default', { month: 'long' }) + ' ' + now.getFullYear();
+    getStudentsWithHomework(currentMonth).then(all => {
+      // Filter by selected class
+      const filtered = all.filter(s => normalizeClass(s.className) === selectedClass);
+      setHomeworkData(filtered);
+    }).catch(console.error);
+  }, [selectedClass]);
 
   // Filter students and results to only the selected class
   const classFilteredData = useMemo(() => ({
@@ -336,6 +350,92 @@ export default function ResultsPage() {
               </div>
             )}
           </div>
+
+          {/* ── HOMEWORK PROGRESS SECTION ── */}
+          {homeworkData.some(s => s.homework) && (() => {
+            const hwStudents = homeworkData.filter(s => s.homework !== null);
+            const target = hwStudents[0]?.homework?.targetPages ?? 0;
+            const month = hwStudents[0]?.homework?.month ?? '';
+            return (
+              <div className="mt-14 rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-5 sm:p-7 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0f2a5c]/10 shrink-0">
+                      <BookOpen className="text-[#0f2a5c]" size={20} />
+                    </div>
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-bold text-[#0f2a5c]">Homework Progress</h2>
+                      <p className="text-xs text-slate-500">{month} · Class {selectedClass} · Target: {target} pages</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 text-[11px] font-semibold">
+                    <span className="flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full">
+                      <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" /> ≥80% Great
+                    </span>
+                    <span className="flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">
+                      <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" /> 50-79% Good
+                    </span>
+                    <span className="flex items-center gap-1.5 bg-red-50 text-red-600 border border-red-200 px-2.5 py-1 rounded-full">
+                      <span className="h-2 w-2 rounded-full bg-red-400 shrink-0" /> &lt;50% Behind
+                    </span>
+                  </div>
+                </div>
+
+                <div className="max-h-[440px] overflow-y-auto rounded-xl border border-slate-100 bg-white">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10">
+                      <tr>
+                        <th className="py-2.5 px-4 text-left font-semibold text-slate-600 w-8">#</th>
+                        <th className="py-2.5 px-4 text-left font-semibold text-slate-600">Student</th>
+                        <th className="py-2.5 px-4 text-center font-semibold text-slate-600 w-24">Pages</th>
+                        <th className="py-2.5 px-4 text-left font-semibold text-slate-600 hidden sm:table-cell">Progress</th>
+                        <th className="py-2.5 px-4 text-center font-semibold text-slate-600 w-16">%</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {hwStudents
+                        .sort((a, b) => (b.homework!.completedPages / b.homework!.targetPages) - (a.homework!.completedPages / a.homework!.targetPages))
+                        .map((student, idx) => {
+                          const hw = student.homework!;
+                          const pct = Math.min(100, Math.round((hw.completedPages / hw.targetPages) * 100));
+                          const isGood = pct >= 80;
+                          const isMid = pct >= 50 && pct < 80;
+                          const barColor = isGood ? 'bg-green-500' : isMid ? 'bg-amber-400' : 'bg-red-400';
+                          const pctColor = isGood ? 'text-green-700 bg-green-50' : isMid ? 'text-amber-700 bg-amber-50' : 'text-red-600 bg-red-50';
+                          return (
+                            <tr key={student.id} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="py-2.5 px-4 text-slate-400 font-medium text-xs">{idx + 1}</td>
+                              <td className="py-2.5 px-4">
+                                <div className="flex items-center gap-2">
+                                  <img
+                                    src={student.image || '/sunrise-logo.png'}
+                                    onError={e => (e.currentTarget.src = '/sunrise-logo.png')}
+                                    className="h-7 w-7 rounded-full object-cover border border-slate-200 shrink-0"
+                                    alt={student.name}
+                                  />
+                                  <span className="font-semibold text-[#0f2a5c] text-sm truncate max-w-[120px] sm:max-w-none">{student.name}</span>
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-4 text-center text-slate-600 font-medium text-xs">
+                                {hw.completedPages}<span className="text-slate-400">/{hw.targetPages}</span>
+                              </td>
+                              <td className="py-2.5 px-4 hidden sm:table-cell">
+                                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                  <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-4 text-center">
+                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${pctColor}`}>{pct}%</span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </section>
 

@@ -126,6 +126,14 @@ export async function deleteTestResultFromDB(id: string) {
   if (error) throw error;
 }
 
+export async function updateTestResultInDB(id: string, marksObtained: number) {
+  const { error } = await supabase
+    .from('test_results')
+    .update({ marks_obtained: marksObtained })
+    .eq('id', id);
+  if (error) throw error;
+}
+
 /**
  * BATCH: Graduate Class 10
  * - Deletes all test results for Class 10 students

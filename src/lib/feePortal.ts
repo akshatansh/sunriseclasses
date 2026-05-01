@@ -12,7 +12,8 @@ export interface FeePaymentRecord {
 }
 
 export interface StudentFeeStatus extends StudentRecord {
-  parent_phone?: string | null;
+  fatherName?: string | null;
+  parentPhone?: string | null;
   feePaid: boolean;
   paymentAmount?: number;
   totalFee?: number;
