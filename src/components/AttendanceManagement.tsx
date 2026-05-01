@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Calendar, Save, CheckCircle, XCircle } from 'lucide-react';
-import { getAttendanceByDate, upsertAttendanceRecords, type AttendanceRecord } from '../lib/attendancePortal';
+import { Calendar, Save, CheckCircle, XCircle, Download, Coffee } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { getAttendanceByDate, upsertAttendanceRecords, getMonthlyAttendanceStats } from '../lib/attendancePortal';
 
 interface AttendanceManagementProps {
   students: any[];
@@ -17,20 +19,21 @@ function normalizeClass(className?: string | null): '9th' | '10th' | 'other' {
 export default function AttendanceManagement({ students }: AttendanceManagementProps) {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedClass, setSelectedClass] = useState<'9th' | '10th'>('10th');
-  const [attendanceState, setAttendanceState] = useState<Record<string, 'present' | 'absent'>>({});
+  const [attendanceState, setAttendanceState] = useState<Record<string, 'present' | 'absent' | 'holiday'>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [message, setMessage] = useState('');
 
   // Fetch attendance for the selected date
   useEffect(() => {
     const fetchAttendance = async () => {
       const records = await getAttendanceByDate(selectedDate);
-      const newState: Record<string, 'present' | 'absent'> = {};
+      const newState: Record<string, 'present' | 'absent' | 'holiday'> = {};
       
       // Default all to present, then override with existing records if any
       students.forEach(s => {
         if (normalizeClass(s.className) === selectedClass) {
-          newState[s.id] = records[s.id] ? records[s.id].status : 'present';
+          newState[s.id] = records[s.id] ? (records[s.id].status as any) : 'present';
         }
       });
       setAttendanceState(newState);
@@ -43,13 +46,17 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
                                    .sort((a, b) => a.name.localeCompare(b.name));
 
   const toggleStatus = (studentId: string) => {
-    setAttendanceState(prev => ({
-      ...prev,
-      [studentId]: prev[studentId] === 'present' ? 'absent' : 'present'
-    }));
+    setAttendanceState(prev => {
+      const current = prev[studentId];
+      let next: 'present' | 'absent' | 'holiday' = 'present';
+      if (current === 'present') next = 'absent';
+      else if (current === 'absent') next = 'holiday';
+      else next = 'present';
+      return { ...prev, [studentId]: next };
+    });
   };
 
-  const markAll = (status: 'present' | 'absent') => {
+  const markAll = (status: 'present' | 'absent' | 'holiday') => {
     const newState = { ...attendanceState };
     filteredStudents.forEach(s => {
       newState[s.id] = status;
@@ -76,6 +83,108 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
     }
   };
 
+  const handleDownloadOfflineRecord = async () => {
+    setIsDownloading(true);
+    try {
+      const d = new Date(selectedDate);
+      const monthStr = (d.getMonth() + 1).toString();
+      const yearStr = d.getFullYear();
+      const daysInMonth = new Date(yearStr, d.getMonth() + 1, 0).getDate();
+      
+      const stats = await getMonthlyAttendanceStats(monthStr, yearStr.toString());
+      
+      const holidayDays = new Set<number>();
+      Object.values(stats).forEach(s => {
+        s.history.forEach(h => {
+          if (h.status === 'holiday') {
+            const dateNum = new Date(h.date).getDate();
+            holidayDays.add(dateNum);
+          }
+        });
+      });
+
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const monthName = d.toLocaleString('default', { month: 'long' });
+      
+      const { drawPDFHeader, drawPDFFooter } = await import('../lib/pdfUtils');
+      const startY = await drawPDFHeader(
+        doc,
+        `Monthly Attendance Sheet - ${selectedClass}`,
+        `Month: ${monthName} ${yearStr}`
+      );
+      
+      const headRow = ['Name', ...Array.from({ length: daysInMonth }, (_, i) => String(i + 1)), 'Total', '%'];
+      
+      const tableData = filteredStudents.map((s) => {
+        const studentStat = stats[s.id] || { present: 0, total: 0, percentage: 0, history: [] };
+        
+        const dayStatusMap: Record<number, string> = {};
+        studentStat.history.forEach(h => {
+           const dayNum = new Date(h.date).getDate();
+           dayStatusMap[dayNum] = h.status;
+        });
+
+        const rowData: string[] = [s.name];
+        
+        for (let i = 1; i <= daysInMonth; i++) {
+           const st = dayStatusMap[i];
+           if (holidayDays.has(i)) {
+             rowData.push('H');
+           } else if (st === 'present') {
+             rowData.push('P');
+           } else if (st === 'absent') {
+             rowData.push('A');
+           } else {
+             rowData.push('');
+           }
+        }
+        
+        rowData.push(`${studentStat.present}/${studentStat.total}`);
+        rowData.push(`${studentStat.percentage}%`);
+        return rowData;
+      });
+
+      autoTable(doc, {
+        startY: startY + 5,
+        theme: 'grid',
+        head: [headRow],
+        body: tableData,
+        headStyles: { fillColor: [15, 42, 92], textColor: 255, fontSize: 8, halign: 'center', lineWidth: 0.2, lineColor: [200, 200, 200] },
+        styles: { fontSize: 8, cellPadding: 1.5, halign: 'center', lineWidth: 0.2, lineColor: [200, 200, 200] },
+        columnStyles: { 0: { halign: 'left', cellWidth: 35 } },
+        didParseCell: (data) => {
+          if (data.section === 'body') {
+            const colIndex = data.column.index;
+            if (colIndex > 0 && colIndex <= daysInMonth) {
+               if (holidayDays.has(colIndex)) {
+                 data.cell.styles.fillColor = [255, 235, 150]; // Yellow for holiday
+                 data.cell.styles.textColor = [160, 120, 0];
+                 data.cell.styles.fontStyle = 'bold';
+               } else if (data.cell.raw === 'P') {
+                 data.cell.styles.textColor = [21, 128, 61]; // Green
+               } else if (data.cell.raw === 'A') {
+                 data.cell.styles.textColor = [220, 38, 38]; // Red
+                 data.cell.styles.fontStyle = 'bold';
+               }
+            } else if (colIndex > daysInMonth) {
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+        }
+      });
+
+      drawPDFFooter(doc);
+
+      doc.save(`Attendance_Grid_${selectedClass}_${monthName}_${yearStr}.pdf`);
+      setMessage(`Downloaded Grid PDF for ${monthName} ${yearStr}`);
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      console.error(err);
+      alert('Error downloading report');
+    }
+    setIsDownloading(false);
+  };
+
   return (
     <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -84,10 +193,10 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
             <Calendar className="text-[#f5a623]" size={24} />
             Daily Attendance
           </h2>
-          <p className="text-sm text-slate-500 mt-1">Mark student attendance for the selected date</p>
+          <p className="text-sm text-slate-500 mt-1">Mark student attendance or holiday for the selected date</p>
         </div>
         
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3 items-center">
           <input 
             type="date" 
             value={selectedDate}
@@ -95,6 +204,15 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
             max={new Date().toISOString().split('T')[0]}
             className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-[#0f2a5c] font-semibold outline-none focus:border-[#0f2a5c]"
           />
+          <button
+            onClick={handleDownloadOfflineRecord}
+            disabled={isDownloading}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-all disabled:opacity-50"
+            title="Download Monthly Report for Offline Record"
+          >
+            <Download size={16} />
+            {isDownloading ? '...' : 'Offline Sheet'}
+          </button>
         </div>
       </div>
 
@@ -129,32 +247,40 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
         </div>
       ) : (
         <>
-          <div className="flex justify-end gap-2 mb-4">
+          <div className="flex flex-wrap justify-end gap-2 mb-4">
             <button 
               onClick={() => markAll('present')}
               className="text-xs font-semibold text-green-600 bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors"
             >
-              Mark All Present
+              All Present
             </button>
             <button 
               onClick={() => markAll('absent')}
               className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors"
             >
-              Mark All Absent
+              All Absent
+            </button>
+            <button 
+              onClick={() => markAll('holiday')}
+              className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors flex items-center gap-1"
+            >
+              <Coffee size={14} /> Holiday
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredStudents.map(student => {
-              const isPresent = attendanceState[student.id] !== 'absent';
+              const status = attendanceState[student.id] || 'present';
               return (
                 <div 
                   key={student.id}
                   onClick={() => toggleStatus(student.id)}
                   className={`cursor-pointer rounded-xl border p-4 flex items-center justify-between transition-all ${
-                    isPresent 
+                    status === 'present' 
                       ? 'border-green-200 bg-green-50/50 hover:bg-green-50' 
-                      : 'border-red-200 bg-red-50 hover:bg-red-100'
+                      : status === 'absent' 
+                        ? 'border-red-200 bg-red-50 hover:bg-red-100'
+                        : 'border-amber-200 bg-amber-50 hover:bg-amber-100'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -165,7 +291,7 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
                       onError={e => (e.currentTarget.src = '/sunrise-logo.png')}
                     />
                     <div>
-                      <p className={`font-bold text-sm ${isPresent ? 'text-slate-800' : 'text-slate-500'}`}>
+                      <p className={`font-bold text-sm ${status === 'present' ? 'text-slate-800' : 'text-slate-500'}`}>
                         {student.name}
                       </p>
                       <p className="text-xs text-slate-500">{student.className}</p>
@@ -173,10 +299,12 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
                   </div>
                   
                   <div>
-                    {isPresent ? (
+                    {status === 'present' ? (
                       <CheckCircle className="text-green-500" size={24} />
-                    ) : (
+                    ) : status === 'absent' ? (
                       <XCircle className="text-red-500" size={24} />
+                    ) : (
+                      <Coffee className="text-amber-500" size={24} />
                     )}
                   </div>
                 </div>

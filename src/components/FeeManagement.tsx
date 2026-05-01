@@ -144,6 +144,48 @@ const FeeManagement = () => {
     doc.save(`Receipt_${student.name}_${month}.pdf`);
   };
 
+  const handleDownloadReport = async () => {
+    if (students.length === 0) {
+      alert('No students to generate report');
+      return;
+    }
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+    const startY = await drawPDFHeader(doc, `Monthly Fee Report - ${month}`);
+    
+    const tableData = students.map((s, i) => [
+      i + 1,
+      s.name,
+      s.className,
+      s.parentPhone || 'N/A',
+      `Rs. ${s.previousDues || 0}`,
+      `Rs. ${s.totalFee || 0}`,
+      `Rs. ${s.paymentAmount || 0}`,
+      `Rs. ${s.dueAmount || 0}`,
+      s.feePaid ? 'PAID' : s.isPartial ? 'PARTIAL' : 'PENDING'
+    ]);
+
+    autoTable(doc, {
+      startY: startY + 5,
+      head: [['S.No', 'Student Name', 'Class', 'Phone', 'Prev. Dues', 'Total Payable', 'Paid', 'Total Due', 'Status']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 42, 92], textColor: 255, fontSize: 9 },
+      styles: { fontSize: 8, cellPadding: 2 },
+      alternateRowStyles: { fillColor: [248, 251, 255] },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 8) {
+          if (data.cell.raw === 'PAID') data.cell.styles.textColor = [21, 128, 61];
+          else if (data.cell.raw === 'PARTIAL') data.cell.styles.textColor = [234, 88, 12];
+          else data.cell.styles.textColor = [220, 38, 38];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    });
+
+    drawPDFFooter(doc);
+    doc.save(`Fee_Report_${month.replace(' ', '_')}.pdf`);
+  };
+
   const displayed = students.filter(s => {
     const matchSearch = (s.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     if (filter === 'pending') return matchSearch && !s.feePaid && !s.isPartial;
@@ -160,15 +202,24 @@ const FeeManagement = () => {
   return (
     <div>
       {/* ── Month selector ── */}
-      <div className="relative mb-4">
-        <select
-          value={month}
-          onChange={e => setMonth(e.target.value)}
-          className="w-full appearance-none bg-[#0f2a5c] text-white font-bold text-base px-4 py-3 rounded-2xl outline-none pr-10 shadow"
+      <div className="flex gap-2 mb-4">
+        <div className="relative flex-1">
+          <select
+            value={month}
+            onChange={e => setMonth(e.target.value)}
+            className="w-full appearance-none bg-[#0f2a5c] text-white font-bold text-base px-4 py-3 rounded-2xl outline-none pr-10 shadow"
+          >
+            {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none" size={20} />
+        </div>
+        <button
+          onClick={handleDownloadReport}
+          className="bg-blue-50 border border-blue-200 text-blue-700 font-bold px-4 py-3 rounded-2xl flex items-center justify-center gap-2 text-sm whitespace-nowrap active:opacity-80 transition-colors hover:bg-blue-100"
         >
-          {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none" size={20} />
+          <FileText size={18} />
+          Report
+        </button>
       </div>
 
       {/* ── Stats Cards ── */}
@@ -239,19 +290,26 @@ const FeeManagement = () => {
                     </div>
                   </div>
                 </div>
-                {student.feePaid ? (
-                  <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
-                    <CheckCircle size={11} /> ₹{student.paymentAmount}
-                  </span>
-                ) : student.isPartial ? (
-                  <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
-                    Partial: ₹{student.paymentAmount}
-                  </span>
-                ) : (
-                  <span className="bg-red-50 text-red-600 border border-red-200 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
-                    Pending
-                  </span>
-                )}
+                <div className="flex flex-col items-end gap-1">
+                  {student.feePaid ? (
+                    <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
+                      <CheckCircle size={11} /> ₹{student.paymentAmount}
+                    </span>
+                  ) : student.isPartial ? (
+                    <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
+                      Partial: ₹{student.paymentAmount}
+                    </span>
+                  ) : (
+                    <span className="bg-red-50 text-red-600 border border-red-200 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
+                      Pending
+                    </span>
+                  )}
+                  {(student.previousDues || 0) > 0 && (
+                    <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
+                      Prev Due: ₹{student.previousDues}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Phone row */}

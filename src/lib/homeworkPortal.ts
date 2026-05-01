@@ -14,22 +14,27 @@ export interface StudentWithHomework extends StudentRecord {
   homework: HomeworkRecord | null;
 }
 
+const MONTHS_ORDER = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function monthLabelToSortKey(label: string): number {
+  const parts = (label || '').trim().split(' ');
+  const mIdx = MONTHS_ORDER.findIndex(m => m.toLowerCase() === (parts[0] || '').toLowerCase());
+  const yr = parseInt(parts[1] || '0', 10);
+  return isNaN(yr) || mIdx === -1 ? 0 : yr * 12 + mIdx;
+}
+
 export const getAvailableHomeworkMonths = async (): Promise<string[]> => {
   try {
     const { data, error } = await supabase.from('homework_records').select('month');
     if (error) throw error;
-    
-    // Extract unique months
     const months = new Set(data.map(r => r.month));
-    // Sort months chronologically (oldest first: April, May, etc.)
-    return Array.from(months).sort((a, b) => {
-      return new Date("1 " + a).getTime() - new Date("1 " + b).getTime();
-    });
+    return Array.from(months).sort((a, b) => monthLabelToSortKey(a) - monthLabelToSortKey(b));
   } catch (error) {
     console.error('Error fetching available homework months:', error);
     return [];
   }
 };
+
 
 export const getStudentsWithHomework = async (month: string): Promise<StudentWithHomework[]> => {
   try {

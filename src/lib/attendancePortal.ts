@@ -5,12 +5,12 @@ export interface AttendanceRecord {
   id: string;
   studentId: string;
   date: string; // YYYY-MM-DD
-  status: 'present' | 'absent';
+  status: 'present' | 'absent' | 'holiday';
   createdAt: string;
 }
 
 export interface StudentWithAttendance extends StudentRecord {
-  attendanceStatus?: 'present' | 'absent';
+  attendanceStatus?: 'present' | 'absent' | 'holiday';
   attendanceRecordId?: string;
 }
 
@@ -83,17 +83,23 @@ export const getMonthlyAttendanceStats = async (month: string, year: number): Pr
       if (!stats[row.student_id]) {
         stats[row.student_id] = { total: 0, present: 0, history: [] };
       }
-      stats[row.student_id].total += 1;
-      if (row.status === 'present') {
-        stats[row.student_id].present += 1;
+      
+      // Do not count holidays in total attendance calculation
+      if (row.status !== 'holiday') {
+        stats[row.student_id].total += 1;
+        if (row.status === 'present') {
+          stats[row.student_id].present += 1;
+        }
       }
       stats[row.student_id].history.push({ date: row.date, status: row.status });
     });
 
-    const result: Record<string, { percentage: number, history: {date: string, status: string}[] }> = {};
+    const result: Record<string, { percentage: number, present: number, total: number, history: {date: string, status: string}[] }> = {};
     for (const [studentId, stat] of Object.entries(stats)) {
       result[studentId] = {
         percentage: stat.total > 0 ? Math.round((stat.present / stat.total) * 100) : 0,
+        present: stat.present,
+        total: stat.total,
         history: stat.history
       };
     }
