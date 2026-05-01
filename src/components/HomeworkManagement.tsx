@@ -110,20 +110,27 @@ export default function HomeworkManagement() {
   };
 
   const handleDownloadReport = async () => {
-    const withHomework = students
-      .filter(s => normalizeClass(s.className) === selectedClass && s.homework)
-      .sort((a, b) => (b.homework!.completedPages / b.homework!.targetPages) - (a.homework!.completedPages / a.homework!.targetPages));
+    const classStudents = students.filter(s => normalizeClass(s.className) === selectedClass);
+    const hasAnyHomework = classStudents.some(s => s.homework);
 
-    if (withHomework.length === 0) {
+    if (!hasAnyHomework) {
       alert('No homework data available for this month and class.');
       return;
     }
 
-    const target = withHomework[0]?.homework?.targetPages ?? 0;
+    const firstHw = classStudents.find(s => s.homework)?.homework;
+    const target = firstHw?.targetPages ?? 0;
+
+    const sortedStudents = [...classStudents].sort((a, b) => {
+      const pctA = target > 0 ? ((a.homework?.completedPages ?? 0) / target) : 0;
+      const pctB = target > 0 ? ((b.homework?.completedPages ?? 0) / target) : 0;
+      return pctB - pctA;
+    });
+
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
-    const description = `Monthly Homework Report — ${selectedClass}  |  ${selectedMonth}  |  Target: ${target} pages  |  Students: ${withHomework.length}  |  Generated: ${dateStr}`;
+    const description = `Monthly Homework Report — ${selectedClass}  |  ${selectedMonth}  |  Target: ${target} pages  |  Students: ${sortedStudents.length}  |  Generated: ${dateStr}`;
     let startY = await drawPDFHeader(doc, `Homework Progress — ${selectedClass}`, description);
 
     // Color legend
@@ -140,11 +147,11 @@ export default function HomeworkManagement() {
     autoTable(doc, {
       startY,
       head: [['Rank', 'Student Name', 'Completed', 'Target', '% Done', 'Status']],
-      body: withHomework.map((s, idx) => {
-        const hw = s.homework!;
-        const pct = Math.min(100, Math.round((hw.completedPages / hw.targetPages) * 100));
+      body: sortedStudents.map((s, idx) => {
+        const completedPages = s.homework?.completedPages ?? 0;
+        const pct = target > 0 ? Math.min(100, Math.round((completedPages / target) * 100)) : 0;
         const status = pct >= 80 ? 'Great' : pct >= 50 ? 'Good' : 'Behind';
-        return [idx + 1, s.name, `${hw.completedPages} pages`, `${hw.targetPages} pages`, `${pct}%`, status];
+        return [idx + 1, s.name, `${completedPages} pages`, `${target} pages`, `${pct}%`, status];
       }),
       headStyles: { fillColor: [15, 42, 92], textColor: [245, 166, 35], fontStyle: 'bold', fontSize: 9, halign: 'center' },
       bodyStyles: { fontSize: 9, textColor: [30, 30, 30] },

@@ -353,9 +353,9 @@ export default function ResultsPage() {
 
           {/* ── HOMEWORK PROGRESS SECTION ── */}
           {homeworkData.some(s => s.homework) && (() => {
-            const hwStudents = homeworkData.filter(s => s.homework !== null);
-            const target = hwStudents[0]?.homework?.targetPages ?? 0;
-            const month = hwStudents[0]?.homework?.month ?? '';
+            const firstHw = homeworkData.find(s => s.homework)?.homework;
+            const target = firstHw?.targetPages ?? 0;
+            const month = firstHw?.month ?? '';
             return (
               <div className="mt-14 rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-5 sm:p-7 shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
@@ -393,11 +393,15 @@ export default function ResultsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {hwStudents
-                        .sort((a, b) => (b.homework!.completedPages / b.homework!.targetPages) - (a.homework!.completedPages / a.homework!.targetPages))
+                      {homeworkData
+                        .sort((a, b) => {
+                          const pctA = target > 0 ? ((a.homework?.completedPages ?? 0) / target) : 0;
+                          const pctB = target > 0 ? ((b.homework?.completedPages ?? 0) / target) : 0;
+                          return pctB - pctA;
+                        })
                         .map((student, idx) => {
-                          const hw = student.homework!;
-                          const pct = Math.min(100, Math.round((hw.completedPages / hw.targetPages) * 100));
+                          const completedPages = student.homework?.completedPages ?? 0;
+                          const pct = target > 0 ? Math.min(100, Math.round((completedPages / target) * 100)) : 0;
                           const isGood = pct >= 80;
                           const isMid = pct >= 50 && pct < 80;
                           const barColor = isGood ? 'bg-green-500' : isMid ? 'bg-amber-400' : 'bg-red-400';
@@ -417,7 +421,7 @@ export default function ResultsPage() {
                                 </div>
                               </td>
                               <td className="py-2.5 px-4 text-center text-slate-600 font-medium text-xs">
-                                {hw.completedPages}<span className="text-slate-400">/{hw.targetPages}</span>
+                                {completedPages}<span className="text-slate-400">/{target}</span>
                               </td>
                               <td className="py-2.5 px-4 hidden sm:table-cell">
                                 <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
