@@ -20,7 +20,7 @@ export default function Courses() {
           <div className="flex justify-center mb-3 sm:mb-4">
             <img
               src="/sunrise-logo.png"
-              alt=""
+              alt="Sunrise Classes Logo"
               className="h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 object-contain drop-shadow-md"
             />
           </div>

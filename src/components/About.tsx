@@ -40,7 +40,7 @@ export default function About() {
           <div className="flex justify-center mb-3 sm:mb-4">
             <img
               src="/sunrise-logo.png"
-              alt=""
+              alt="Sunrise Classes Logo"
               className="h-12 w-12 sm:h-16 sm:w-16 lg:h-20 lg:w-20 object-contain drop-shadow-md"
             />
           </div>

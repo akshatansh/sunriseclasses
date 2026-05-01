@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sunriseclasses.vercel.app/sitemap.xml

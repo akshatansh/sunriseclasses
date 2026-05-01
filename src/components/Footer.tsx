@@ -33,7 +33,7 @@ export default function Footer() {
               <div className="flex items-center gap-3 mb-4">
                 <img
                   src="/sunrise-logo.png"
-                  alt="Logo"
+                  alt="Sunrise Classes Logo"
                   width={56}
                   height={56}
                   className="w-14 h-14 rounded-xl object-contain bg-white border-2 border-[#f5a623] shadow-sm"

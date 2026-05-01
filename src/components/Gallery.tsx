@@ -28,7 +28,7 @@ export default function Gallery({ previewCount, showViewAll = false }: GalleryPr
           <div className="flex justify-center mb-3 sm:mb-4">
             <img
               src="/sunrise-logo.png"
-              alt=""
+              alt="Sunrise Classes Logo"
               className="h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 object-contain drop-shadow-md"
             />
           </div>
@@ -78,7 +78,7 @@ export default function Gallery({ previewCount, showViewAll = false }: GalleryPr
             >
               <img
                 src={src}
-                alt={`Gallery image ${index + 1}`}
+                alt={`Sunrise Classes Champanagar Purnia - Classroom Photo ${index + 1}`}
                 className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
                 onError={(e) => {
                   e.currentTarget.src = '/sunrise-logo.png'; // Fallback to logo if image fails
@@ -110,7 +110,7 @@ export default function Gallery({ previewCount, showViewAll = false }: GalleryPr
         {selectedImage && (
           <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSelectedImage(null)}>
             <div className="relative max-w-4xl max-h-full">
-              <img src={selectedImage} alt="Gallery" className="max-w-full max-h-full object-contain" />
+              <img src={selectedImage} alt="Sunrise Classes Event Preview" className="max-w-full max-h-full object-contain" />
               <button
                 className="absolute top-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
                 onClick={(e) => {
