@@ -200,16 +200,24 @@ export default function AdminResultsPage() {
   };
 
 
+  const formatName = (name: string) => {
+    return name
+      .trim()
+      .split(/\s+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentForm.name.trim() || !studentForm.className.trim()) return;
 
     try {
       await addStudentToDB({
-        name: studentForm.name.trim(),
+        name: formatName(studentForm.name),
         className: studentForm.className.trim(),
         image: studentForm.image.trim() || '/sunrise-logo.png',
-        fatherName: studentForm.fatherName.trim() || null,
+        fatherName: studentForm.fatherName.trim() ? formatName(studentForm.fatherName) : null,
         parentPhone: studentForm.parentPhone.trim() || null,
       });
 
