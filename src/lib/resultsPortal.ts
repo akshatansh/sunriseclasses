@@ -5,6 +5,8 @@ export interface StudentRecord {
   name: string;
   className: string;
   image: string;
+  fatherName?: string;
+  parentPhone?: string;
   createdAt: string;
 }
 
@@ -57,6 +59,8 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
       name: s.name,
       className: s.class_name,
       image: s.image,
+      fatherName: s.father_name,
+      parentPhone: s.parent_phone,
       createdAt: s.created_at
     }));
 
@@ -90,6 +94,8 @@ export async function addStudentToDB(student: Omit<StudentRecord, 'id' | 'create
     name: student.name,
     class_name: student.className,
     image: student.image,
+    father_name: student.fatherName,
+    parent_phone: student.parentPhone,
   }).select().single();
   
   if (error) throw error;

@@ -116,6 +116,8 @@ const FeeManagement = () => {
       head: [['Description', 'Details']],
       body: [
         ['Student Name', student.name],
+        ...(student.fatherName ? [['Father\'s Name', student.fatherName]] : []),
+        ...(student.parentPhone ? [['Mobile No.', student.parentPhone]] : []),
         ['Class', student.className],
         ['Fee Month', month],
         ['Total Monthly Fee', `Rs. ${student.totalFee}`],
@@ -220,7 +222,10 @@ const FeeManagement = () => {
                   />
                   <div>
                     <p className="font-bold text-[#0f2a5c] text-sm">{student.name}</p>
-                    <p className="text-xs text-slate-500">{student.className}</p>
+                    <div className="flex flex-col text-[11px] text-slate-500 mt-0.5 leading-tight">
+                      <span>{student.className}</span>
+                      {student.fatherName && <span>S/O {student.fatherName}</span>}
+                    </div>
                   </div>
                 </div>
                 {student.feePaid ? (

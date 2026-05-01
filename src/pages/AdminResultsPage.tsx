@@ -36,6 +36,8 @@ const emptyStudentForm = {
   name: '',
   className: '',
   image: '',
+  fatherName: '',
+  parentPhone: '',
 };
 
 const emptyTestDetails = {
@@ -787,6 +789,29 @@ export default function AdminResultsPage() {
                     {(loginClassAccess === 'all' || loginClassAccess === '10th') && <option value="Class 10">Class 10</option>}
                   </select>
                 </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">Father's Name (Optional)</label>
+                    <input
+                      value={studentForm.fatherName}
+                      onChange={(e) => setStudentForm((prev) => ({ ...prev, fatherName: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
+                      placeholder="Father's Name"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-600">Mobile No. (Optional)</label>
+                    <input
+                      value={studentForm.parentPhone}
+                      onChange={(e) => setStudentForm((prev) => ({ ...prev, parentPhone: e.target.value.replace(/\D/g, '') }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
+                      placeholder="10-digit number"
+                      maxLength={10}
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-slate-600">Student Photo (Optional)</label>
                   <input
@@ -1019,7 +1044,16 @@ export default function AdminResultsPage() {
                         />
                         <div>
                           <p className="font-semibold text-[#0f2a5c]">{student.name}</p>
-                          <p className="text-xs text-slate-500">{student.className}</p>
+                          <div className="flex flex-col text-xs text-slate-500 mt-0.5 space-y-0.5">
+                            <span>{student.className}</span>
+                            {(student.fatherName || student.parentPhone) && (
+                              <span className="flex items-center gap-1.5 mt-0.5">
+                                {student.fatherName && <span className="text-slate-600">S/O {student.fatherName}</span>}
+                                {student.fatherName && student.parentPhone && <span>•</span>}
+                                {student.parentPhone && <span className="flex items-center gap-0.5 text-blue-600"><Phone size={10} /> {student.parentPhone}</span>}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       {loginRole === 'superadmin' && (
