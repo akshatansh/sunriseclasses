@@ -136,20 +136,20 @@ const successStories = [
   },
   // 2022
   {
-    name: 'Riya Chakraborty',
+    name: 'Sania',
     class: 'Class 10',
-    score: '470/500',
+    score: '452/500',
     year: '2022',
-    photo: '/gallery/20260415_174519.jpg',
-    story: 'Sunrise Classes provided exactly what I needed to excel in my board exams.',
+    photo: '/gallery/Untitled design (31).jpg',
+    story: 'Hello, main Sania hoon. Maine 10th class mein S.P. Sir se tuition li thi aur apna experience share karna chahti hoon.\n\nExam se sirf 3 mahine pehle maine coaching join ki thi, aur itne kam samay mein hi Sir ne mujhe bahut achhi guidance di. Unhone syllabus ko chhote parts mein samjhaya, pehle concept clear kiya, fir practice aur daily tests se meri preparation strong ho gayi.\n\nMere weak topics bhi strong ho gaye aur mujhme confidence aa gaya. Result mein main achhe marks se pass hui aur mere parents bhi proud feel karte hain.\n\nMain Sir ki dil se shukraguzar hoon.',
   },
   {
-    name: 'Nikhil Sharma',
+    name: 'Sakshi Kumari',
     class: 'Class 10',
     score: '465/500',
     year: '2022',
-    photo: '/gallery/20260415_174533.jpg',
-    story: 'Outstanding teaching and incredible support from the entire team!',
+    photo: '/gallery/Untitled design (32).jpg',
+    story: 'Sir aapki teaching style itni clear hai ki tough topic bhi easy lagne lagta hai.\n\nSir aap sirf padhate nhi, balki istrah se samjhate hain ki koi doubt hi nahi bachta hai. Yeh aapki sabse badi quality hai.\n\nSir aapka dedication aur patience ham students ke liye inspiration hai.\n\nSir aapki coaching padhai ke liye ak perfect environment deti hai. Sath hi sath yahan concept clarity or sabse jyda focus hota hai, yahan ka discipline aur guidance success ke liye best hai.',
   },
   {
     name: 'Ananya Gupta',
