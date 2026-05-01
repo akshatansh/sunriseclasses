@@ -13,7 +13,8 @@ const MONTHS = [
 const getDefaultFee = (className?: string | null) => {
   if (!className) return 500;
   const c = className.toLowerCase();
-  if (c.includes('10')) return 700;
+  if (c.includes('10')) return 1000;
+  if (c.includes('9')) return 500;
   return 500;
 };
 
