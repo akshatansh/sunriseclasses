@@ -21,6 +21,7 @@ import { getNotificationText, updateNotificationText } from '../lib/siteSettings
 import { getNotices, addNotice, deleteNotice, type NoticeRecord } from '../lib/noticePortal';
 import FeeManagement from '../components/FeeManagement';
 import HomeworkManagement from '../components/HomeworkManagement';
+import AttendanceManagement from '../components/AttendanceManagement';
 
 const ADMIN_SESSION_KEY = 'sunrise-admin-authenticated';
 const ADMIN_ROLE_KEY = 'sunrise-admin-role';
@@ -56,7 +57,7 @@ export default function AdminResultsPage() {
   const [testDetails, setTestDetails] = useState(emptyTestDetails);
   const [studentScores, setStudentScores] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
-  
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -75,8 +76,8 @@ export default function AdminResultsPage() {
   const [notificationText, setNotificationText] = useState('');
   const [isSavingNotification, setIsSavingNotification] = useState(false);
   const [notices, setNotices] = useState<NoticeRecord[]>([]);
-  const [newNoticeForm, setNewNoticeForm] = useState<{title: string, content: string, type: 'exam' | 'holiday' | 'general'}>({ title: '', content: '', type: 'general' });
-  const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'homework' | 'settings'>('marks');
+  const [newNoticeForm, setNewNoticeForm] = useState<{ title: string, content: string, type: 'exam' | 'holiday' | 'general' }>({ title: '', content: '', type: 'general' });
+  const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'homework' | 'attendance' | 'settings'>('marks');
 
   const fetchAdmins = async () => {
     const { data } = await supabase.from('admins').select('*').order('created_at', { ascending: false });
@@ -126,9 +127,9 @@ export default function AdminResultsPage() {
   // ── AUTO LOGOUT LOGIC (15 Minutes Inactivity) ──
   useEffect(() => {
     if (!isAuthenticated) return;
-    
+
     let timeoutId: NodeJS.Timeout;
-    
+
     const resetTimer = () => {
       clearTimeout(timeoutId);
       // Auto logout after 15 minutes (900000 ms) of inactivity
@@ -141,7 +142,7 @@ export default function AdminResultsPage() {
     // Attach activity listeners
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
     events.forEach(event => window.addEventListener(event, resetTimer));
-    
+
     // Initial start
     resetTimer();
 
@@ -231,7 +232,7 @@ export default function AdminResultsPage() {
     if (!Number.isFinite(totalMarks) || totalMarks <= 0) return;
 
     const newResults: any[] = [];
-    
+
     Object.entries(studentScores).forEach(([studentId, scoreStr]) => {
       if (scoreStr.trim() !== '') {
         const marksObtained = Number(scoreStr);
@@ -394,9 +395,9 @@ export default function AdminResultsPage() {
   const handleDownloadPastTestPDF = async (resultRecord: TestResultRecord) => {
     // Find all results that match this test's unique identifiers
     const testResults = data.results.filter(
-      r => r.testName === resultRecord.testName && 
-           r.testDate === resultRecord.testDate && 
-           r.subject === resultRecord.subject
+      r => r.testName === resultRecord.testName &&
+        r.testDate === resultRecord.testDate &&
+        r.subject === resultRecord.subject
     );
 
     if (testResults.length === 0) return;
@@ -499,7 +500,7 @@ export default function AdminResultsPage() {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        
+
         const dataUrl = canvas.toDataURL('image/webp', 0.8);
         setStudentForm((prev) => ({ ...prev, image: dataUrl }));
       };
@@ -536,7 +537,7 @@ export default function AdminResultsPage() {
     if (!editMarksValue.trim()) return;
     const newMarks = Number(editMarksValue);
     if (!Number.isFinite(newMarks) || newMarks < 0) return;
-    
+
     try {
       await updateTestResultInDB(resultId, newMarks);
       await reloadData();
@@ -659,7 +660,7 @@ export default function AdminResultsPage() {
 
     const studentIds = classStudents.map(s => s.id);
     const classResults = data.results.filter(r => studentIds.includes(r.studentId));
-    
+
     if (classResults.length === 0) {
       alert(`Class ${targetClass} ka koi test record nahi hai.`);
       return;
@@ -672,7 +673,7 @@ export default function AdminResultsPage() {
         uniqueTestsMap.set(key, { testName: r.testName, testDate: r.testDate, subject: r.subject, totalMarks: r.totalMarks });
       }
     });
-    
+
     const uniqueTests = Array.from(uniqueTestsMap.values()).sort((a, b) => new Date(a.testDate).getTime() - new Date(b.testDate).getTime());
 
     const testHeaders = uniqueTests.map(t => `${t.testName} (${new Date(t.testDate).toLocaleDateString('en-IN')}) [${t.subject}]`);
@@ -680,13 +681,13 @@ export default function AdminResultsPage() {
 
     let serial = 1;
     const escapeCSV = (str: string) => `"${str.replace(/"/g, '""')}"`;
-    
+
     const rows = classStudents.map(student => {
       const studentResults = classResults.filter(r => r.studentId === student.id);
       const totalObtained = studentResults.reduce((sum, r) => sum + r.marksObtained, 0);
       const totalPossible = studentResults.reduce((sum, r) => sum + r.totalMarks, 0);
       const pct = totalPossible > 0 ? ((totalObtained / totalPossible) * 100).toFixed(1) : '0';
-      
+
       const row = [
         serial++,
         escapeCSV(student.name),
@@ -702,10 +703,10 @@ export default function AdminResultsPage() {
           row.push('Absent');
         }
       });
-      
+
       return row.join(',');
     });
-    
+
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -761,12 +762,12 @@ export default function AdminResultsPage() {
   const handleAddNotice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNoticeForm.title.trim() || !newNoticeForm.content.trim()) return;
-    
+
     const success = await addNotice({
       ...newNoticeForm,
       date: new Date().toISOString().split('T')[0]
     });
-    
+
     if (success) {
       showMessage('✅ Notice added successfully!');
       setNewNoticeForm({ title: '', content: '', type: 'general' });
@@ -849,958 +850,955 @@ export default function AdminResultsPage() {
           </div>
         </section>
       ) : (
-      <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
-        {/* Spacer for mobile bottom nav */}
-        <style>{`@media (max-width: 767px) { .admin-content{padding-bottom:5rem} }`}</style>
-        
-        {/* DESKTOP SIDEBAR */}
-        <aside className="hidden md:flex flex-col w-64 bg-[#0f2a5c] text-white fixed top-0 bottom-0 left-0 z-50 shadow-2xl">
-          <div className="p-6 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f5a623]">
-                <ShieldCheck size={20} className="text-white" />
-              </div>
-              <div>
-                <p className="font-extrabold text-base leading-none">Admin Panel</p>
-                <p className="text-xs text-blue-200 mt-1 leading-none">
-                  {loginRole === 'superadmin' ? '⭐ Super Admin' : `📘 Class ${loginClassAccess}`}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
-            <button onClick={() => setActiveTab('marks')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'marks' ? 'bg-white/10 text-[#f5a623]' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
-              <Upload size={20} />
-              <span>Marks</span>
-            </button>
-            {loginRole === 'superadmin' && (<>
-              <button onClick={() => setActiveTab('students')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'students' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
-                <Users size={20} />
-                <span>Students</span>
-              </button>
-              <button onClick={() => setActiveTab('fees')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'fees' ? 'bg-white/10 text-green-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
-                <IndianRupee size={20} />
-                <span>Fees</span>
-              </button>
-              <button onClick={() => setActiveTab('homework')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'homework' ? 'bg-white/10 text-cyan-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
-                <BookOpen size={20} />
-                <span>Homework</span>
-              </button>
-              <button onClick={() => setActiveTab('notices')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'notices' ? 'bg-white/10 text-blue-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
-                <Bell size={20} />
-                <span>Notices</span>
-              </button>
-              <button onClick={() => setActiveTab('settings')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'settings' ? 'bg-white/10 text-orange-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
-                <Settings size={20} />
-                <span>Settings</span>
-              </button>
-            </>)}
-          </div>
-          
-          <div className="p-4 border-t border-white/10">
-            <button type="button" onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl text-sm font-bold transition-all">
-              <LogOut size={16} /> Logout
-            </button>
-          </div>
-        </aside>
+        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+          {/* Spacer for mobile bottom nav */}
+          <style>{`@media (max-width: 767px) { .admin-content{padding-bottom:5rem} }`}</style>
 
-        {/* MAIN CONTENT WRAPPER */}
-        <main className="flex-1 md:ml-64 flex flex-col min-h-screen relative">
-          {/* MOBILE HEADER (Hidden on Desktop) */}
-          <section className="md:hidden bg-[#0f2a5c] text-white shadow-xl">
-            <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f5a623]">
-                  <ShieldCheck size={18} className="text-white" />
+          {/* DESKTOP SIDEBAR */}
+          <aside className="hidden md:flex flex-col w-64 bg-[#0f2a5c] text-white fixed top-0 bottom-0 left-0 z-50 shadow-2xl">
+            <div className="p-6 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f5a623]">
+                  <ShieldCheck size={20} className="text-white" />
                 </div>
                 <div>
-                  <p className="font-extrabold text-sm leading-none">Admin Panel</p>
-                  <p className="text-[10px] text-blue-200 mt-0.5 leading-none">
+                  <p className="font-extrabold text-base leading-none">Admin Panel</p>
+                  <p className="text-xs text-blue-200 mt-1 leading-none">
                     {loginRole === 'superadmin' ? '⭐ Super Admin' : `📘 Class ${loginClassAccess}`}
                   </p>
                 </div>
               </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2">
+              <button onClick={() => setActiveTab('marks')}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'marks' ? 'bg-white/10 text-[#f5a623]' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                <Upload size={20} />
+                <span>Marks</span>
+              </button>
+              {loginRole === 'superadmin' && (<>
+                <button onClick={() => setActiveTab('students')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'students' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                  <Users size={20} />
+                  <span>Students</span>
+                </button>
+                <button onClick={() => setActiveTab('fees')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'fees' ? 'bg-white/10 text-green-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                  <IndianRupee size={20} />
+                  <span>Fees</span>
+                </button>
+                <button onClick={() => setActiveTab('homework')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'homework' ? 'bg-white/10 text-cyan-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                  <BookOpen size={20} />
+                  <span>Homework</span>
+                </button>
+                <button onClick={() => setActiveTab('notices')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'notices' ? 'bg-white/10 text-blue-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                  <Bell size={20} />
+                  <span>Notices</span>
+                </button>
+                <button onClick={() => setActiveTab('settings')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'settings' ? 'bg-white/10 text-orange-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                  <Settings size={20} />
+                  <span>Settings</span>
+                </button>
+              </>)}
+            </div>
+
+            <div className="p-4 border-t border-white/10">
               <button type="button" onClick={handleLogout}
-                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-xs font-bold">
-                <LogOut size={13} /> Logout
+                className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl text-sm font-bold transition-all">
+                <LogOut size={16} /> Logout
               </button>
             </div>
-          </section>
+          </aside>
 
-          <div className="max-w-5xl w-full mx-auto px-3 sm:px-6 pt-4 md:pt-8 admin-content">
-
-          {message && (
-            <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              ✅ {message}
-            </div>
-          )}
-
-          {/* ── MARKS TAB ── all admins */}
-          {activeTab === 'marks' && (
-          <div className="space-y-4">
-            {loginRole === 'superadmin' && (
-              <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0f2a5c] text-white">
-                  <Users size={22} />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-[#0f2a5c]">Add Student</h2>
-                  <p className="text-sm text-slate-500">Ek baar student details add kar dijiye</p>
-                </div>
-              </div>
-
-              <form onSubmit={handleAddStudent} className="space-y-4">
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-slate-600">Student Name</label>
-                  <input
-                    value={studentForm.name}
-                    onChange={(e) => setStudentForm((prev) => ({ ...prev, name: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
-                    placeholder="Enter full name"
-                    required
-                  />
-                </div>
-<div>
-                  <label className="mb-1 block text-xs font-semibold text-slate-600">Class</label>
-                  <select
-                    value={studentForm.className}
-                    onChange={(e) => setStudentForm((prev) => ({ ...prev, className: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
-                    required
-                  >
-                    <option value="">-- Select Class --</option>
-                    {(loginClassAccess === 'all' || loginClassAccess === '9th') && <option value="Class 9">Class 9</option>}
-                    {(loginClassAccess === 'all' || loginClassAccess === '10th') && <option value="Class 10">Class 10</option>}
-                  </select>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-slate-600">Father's Name (Optional)</label>
-                    <input
-                      value={studentForm.fatherName}
-                      onChange={(e) => setStudentForm((prev) => ({ ...prev, fatherName: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
-                      placeholder="Father's Name"
-                    />
+          {/* MAIN CONTENT WRAPPER */}
+          <main className="flex-1 md:ml-64 flex flex-col min-h-screen relative">
+            {/* MOBILE HEADER (Hidden on Desktop) */}
+            <section className="md:hidden bg-[#0f2a5c] text-white shadow-xl">
+              <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f5a623]">
+                    <ShieldCheck size={18} className="text-white" />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-semibold text-slate-600">Mobile No. (Optional)</label>
-                    <input
-                      value={studentForm.parentPhone}
-                      onChange={(e) => setStudentForm((prev) => ({ ...prev, parentPhone: e.target.value.replace(/\D/g, '') }))}
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
-                      placeholder="10-digit number"
-                      maxLength={10}
-                    />
+                    <p className="font-extrabold text-sm leading-none">Admin Panel</p>
+                    <p className="text-[10px] text-blue-200 mt-0.5 leading-none">
+                      {loginRole === 'superadmin' ? '⭐ Super Admin' : `📘 Class ${loginClassAccess}`}
+                    </p>
                   </div>
                 </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-slate-600">Student Photo (Optional)</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#f5a623] file:text-[#0f2a5c] hover:file:bg-[#e09010] outline-none"
-                  />
-                  {studentForm.image && studentForm.image !== '/sunrise-logo.png' && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <img src={studentForm.image} alt="Preview" className="h-10 w-10 rounded-full object-cover border border-slate-200" />
-                      <span className="text-xs text-green-600 font-semibold">Photo attached!</span>
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-full bg-[#0f2a5c] px-6 py-3 text-sm font-bold text-white hover:bg-[#173873]"
-                >
-                  <Plus size={16} />
-                  Save Student
+                <button type="button" onClick={handleLogout}
+                  className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-xs font-bold">
+                  <LogOut size={13} /> Logout
                 </button>
-              </form>
-            </div>
-            )}
-
-            <div className="rounded-[2rem] border border-[#ffe2ae] bg-[linear-gradient(135deg,_#fff8ea,_#ffffff)] p-6 sm:p-8 shadow-sm">
-              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f5a623] text-[#0f2a5c]">
-                    <Upload size={22} />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-[#0f2a5c]">Upload Test Marks</h2>
-                    <p className="text-sm text-slate-500">Har daily test ka marks yahin se add hoga</p>
-                  </div>
-                </div>
-                {loginClassAccess === 'all' && (
-                  <div className="flex items-center gap-1 rounded-full border border-[#f5a623]/40 bg-[#fff8e6] p-1">
-                    <button
-                      type="button"
-                      onClick={() => { setActiveUploadClass('9th'); setStudentScores({}); setTestDetails(emptyTestDetails); }}
-                      className={`rounded-full px-4 py-1.5 text-sm font-bold transition-all ${
-                        activeUploadClass === '9th'
-                          ? 'bg-[#0f2a5c] text-white shadow'
-                          : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                    >
-                      Class 9
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setActiveUploadClass('10th'); setStudentScores({}); setTestDetails(emptyTestDetails); }}
-                      className={`rounded-full px-4 py-1.5 text-sm font-bold transition-all ${
-                        activeUploadClass === '10th'
-                          ? 'bg-[#0f2a5c] text-white shadow'
-                          : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                    >
-                      Class 10
-                    </button>
-                  </div>
-                )}
               </div>
+            </section>
 
-              <form onSubmit={handleBatchAddResults} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-slate-600">Test Name</label>
-                    <input
-                      value={testDetails.testName}
-                      onChange={(e) => setTestDetails((prev) => ({ ...prev, testName: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
-                      placeholder="Example: Daily Test 01"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-slate-600">Subject</label>
-                    <input
-                      value={testDetails.subject}
-                      onChange={(e) => setTestDetails((prev) => ({ ...prev, subject: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
-                      placeholder="Math / Science / English"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-slate-600">Test Date</label>
-                    <input
-                      type="date"
-                      value={testDetails.testDate}
-                      onChange={(e) => setTestDetails((prev) => ({ ...prev, testDate: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-slate-600">Total Marks</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={testDetails.totalMarks}
-                      onChange={(e) => setTestDetails((prev) => ({ ...prev, totalMarks: e.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
-                      placeholder="50"
-                      required
-                    />
-                  </div>
-                </div>
+            <div className="max-w-5xl w-full mx-auto px-3 sm:px-6 pt-4 md:pt-8 admin-content">
 
-                <div className="mt-4">
-                  <label className="mb-2 block text-sm font-bold text-slate-700">
-                    Enter Marks for Students
-                    {loginClassAccess === 'all' && (
-                      <span className="ml-2 rounded-full bg-[#0f2a5c] px-2.5 py-0.5 text-xs font-semibold text-white">
-                        Class {activeUploadClass}
-                      </span>
-                    )}
-                  </label>
-                  <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-inner">
-                    {studentsForUpload.length > 0 ? (
-                      <table className="w-full text-sm">
-                        <thead className="sticky top-0 bg-slate-50 shadow-sm border-b border-slate-200 z-10">
-                          <tr className="text-left text-slate-500">
-                            <th className="py-3 px-4 font-semibold">Student Name</th>
-                            <th className="py-3 px-4 font-semibold w-40">Marks Obtained</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {studentsForUpload.map((student) => (
-                            <tr key={student.id} className="border-b last:border-0 border-slate-100 hover:bg-slate-50/80 transition-colors">
-                              <td className="py-2 px-4 text-slate-700 font-medium">
-                                <div className="flex items-center gap-2">
-                                  <div className="h-6 w-6 rounded-full bg-slate-200 overflow-hidden shrink-0 flex items-center justify-center text-[10px] text-slate-500">
-                                    {student.image && student.image !== '/sunrise-logo.png' ? (
-                                      <img src={student.image} alt={student.name} className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />
-                                    ) : student.name.charAt(0)}
-                                  </div>
-                                  <span>{student.name} <span className="text-xs text-slate-400 font-normal ml-1">({student.className})</span></span>
-                                </div>
-                              </td>
-                              <td className="py-2 px-4">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max={testDetails.totalMarks || undefined}
-                                  value={studentScores[student.id] || ''}
-                                  onChange={(e) => setStudentScores(prev => ({ ...prev, [student.id]: e.target.value }))}
-                                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20 bg-white"
-                                  placeholder="Marks"
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <div className="p-6 text-sm text-slate-500 text-center">
-                        {loginClassAccess === 'all'
-                          ? `Pehle Class ${activeUploadClass} ke students add kijiye.`
-                          : 'Please add students first to enter their marks.'}
-                      </div>
-                    )}
-                  </div>
+              {message && (
+                <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                  ✅ {message}
                 </div>
+              )}
 
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="submit"
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#f5a623] px-8 py-3 text-sm font-bold text-[#0f2a5c] hover:bg-[#e09010] shadow-sm transition-all active:scale-[0.98]"
-                  >
-                    <Save size={18} />
-                    Upload Results for All
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDownloadPDF}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0f2a5c] px-8 py-3 text-sm font-bold text-white hover:bg-[#173873] shadow-sm transition-all active:scale-[0.98]"
-                  >
-                    <Download size={18} />
-                    Download PDF
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-          )} {/* end marks tab */}
-
-          {/* ── STUDENTS TAB ── super admin only */}
-          {activeTab === 'students' && loginRole === 'superadmin' && (
-          <div className="space-y-4">
-          <div className="mt-4 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-            <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 sm:p-8 shadow-sm overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
-                <h2 className="text-2xl font-bold text-[#0f2a5c]">Students List</h2>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {loginClassAccess === 'all' && (
-                    <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 p-1">
-                      <button
-                        type="button"
-                        onClick={() => setActiveUploadClass('9th')}
-                        className={`rounded-full px-4 py-1 text-sm font-bold transition-all ${activeUploadClass === '9th' ? 'bg-[#0f2a5c] text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
-                      >
-                        Class 9
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveUploadClass('10th')}
-                        className={`rounded-full px-4 py-1 text-sm font-bold transition-all ${activeUploadClass === '10th' ? 'bg-[#0f2a5c] text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
-                      >
-                        Class 10
-                      </button>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleDownloadStudentList}
-                    disabled={studentsForUpload.length === 0}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-4 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 disabled:opacity-40 transition-colors"
-                  >
-                    <Download size={14} /> Download List
-                  </button>
-                </div>
-              </div>
-              <div className="mt-6 space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                {studentsForUpload.length > 0 ? (
-                  studentsForUpload.map((student) => (
-                    <div key={student.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={student.image || '/sunrise-logo.png'}
-                          alt={student.name}
-                          className="h-12 w-12 rounded-xl object-cover border border-slate-200 bg-white"
-                          onError={(e) => {
-                            e.currentTarget.src = '/sunrise-logo.png';
-                          }}
-                        />
+              {/* ── MARKS TAB ── all admins */}
+              {activeTab === 'marks' && (
+                <div className="space-y-4">
+                  {loginRole === 'superadmin' && (
+                    <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
+                      <div className="mb-6 flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0f2a5c] text-white">
+                          <Users size={22} />
+                        </div>
                         <div>
-                          <p className="font-semibold text-[#0f2a5c]">{student.name}</p>
-                          <div className="flex flex-col text-[11px] sm:text-xs text-slate-500 mt-1 space-y-1">
-                            <span className="font-medium px-2 py-0.5 bg-slate-100 rounded text-slate-600 w-fit">
-                              {student.className}
-                            </span>
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1">
-                              <span className="text-slate-600">
-                                Father: <span className="font-medium text-[#0f2a5c]">{student.fatherName || 'N/A'}</span>
-                              </span>
-                              <span className="hidden sm:inline text-slate-300">•</span>
-                              <span className="flex items-center gap-1 text-slate-600">
-                                <Phone size={10} className="text-blue-500" />
-                                <span className="font-medium text-[#0f2a5c]">{student.parentPhone || 'Not provided'}</span>
-                              </span>
-                            </div>
-                          </div>
+                          <h2 className="text-2xl font-bold text-[#0f2a5c]">Add Student</h2>
+                          <p className="text-sm text-slate-500">Ek baar student details add kar dijiye</p>
                         </div>
                       </div>
-                      {loginRole === 'superadmin' && (
-                        deleteConfirmId === student.id ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-bold text-red-600 uppercase tracking-wide mr-1">Sure?</span>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteStudent(student.id)}
-                              className="rounded-full bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 shadow-sm"
-                            >
-                              Yes
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setDeleteConfirmId(null)}
-                              className="rounded-full bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-300 shadow-sm"
-                            >
-                              No
-                            </button>
+
+                      <form onSubmit={handleAddStudent} className="space-y-4">
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-600">Student Name</label>
+                          <input
+                            value={studentForm.name}
+                            onChange={(e) => setStudentForm((prev) => ({ ...prev, name: e.target.value }))}
+                            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
+                            placeholder="Enter full name"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-600">Class</label>
+                          <select
+                            value={studentForm.className}
+                            onChange={(e) => setStudentForm((prev) => ({ ...prev, className: e.target.value }))}
+                            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
+                            required
+                          >
+                            <option value="">-- Select Class --</option>
+                            {(loginClassAccess === 'all' || loginClassAccess === '9th') && <option value="Class 9">Class 9</option>}
+                            {(loginClassAccess === 'all' || loginClassAccess === '10th') && <option value="Class 10">Class 10</option>}
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="mb-1 block text-xs font-semibold text-slate-600">Father's Name (Optional)</label>
+                            <input
+                              value={studentForm.fatherName}
+                              onChange={(e) => setStudentForm((prev) => ({ ...prev, fatherName: e.target.value }))}
+                              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
+                              placeholder="Father's Name"
+                            />
                           </div>
-                        ) : (
+                          <div>
+                            <label className="mb-1 block text-xs font-semibold text-slate-600">Mobile No. (Optional)</label>
+                            <input
+                              value={studentForm.parentPhone}
+                              onChange={(e) => setStudentForm((prev) => ({ ...prev, parentPhone: e.target.value.replace(/\D/g, '') }))}
+                              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
+                              placeholder="10-digit number"
+                              maxLength={10}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-600">Student Photo (Optional)</label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#f5a623] file:text-[#0f2a5c] hover:file:bg-[#e09010] outline-none"
+                          />
+                          {studentForm.image && studentForm.image !== '/sunrise-logo.png' && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <img src={studentForm.image} alt="Preview" className="h-10 w-10 rounded-full object-cover border border-slate-200" />
+                              <span className="text-xs text-green-600 font-semibold">Photo attached!</span>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="submit"
+                          className="inline-flex items-center gap-2 rounded-full bg-[#0f2a5c] px-6 py-3 text-sm font-bold text-white hover:bg-[#173873]"
+                        >
+                          <Plus size={16} />
+                          Save Student
+                        </button>
+                      </form>
+                    </div>
+                  )}
+
+                  <div className="rounded-[2rem] border border-[#ffe2ae] bg-[linear-gradient(135deg,_#fff8ea,_#ffffff)] p-6 sm:p-8 shadow-sm">
+                    <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f5a623] text-[#0f2a5c]">
+                          <Upload size={22} />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-bold text-[#0f2a5c]">Upload Test Marks</h2>
+                          <p className="text-sm text-slate-500">Har daily test ka marks yahin se add hoga</p>
+                        </div>
+                      </div>
+                      {loginClassAccess === 'all' && (
+                        <div className="flex items-center gap-1 rounded-full border border-[#f5a623]/40 bg-[#fff8e6] p-1">
                           <button
                             type="button"
-                            onClick={() => setDeleteConfirmId(student.id)}
-                            className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100"
+                            onClick={() => { setActiveUploadClass('9th'); setStudentScores({}); setTestDetails(emptyTestDetails); }}
+                            className={`rounded-full px-4 py-1.5 text-sm font-bold transition-all ${activeUploadClass === '9th'
+                                ? 'bg-[#0f2a5c] text-white shadow'
+                                : 'text-slate-500 hover:text-slate-700'
+                              }`}
                           >
-                            <Trash2 size={14} />
-                            Delete
+                            Class 9
                           </button>
-                        )
+                          <button
+                            type="button"
+                            onClick={() => { setActiveUploadClass('10th'); setStudentScores({}); setTestDetails(emptyTestDetails); }}
+                            className={`rounded-full px-4 py-1.5 text-sm font-bold transition-all ${activeUploadClass === '10th'
+                                ? 'bg-[#0f2a5c] text-white shadow'
+                                : 'text-slate-500 hover:text-slate-700'
+                              }`}
+                          >
+                            Class 10
+                          </button>
+                        </div>
                       )}
                     </div>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
-                    Abhi koi student add nahi hua hai.
+
+                    <form onSubmit={handleBatchAddResults} className="space-y-4">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-600">Test Name</label>
+                          <input
+                            value={testDetails.testName}
+                            onChange={(e) => setTestDetails((prev) => ({ ...prev, testName: e.target.value }))}
+                            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
+                            placeholder="Example: Daily Test 01"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-600">Subject</label>
+                          <input
+                            value={testDetails.subject}
+                            onChange={(e) => setTestDetails((prev) => ({ ...prev, subject: e.target.value }))}
+                            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
+                            placeholder="Math / Science / English"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-600">Test Date</label>
+                          <input
+                            type="date"
+                            value={testDetails.testDate}
+                            onChange={(e) => setTestDetails((prev) => ({ ...prev, testDate: e.target.value }))}
+                            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-600">Total Marks</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={testDetails.totalMarks}
+                            onChange={(e) => setTestDetails((prev) => ({ ...prev, totalMarks: e.target.value }))}
+                            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
+                            placeholder="50"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <label className="mb-2 block text-sm font-bold text-slate-700">
+                          Enter Marks for Students
+                          {loginClassAccess === 'all' && (
+                            <span className="ml-2 rounded-full bg-[#0f2a5c] px-2.5 py-0.5 text-xs font-semibold text-white">
+                              Class {activeUploadClass}
+                            </span>
+                          )}
+                        </label>
+                        <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-inner">
+                          {studentsForUpload.length > 0 ? (
+                            <table className="w-full text-sm">
+                              <thead className="sticky top-0 bg-slate-50 shadow-sm border-b border-slate-200 z-10">
+                                <tr className="text-left text-slate-500">
+                                  <th className="py-3 px-4 font-semibold">Student Name</th>
+                                  <th className="py-3 px-4 font-semibold w-40">Marks Obtained</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {studentsForUpload.map((student) => (
+                                  <tr key={student.id} className="border-b last:border-0 border-slate-100 hover:bg-slate-50/80 transition-colors">
+                                    <td className="py-2 px-4 text-slate-700 font-medium">
+                                      <div className="flex items-center gap-2">
+                                        <div className="h-6 w-6 rounded-full bg-slate-200 overflow-hidden shrink-0 flex items-center justify-center text-[10px] text-slate-500">
+                                          {student.image && student.image !== '/sunrise-logo.png' ? (
+                                            <img src={student.image} alt={student.name} className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                                          ) : student.name.charAt(0)}
+                                        </div>
+                                        <span>{student.name} <span className="text-xs text-slate-400 font-normal ml-1">({student.className})</span></span>
+                                      </div>
+                                    </td>
+                                    <td className="py-2 px-4">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max={testDetails.totalMarks || undefined}
+                                        value={studentScores[student.id] || ''}
+                                        onChange={(e) => setStudentScores(prev => ({ ...prev, [student.id]: e.target.value }))}
+                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20 bg-white"
+                                        placeholder="Marks"
+                                      />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <div className="p-6 text-sm text-slate-500 text-center">
+                              {loginClassAccess === 'all'
+                                ? `Pehle Class ${activeUploadClass} ke students add kijiye.`
+                                : 'Please add students first to enter their marks.'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          type="submit"
+                          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#f5a623] px-8 py-3 text-sm font-bold text-[#0f2a5c] hover:bg-[#e09010] shadow-sm transition-all active:scale-[0.98]"
+                        >
+                          <Save size={18} />
+                          Upload Results for All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDownloadPDF}
+                          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0f2a5c] px-8 py-3 text-sm font-bold text-white hover:bg-[#173873] shadow-sm transition-all active:scale-[0.98]"
+                        >
+                          <Download size={18} />
+                          Download PDF
+                        </button>
+                      </div>
+                    </form>
                   </div>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 sm:p-8 shadow-sm overflow-hidden">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0f2a5c] text-white">
-                  <FileBarChart2 size={22} />
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-[#0f2a5c]">Uploaded Test Marks</h2>
-                  <p className="text-sm text-slate-500">Latest uploaded results yahan se manage honge</p>
-                </div>
-              </div>
+              )} {/* end marks tab */}
 
-              <div className="mt-6 max-h-[500px] overflow-y-auto overflow-x-auto rounded-xl border border-slate-100 bg-white">
-                {sortedResults.length > 0 ? (
-                  <table className="w-full min-w-[700px] text-sm relative">
-                    <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10 shadow-sm">
-                      <tr className="text-left text-slate-500">
-                        <th className="py-3 px-4 font-semibold">Student</th>
-                        <th className="py-3 px-4 font-semibold">Test</th>
-                        <th className="py-3 px-4 font-semibold">Subject</th>
-                        <th className="py-3 px-4 font-semibold">Date</th>
-                        <th className="py-3 px-4 font-semibold">Marks</th>
-                        <th className="py-3 px-4 font-semibold text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {sortedResults.map((result) => (
-                        <tr key={result.id} className="text-slate-700 hover:bg-slate-50/50 transition-colors">
-                          <td className="py-3 px-4 font-medium">{getStudentName(result.studentId)}</td>
-                          <td className="py-3 px-4">{result.testName}</td>
-                          <td className="py-3 px-4">{result.subject}</td>
-                          <td className="py-3 px-4">{new Date(result.testDate).toLocaleDateString('en-IN')}</td>
-                          <td className="py-3 px-4">
-                            {editResultId === result.id ? (
-                              <div className="flex items-center gap-1 w-24">
-                                <input
-                                  type="number"
-                                  value={editMarksValue}
-                                  onChange={(e) => setEditMarksValue(e.target.value)}
-                                  className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-blue-500 text-center"
-                                  autoFocus
+              {/* ── STUDENTS TAB ── super admin only */}
+              {activeTab === 'students' && loginRole === 'superadmin' && (
+                <div className="space-y-4">
+                  <div className="mt-4 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+                    <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 sm:p-8 shadow-sm overflow-hidden">
+                      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+                        <h2 className="text-2xl font-bold text-[#0f2a5c]">Students List</h2>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {loginClassAccess === 'all' && (
+                            <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 p-1">
+                              <button
+                                type="button"
+                                onClick={() => setActiveUploadClass('9th')}
+                                className={`rounded-full px-4 py-1 text-sm font-bold transition-all ${activeUploadClass === '9th' ? 'bg-[#0f2a5c] text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+                              >
+                                Class 9
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setActiveUploadClass('10th')}
+                                className={`rounded-full px-4 py-1 text-sm font-bold transition-all ${activeUploadClass === '10th' ? 'bg-[#0f2a5c] text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+                              >
+                                Class 10
+                              </button>
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleDownloadStudentList}
+                            disabled={studentsForUpload.length === 0}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-4 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 disabled:opacity-40 transition-colors"
+                          >
+                            <Download size={14} /> Download List
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-6 space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                        {studentsForUpload.length > 0 ? (
+                          studentsForUpload.map((student) => (
+                            <div key={student.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={student.image || '/sunrise-logo.png'}
+                                  alt={student.name}
+                                  className="h-12 w-12 rounded-xl object-cover border border-slate-200 bg-white"
+                                  onError={(e) => {
+                                    e.currentTarget.src = '/sunrise-logo.png';
+                                  }}
                                 />
-                                <span className="text-slate-400">/{result.totalMarks}</span>
-                              </div>
-                            ) : (
-                              <span>{result.marksObtained} / {result.totalMarks}</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {loginRole === 'superadmin' && (
-                              editResultId === result.id ? (
-                                <div className="flex justify-end gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdateResult(result.id)}
-                                    className="rounded bg-green-500 px-3 py-1 text-xs font-bold text-white hover:bg-green-600"
-                                  >
-                                    Save
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => { setEditResultId(null); setEditMarksValue(''); }}
-                                    className="rounded bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700 hover:bg-slate-300"
-                                  >
-                                    Cancel
-                                  </button>
+                                <div>
+                                  <p className="font-semibold text-[#0f2a5c]">{student.name}</p>
+                                  <div className="flex flex-col text-[11px] sm:text-xs text-slate-500 mt-1 space-y-1">
+                                    <span className="font-medium px-2 py-0.5 bg-slate-100 rounded text-slate-600 w-fit">
+                                      {student.className}
+                                    </span>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1">
+                                      <span className="text-slate-600">
+                                        Father: <span className="font-medium text-[#0f2a5c]">{student.fatherName || 'N/A'}</span>
+                                      </span>
+                                      <span className="hidden sm:inline text-slate-300">•</span>
+                                      <span className="flex items-center gap-1 text-slate-600">
+                                        <Phone size={10} className="text-blue-500" />
+                                        <span className="font-medium text-[#0f2a5c]">{student.parentPhone || 'Not provided'}</span>
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
-                              ) : (
-                                <div className="flex justify-end gap-2">
+                              </div>
+                              {loginRole === 'superadmin' && (
+                                deleteConfirmId === student.id ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] font-bold text-red-600 uppercase tracking-wide mr-1">Sure?</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteStudent(student.id)}
+                                      className="rounded-full bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 shadow-sm"
+                                    >
+                                      Yes
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeleteConfirmId(null)}
+                                      className="rounded-full bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-300 shadow-sm"
+                                    >
+                                      No
+                                    </button>
+                                  </div>
+                                ) : (
                                   <button
                                     type="button"
-                                    onClick={() => handleDownloadPastTestPDF(result)}
-                                    title="Download Test PDF"
-                                    className="inline-flex items-center gap-1 rounded border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 hover:bg-green-100"
-                                  >
-                                    <Download size={14} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => { setEditResultId(result.id); setEditMarksValue(result.marksObtained.toString()); }}
-                                    className="rounded border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-100"
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteResult(result.id)}
-                                    className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
+                                    onClick={() => setDeleteConfirmId(student.id)}
+                                    className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100"
                                   >
                                     <Trash2 size={14} />
+                                    Delete
                                   </button>
-                                </div>
-                              )
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
-                    Abhi tak koi test result upload nahi hua hai.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          </div>)} {/* end students tab */}
+                                )
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+                            Abhi koi student add nahi hua hai.
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-          {/* ── FEES TAB ── super admin only */}
-          {activeTab === 'fees' && loginRole === 'superadmin' && (
-          <div><FeeManagement /></div>
-          )}
-
-          {/* ── HOMEWORK TAB ── super admin only */}
-          {activeTab === 'homework' && loginRole === 'superadmin' && (
-          <div><HomeworkManagement /></div>
-          )}
-
-          {/* ── SETTINGS TAB ── super admin only */}
-          {activeTab === 'settings' && loginRole === 'superadmin' && (
-          <div className="space-y-4">
-            <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 shadow-sm">
-              <h2 className="text-2xl font-bold text-[#0f2a5c] mb-6">Manage Admins</h2>
-              <div className="grid gap-8 md:grid-cols-2">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800 mb-4">Create New Admin</h3>
-                  <form onSubmit={handleAddAdmin} className="space-y-4">
-                    <input
-                      type="text"
-                      value={newAdminForm.username}
-                      onChange={(e) => setNewAdminForm({ ...newAdminForm, username: e.target.value })}
-                      placeholder="Username"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:border-[#f5a623]"
-                      required
-                    />
-                    <input
-                      type="text"
-                      value={newAdminForm.password}
-                      onChange={(e) => setNewAdminForm({ ...newAdminForm, password: e.target.value })}
-                      placeholder="Password"
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:border-[#f5a623]"
-                      required
-                    />
-                    <select
-                      value={newAdminForm.role}
-                      onChange={(e) => setNewAdminForm({ ...newAdminForm, role: e.target.value })}
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:border-[#f5a623]"
-                    >
-                      <option value="admin">Regular Admin</option>
-                      <option value="superadmin">Super Admin</option>
-                    </select>
-                    <select
-                      value={newAdminForm.class_access}
-                      onChange={(e) => setNewAdminForm({ ...newAdminForm, class_access: e.target.value })}
-                      className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:border-[#f5a623]"
-                    >
-                      <option value="all">All Classes (Default)</option>
-                      <option value="9th">Class 9 Only</option>
-                      <option value="10th">Class 10 Only</option>
-                    </select>
-                    <button type="submit" className="w-full rounded-xl bg-[#0f2a5c] py-2 text-sm font-semibold text-white hover:bg-[#173873]">
-                      Add Admin
-                    </button>
-                  </form>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800 mb-4">Existing Admins</h3>
-                  <div className="space-y-3">
-                    {adminList.map(admin => (
-                      <div key={admin.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                        <div>
-                          <p className="font-semibold text-slate-700">{admin.username}</p>
-                          <p className="text-xs text-slate-500 uppercase">{admin.role}</p>
-                          <p className="text-xs text-blue-500 mt-0.5">
-                            {admin.class_access === 'all' || !admin.class_access ? 'All Classes' : `Class ${admin.class_access} Only`}
-                          </p>
+                    <div className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 sm:p-8 shadow-sm overflow-hidden">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0f2a5c] text-white">
+                          <FileBarChart2 size={22} />
                         </div>
-                        {admin.username !== 'superadmin' && (
+                        <div>
+                          <h2 className="text-2xl font-bold text-[#0f2a5c]">Uploaded Test Marks</h2>
+                          <p className="text-sm text-slate-500">Latest uploaded results yahan se manage honge</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 max-h-[500px] overflow-y-auto overflow-x-auto rounded-xl border border-slate-100 bg-white">
+                        {sortedResults.length > 0 ? (
+                          <table className="w-full min-w-[700px] text-sm relative">
+                            <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10 shadow-sm">
+                              <tr className="text-left text-slate-500">
+                                <th className="py-3 px-4 font-semibold">Student</th>
+                                <th className="py-3 px-4 font-semibold">Test</th>
+                                <th className="py-3 px-4 font-semibold">Subject</th>
+                                <th className="py-3 px-4 font-semibold">Date</th>
+                                <th className="py-3 px-4 font-semibold">Marks</th>
+                                <th className="py-3 px-4 font-semibold text-right">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {sortedResults.map((result) => (
+                                <tr key={result.id} className="text-slate-700 hover:bg-slate-50/50 transition-colors">
+                                  <td className="py-3 px-4 font-medium">{getStudentName(result.studentId)}</td>
+                                  <td className="py-3 px-4">{result.testName}</td>
+                                  <td className="py-3 px-4">{result.subject}</td>
+                                  <td className="py-3 px-4">{new Date(result.testDate).toLocaleDateString('en-IN')}</td>
+                                  <td className="py-3 px-4">
+                                    {editResultId === result.id ? (
+                                      <div className="flex items-center gap-1 w-24">
+                                        <input
+                                          type="number"
+                                          value={editMarksValue}
+                                          onChange={(e) => setEditMarksValue(e.target.value)}
+                                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm outline-none focus:border-blue-500 text-center"
+                                          autoFocus
+                                        />
+                                        <span className="text-slate-400">/{result.totalMarks}</span>
+                                      </div>
+                                    ) : (
+                                      <span>{result.marksObtained} / {result.totalMarks}</span>
+                                    )}
+                                  </td>
+                                  <td className="py-3 px-4 text-right">
+                                    {loginRole === 'superadmin' && (
+                                      editResultId === result.id ? (
+                                        <div className="flex justify-end gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleUpdateResult(result.id)}
+                                            className="rounded bg-green-500 px-3 py-1 text-xs font-bold text-white hover:bg-green-600"
+                                          >
+                                            Save
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => { setEditResultId(null); setEditMarksValue(''); }}
+                                            className="rounded bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700 hover:bg-slate-300"
+                                          >
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex justify-end gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDownloadPastTestPDF(result)}
+                                            title="Download Test PDF"
+                                            className="inline-flex items-center gap-1 rounded border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 hover:bg-green-100"
+                                          >
+                                            <Download size={14} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => { setEditResultId(result.id); setEditMarksValue(result.marksObtained.toString()); }}
+                                            className="rounded border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-100"
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteResult(result.id)}
+                                            className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        </div>
+                                      )
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+                            Abhi tak koi test result upload nahi hua hai.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>)} {/* end students tab */}
+
+              {/* ── FEES TAB ── super admin only */}
+              {activeTab === 'fees' && loginRole === 'superadmin' && (
+                <div><FeeManagement /></div>
+              )}
+
+              {/* ── HOMEWORK TAB ── super admin only */}
+              {activeTab === 'homework' && loginRole === 'superadmin' && (
+                <div><HomeworkManagement /></div>
+              )}
+
+              {/* ── SETTINGS TAB ── super admin only */}
+              {activeTab === 'settings' && loginRole === 'superadmin' && (
+                <div className="space-y-4">
+                  <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 shadow-sm">
+                    <h2 className="text-2xl font-bold text-[#0f2a5c] mb-6">Manage Admins</h2>
+                    <div className="grid gap-8 md:grid-cols-2">
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Create New Admin</h3>
+                        <form onSubmit={handleAddAdmin} className="space-y-4">
+                          <input
+                            type="text"
+                            value={newAdminForm.username}
+                            onChange={(e) => setNewAdminForm({ ...newAdminForm, username: e.target.value })}
+                            placeholder="Username"
+                            className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:border-[#f5a623]"
+                            required
+                          />
+                          <input
+                            type="text"
+                            value={newAdminForm.password}
+                            onChange={(e) => setNewAdminForm({ ...newAdminForm, password: e.target.value })}
+                            placeholder="Password"
+                            className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:border-[#f5a623]"
+                            required
+                          />
+                          <select
+                            value={newAdminForm.role}
+                            onChange={(e) => setNewAdminForm({ ...newAdminForm, role: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:border-[#f5a623]"
+                          >
+                            <option value="admin">Regular Admin</option>
+                            <option value="superadmin">Super Admin</option>
+                          </select>
+                          <select
+                            value={newAdminForm.class_access}
+                            onChange={(e) => setNewAdminForm({ ...newAdminForm, class_access: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:border-[#f5a623]"
+                          >
+                            <option value="all">All Classes (Default)</option>
+                            <option value="9th">Class 9 Only</option>
+                            <option value="10th">Class 10 Only</option>
+                          </select>
+                          <button type="submit" className="w-full rounded-xl bg-[#0f2a5c] py-2 text-sm font-semibold text-white hover:bg-[#173873]">
+                            Add Admin
+                          </button>
+                        </form>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-800 mb-4">Existing Admins</h3>
+                        <div className="space-y-3">
+                          {adminList.map(admin => (
+                            <div key={admin.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                              <div>
+                                <p className="font-semibold text-slate-700">{admin.username}</p>
+                                <p className="text-xs text-slate-500 uppercase">{admin.role}</p>
+                                <p className="text-xs text-blue-500 mt-0.5">
+                                  {admin.class_access === 'all' || !admin.class_access ? 'All Classes' : `Class ${admin.class_access} Only`}
+                                </p>
+                              </div>
+                              {admin.username !== 'superadmin' && (
+                                <button
+                                  onClick={() => handleDeleteAdmin(admin.id)}
+                                  className="text-red-500 hover:bg-red-100 p-2 rounded-lg"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )} {/* end settings tab part 1 */}
+
+              {/* ── NOTICES TAB ── super admin only */}
+              {activeTab === 'notices' && loginRole === 'superadmin' && (
+                <div className="mt-10 grid gap-8 lg:grid-cols-2">
+                  <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500 text-white">
+                        <Megaphone size={22} />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-[#0f2a5c]">Website Settings</h2>
+                        <p className="text-sm text-slate-500">Global site features manage karein</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-800 mb-4">Top Notification Bar</h3>
+                      <form onSubmit={handleSaveNotification} className="space-y-4">
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-slate-600">Scrolling Text</label>
+                          <input
+                            type="text"
+                            value={notificationText}
+                            onChange={(e) => setNotificationText(e.target.value)}
+                            placeholder="e.g. 10th Batch is starting On 3 May 2026. Book Your Seat Now!"
+                            className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623]"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={isSavingNotification}
+                          className="inline-flex items-center gap-2 rounded-xl bg-[#0f2a5c] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#173873] disabled:opacity-70"
+                        >
+                          <Save size={16} />
+                          {isSavingNotification ? 'Saving...' : 'Save Notification'}
+                        </button>
+                        <p className="text-xs text-slate-500">Ye text website ke sabse upar scroll hota dikhega. Agar nahi dikhana hai to isko khaali (empty) karke save kar dein.</p>
+                      </form>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[2rem] border border-indigo-200 bg-white/90 p-6 sm:p-8 shadow-sm flex flex-col max-h-[600px]">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500 text-white">
+                        <Megaphone size={22} />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-[#0f2a5c]">Notice Board</h2>
+                        <p className="text-sm text-slate-500">Add or remove public notices</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleAddNotice} className="mb-6 space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <input
+                        type="text"
+                        value={newNoticeForm.title}
+                        onChange={(e) => setNewNoticeForm({ ...newNoticeForm, title: e.target.value })}
+                        placeholder="Notice Title"
+                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+                        required
+                      />
+                      <textarea
+                        value={newNoticeForm.content}
+                        onChange={(e) => setNewNoticeForm({ ...newNoticeForm, content: e.target.value })}
+                        placeholder="Notice Content..."
+                        className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-indigo-400 h-20 resize-none"
+                        required
+                      />
+                      <div className="flex items-center gap-3">
+                        <select
+                          value={newNoticeForm.type}
+                          onChange={(e) => setNewNoticeForm({ ...newNoticeForm, type: e.target.value as any })}
+                          className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+                        >
+                          <option value="general">General</option>
+                          <option value="exam">Exam</option>
+                          <option value="holiday">Holiday</option>
+                        </select>
+                        <button
+                          type="submit"
+                          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-indigo-700"
+                        >
+                          <Plus size={16} />
+                          Add Notice
+                        </button>
+                      </div>
+                    </form>
+
+                    <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+                      {notices.map((notice) => (
+                        <div key={notice.id} className="flex items-start justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-white">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-bold text-slate-400">{notice.date}</span>
+                              <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${notice.type === 'exam' ? 'bg-red-50 text-red-600' :
+                                  notice.type === 'holiday' ? 'bg-green-50 text-green-600' :
+                                    'bg-blue-50 text-blue-600'
+                                }`}>
+                                {notice.type}
+                              </span>
+                            </div>
+                            <h4 className="font-bold text-sm text-slate-800">{notice.title}</h4>
+                          </div>
                           <button
-                            onClick={() => handleDeleteAdmin(admin.id)}
-                            className="text-red-500 hover:bg-red-100 p-2 rounded-lg"
+                            onClick={() => handleDeleteNotice(notice.id)}
+                            className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
                           >
                             <Trash2 size={16} />
                           </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          )} {/* end settings tab part 1 */}
-
-          {/* ── NOTICES TAB ── super admin only */}
-          {activeTab === 'notices' && loginRole === 'superadmin' && (
-            <div className="mt-10 grid gap-8 lg:grid-cols-2">
-              <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500 text-white">
-                    <Megaphone size={22} />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-[#0f2a5c]">Website Settings</h2>
-                    <p className="text-sm text-slate-500">Global site features manage karein</p>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800 mb-4">Top Notification Bar</h3>
-                  <form onSubmit={handleSaveNotification} className="space-y-4">
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold text-slate-600">Scrolling Text</label>
-                      <input
-                        type="text"
-                        value={notificationText}
-                        onChange={(e) => setNotificationText(e.target.value)}
-                        placeholder="e.g. 10th Batch is starting On 3 May 2026. Book Your Seat Now!"
-                        className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623]"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={isSavingNotification}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#0f2a5c] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#173873] disabled:opacity-70"
-                    >
-                      <Save size={16} />
-                      {isSavingNotification ? 'Saving...' : 'Save Notification'}
-                    </button>
-                    <p className="text-xs text-slate-500">Ye text website ke sabse upar scroll hota dikhega. Agar nahi dikhana hai to isko khaali (empty) karke save kar dein.</p>
-                  </form>
-                </div>
-              </div>
-
-              <div className="rounded-[2rem] border border-indigo-200 bg-white/90 p-6 sm:p-8 shadow-sm flex flex-col max-h-[600px]">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500 text-white">
-                    <Megaphone size={22} />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-[#0f2a5c]">Notice Board</h2>
-                    <p className="text-sm text-slate-500">Add or remove public notices</p>
-                  </div>
-                </div>
-                
-                <form onSubmit={handleAddNotice} className="mb-6 space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                  <input
-                    type="text"
-                    value={newNoticeForm.title}
-                    onChange={(e) => setNewNoticeForm({...newNoticeForm, title: e.target.value})}
-                    placeholder="Notice Title"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
-                    required
-                  />
-                  <textarea
-                    value={newNoticeForm.content}
-                    onChange={(e) => setNewNoticeForm({...newNoticeForm, content: e.target.value})}
-                    placeholder="Notice Content..."
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-indigo-400 h-20 resize-none"
-                    required
-                  />
-                  <div className="flex items-center gap-3">
-                    <select
-                      value={newNoticeForm.type}
-                      onChange={(e) => setNewNoticeForm({...newNoticeForm, type: e.target.value as any})}
-                      className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
-                    >
-                      <option value="general">General</option>
-                      <option value="exam">Exam</option>
-                      <option value="holiday">Holiday</option>
-                    </select>
-                    <button
-                      type="submit"
-                      className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-indigo-700"
-                    >
-                      <Plus size={16} />
-                      Add Notice
-                    </button>
-                  </div>
-                </form>
-
-                <div className="flex-1 overflow-y-auto pr-2 space-y-3">
-                  {notices.map((notice) => (
-                    <div key={notice.id} className="flex items-start justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-white">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-bold text-slate-400">{notice.date}</span>
-                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
-                            notice.type === 'exam' ? 'bg-red-50 text-red-600' :
-                            notice.type === 'holiday' ? 'bg-green-50 text-green-600' :
-                            'bg-blue-50 text-blue-600'
-                          }`}>
-                            {notice.type}
-                          </span>
                         </div>
-                        <h4 className="font-bold text-sm text-slate-800">{notice.title}</h4>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── BATCH MANAGEMENT in settings ── */}
+              {activeTab === 'settings' && loginRole === 'superadmin' && (
+                <div className="mt-10 rounded-[2rem] border border-orange-200 bg-[linear-gradient(135deg,_#fff7ed,_#ffffff)] p-6 sm:p-8 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500 text-white">
+                        <AlertTriangle size={22} />
                       </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-orange-700">Year-End Batch Management</h2>
+                        <p className="text-sm text-orange-600">Saal ke aakhir mein batch promote/graduate karne ke liye. Yeh action permanent hai.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handleDeleteNotice(notice.id)}
-                        className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                        type="button"
+                        onClick={() => handleDownloadCSV('9')}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-orange-700 shadow-sm border border-orange-200 hover:bg-orange-50"
                       >
-                        <Trash2 size={16} />
+                        <Download size={14} />
+                        Class 9 Backup
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadCSV('10')}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-orange-700 shadow-sm border border-orange-200 hover:bg-orange-50"
+                      >
+                        <Download size={14} />
+                        Class 10 Backup
                       </button>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── BATCH MANAGEMENT in settings ── */}
-          {activeTab === 'settings' && loginRole === 'superadmin' && (
-            <div className="mt-10 rounded-[2rem] border border-orange-200 bg-[linear-gradient(135deg,_#fff7ed,_#ffffff)] p-6 sm:p-8 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500 text-white">
-                    <AlertTriangle size={22} />
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-orange-700">Year-End Batch Management</h2>
-                    <p className="text-sm text-orange-600">Saal ke aakhir mein batch promote/graduate karne ke liye. Yeh action permanent hai.</p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadCSV('9')}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-orange-700 shadow-sm border border-orange-200 hover:bg-orange-50"
-                  >
-                    <Download size={14} />
-                    Class 9 Backup
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadCSV('10')}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-orange-700 shadow-sm border border-orange-200 hover:bg-orange-50"
-                  >
-                    <Download size={14} />
-                    Class 10 Backup
-                  </button>
-                </div>
-              </div>
+                  <div className="mt-6 grid gap-6 sm:grid-cols-2">
 
-              <div className="mt-6 grid gap-6 sm:grid-cols-2">
-
-                {/* Card 1: Graduate Class 10 */}
-                <div className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-center gap-3 mb-3">
-                    <GraduationCap size={28} className="text-red-500 shrink-0" />
-                    <div>
-                      <h3 className="font-bold text-slate-800">Graduate Class 10</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">Batch pass out ho gaya? Unhe system se hata do.</p>
-                    </div>
-                  </div>
-                  <ul className="mb-4 space-y-1 text-xs text-slate-600">
-                    <li>• Class 10 ke <strong>saare students delete</strong> ho jayenge</li>
-                    <li>• Unke <strong>saare test results</strong> bhi hat jayenge</li>
-                    <li>• Yeh action <strong className="text-red-600">undo nahi ho sakta</strong></li>
-                  </ul>
-                  {batchConfirm === 'graduate' ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-red-600 flex items-center gap-1">
-                        <AlertTriangle size={12} /> Confirm karo — yeh permanent hai!
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={handleGraduateClass10}
-                          disabled={batchLoading === 'graduate'}
-                          className="flex-1 rounded-xl bg-red-600 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60"
-                        >
-                          {batchLoading === 'graduate' ? 'Processing...' : 'Haan, Delete Karo'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setBatchConfirm(null)}
-                          className="flex-1 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-                        >
-                          Cancel
-                        </button>
+                    {/* Card 1: Graduate Class 10 */}
+                    <div className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-center gap-3 mb-3">
+                        <GraduationCap size={28} className="text-red-500 shrink-0" />
+                        <div>
+                          <h3 className="font-bold text-slate-800">Graduate Class 10</h3>
+                          <p className="text-xs text-slate-500 mt-0.5">Batch pass out ho gaya? Unhe system se hata do.</p>
+                        </div>
                       </div>
+                      <ul className="mb-4 space-y-1 text-xs text-slate-600">
+                        <li>• Class 10 ke <strong>saare students delete</strong> ho jayenge</li>
+                        <li>• Unke <strong>saare test results</strong> bhi hat jayenge</li>
+                        <li>• Yeh action <strong className="text-red-600">undo nahi ho sakta</strong></li>
+                      </ul>
+                      {batchConfirm === 'graduate' ? (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-red-600 flex items-center gap-1">
+                            <AlertTriangle size={12} /> Confirm karo — yeh permanent hai!
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={handleGraduateClass10}
+                              disabled={batchLoading === 'graduate'}
+                              className="flex-1 rounded-xl bg-red-600 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60"
+                            >
+                              {batchLoading === 'graduate' ? 'Processing...' : 'Haan, Delete Karo'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setBatchConfirm(null)}
+                              className="flex-1 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setBatchConfirm('graduate')}
+                          className="w-full rounded-xl border-2 border-red-200 py-2 text-sm font-bold text-red-600 hover:bg-red-50 transition-all"
+                        >
+                          🎓 Graduate & Remove Class 10
+                        </button>
+                      )}
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setBatchConfirm('graduate')}
-                      className="w-full rounded-xl border-2 border-red-200 py-2 text-sm font-bold text-red-600 hover:bg-red-50 transition-all"
-                    >
-                      🎓 Graduate & Remove Class 10
-                    </button>
-                  )}
-                </div>
 
-                {/* Card 2: Promote Class 9 → 10 */}
-                <div className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-center gap-3 mb-3">
-                    <ArrowUpCircle size={28} className="text-blue-500 shrink-0" />
-                    <div>
-                      <h3 className="font-bold text-slate-800">Promote Class 9 → Class 10</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">Class 9 wale ab Class 10 mein aa jayenge.</p>
-                    </div>
-                  </div>
-                  <ul className="mb-4 space-y-1 text-xs text-slate-600">
-                    <li>• Class 9 ke <strong>saare students Class 10 ban jayenge</strong></li>
-                    <li>• Unke <strong>purane results clear</strong> ho jayenge (naya saal, fresh start)</li>
-                    <li>• Students ke naam aur photos <strong>safe rahenge</strong></li>
-                  </ul>
-                  {batchConfirm === 'promote' ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-blue-600 flex items-center gap-1">
-                        <AlertTriangle size={12} /> Confirm karo — purane results hat jayenge!
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={handlePromoteClass9}
-                          disabled={batchLoading === 'promote'}
-                          className="flex-1 rounded-xl bg-blue-600 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
-                        >
-                          {batchLoading === 'promote' ? 'Processing...' : 'Haan, Promote Karo'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setBatchConfirm(null)}
-                          className="flex-1 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-                        >
-                          Cancel
-                        </button>
+                    {/* Card 2: Promote Class 9 → 10 */}
+                    <div className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-center gap-3 mb-3">
+                        <ArrowUpCircle size={28} className="text-blue-500 shrink-0" />
+                        <div>
+                          <h3 className="font-bold text-slate-800">Promote Class 9 → Class 10</h3>
+                          <p className="text-xs text-slate-500 mt-0.5">Class 9 wale ab Class 10 mein aa jayenge.</p>
+                        </div>
                       </div>
+                      <ul className="mb-4 space-y-1 text-xs text-slate-600">
+                        <li>• Class 9 ke <strong>saare students Class 10 ban jayenge</strong></li>
+                        <li>• Unke <strong>purane results clear</strong> ho jayenge (naya saal, fresh start)</li>
+                        <li>• Students ke naam aur photos <strong>safe rahenge</strong></li>
+                      </ul>
+                      {batchConfirm === 'promote' ? (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-blue-600 flex items-center gap-1">
+                            <AlertTriangle size={12} /> Confirm karo — purane results hat jayenge!
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={handlePromoteClass9}
+                              disabled={batchLoading === 'promote'}
+                              className="flex-1 rounded-xl bg-blue-600 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+                            >
+                              {batchLoading === 'promote' ? 'Processing...' : 'Haan, Promote Karo'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setBatchConfirm(null)}
+                              className="flex-1 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setBatchConfirm('promote')}
+                          className="w-full rounded-xl border-2 border-blue-200 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-all"
+                        >
+                          ⬆️ Promote Class 9 → Class 10
+                        </button>
+                      )}
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setBatchConfirm('promote')}
-                      className="w-full rounded-xl border-2 border-blue-200 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-all"
-                    >
-                      ⬆️ Promote Class 9 → Class 10
-                    </button>
-                  )}
+
+                  </div>
                 </div>
+              )}
 
+            </div> {/* end tab content */}
+
+            {/* ── BOTTOM NAVIGATION BAR — fixed to screen bottom (Mobile Only) ── */}
+            <nav className="md:hidden" style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 9999,
+              background: '#fff',
+              borderTop: '2px solid #e2e8f0',
+              boxShadow: '0 -4px 20px rgba(0,0,0,0.10)',
+              paddingBottom: 'env(safe-area-inset-bottom)'
+            }}>
+              <div className="flex items-stretch justify-around max-w-lg mx-auto">
+                <button onClick={() => setActiveTab('marks')}
+                  className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'marks' ? 'border-[#f5a623] text-[#f5a623]' : 'border-transparent text-slate-400'}`}>
+                  <Upload size={20} strokeWidth={activeTab === 'marks' ? 2.5 : 1.8} />
+                  <span className="text-[9px] font-bold uppercase tracking-wide">Marks</span>
+                </button>
+                {loginRole === 'superadmin' && (<>
+                  <button onClick={() => setActiveTab('students')}
+                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'students' ? 'border-[#0f2a5c] text-[#0f2a5c]' : 'border-transparent text-slate-400'}`}>
+                    <Users size={20} strokeWidth={activeTab === 'students' ? 2.5 : 1.8} />
+                    <span className="text-[9px] font-bold uppercase tracking-wide">Students</span>
+                  </button>
+                  <button onClick={() => setActiveTab('fees')}
+                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'fees' ? 'border-green-600 text-green-600' : 'border-transparent text-slate-400'}`}>
+                    <IndianRupee size={20} strokeWidth={activeTab === 'fees' ? 2.5 : 1.8} />
+                    <span className="text-[9px] font-bold uppercase tracking-wide">Fees</span>
+                  </button>
+                  <button onClick={() => setActiveTab('homework')}
+                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'homework' ? 'border-cyan-600 text-cyan-600' : 'border-transparent text-slate-400'}`}>
+                    <BookOpen size={20} strokeWidth={activeTab === 'homework' ? 2.5 : 1.8} />
+                    <span className="text-[9px] font-bold uppercase tracking-wide">Homework</span>
+                  </button>
+                  <button onClick={() => setActiveTab('notices')}
+                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'notices' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400'}`}>
+                    <Bell size={20} strokeWidth={activeTab === 'notices' ? 2.5 : 1.8} />
+                    <span className="text-[9px] font-bold uppercase tracking-wide">Notices</span>
+                  </button>
+                  <button onClick={() => setActiveTab('settings')}
+                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'settings' ? 'border-slate-700 text-slate-700' : 'border-transparent text-slate-400'}`}>
+                    <Settings size={20} strokeWidth={activeTab === 'settings' ? 2.5 : 1.8} />
+                    <span className="text-[9px] font-bold uppercase tracking-wide">Settings</span>
+                  </button>
+                </>)}
               </div>
-            </div>
-          )}
+            </nav>
 
-        </div> {/* end tab content */}
-
-        {/* ── BOTTOM NAVIGATION BAR — fixed to screen bottom (Mobile Only) ── */}
-        <nav className="md:hidden" style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 9999,
-          background: '#fff',
-          borderTop: '2px solid #e2e8f0',
-          boxShadow: '0 -4px 20px rgba(0,0,0,0.10)',
-          paddingBottom: 'env(safe-area-inset-bottom)'
-        }}>
-          <div className="flex items-stretch justify-around max-w-lg mx-auto">
-            <button onClick={() => setActiveTab('marks')}
-              className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'marks' ? 'border-[#f5a623] text-[#f5a623]' : 'border-transparent text-slate-400'}`}>
-              <Upload size={20} strokeWidth={activeTab === 'marks' ? 2.5 : 1.8} />
-              <span className="text-[9px] font-bold uppercase tracking-wide">Marks</span>
-            </button>
-            {loginRole === 'superadmin' && (<>
-              <button onClick={() => setActiveTab('students')}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'students' ? 'border-[#0f2a5c] text-[#0f2a5c]' : 'border-transparent text-slate-400'}`}>
-                <Users size={20} strokeWidth={activeTab === 'students' ? 2.5 : 1.8} />
-                <span className="text-[9px] font-bold uppercase tracking-wide">Students</span>
-              </button>
-              <button onClick={() => setActiveTab('fees')}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'fees' ? 'border-green-600 text-green-600' : 'border-transparent text-slate-400'}`}>
-                <IndianRupee size={20} strokeWidth={activeTab === 'fees' ? 2.5 : 1.8} />
-                <span className="text-[9px] font-bold uppercase tracking-wide">Fees</span>
-              </button>
-              <button onClick={() => setActiveTab('homework')}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'homework' ? 'border-cyan-600 text-cyan-600' : 'border-transparent text-slate-400'}`}>
-                <BookOpen size={20} strokeWidth={activeTab === 'homework' ? 2.5 : 1.8} />
-                <span className="text-[9px] font-bold uppercase tracking-wide">Homework</span>
-              </button>
-              <button onClick={() => setActiveTab('notices')}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'notices' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400'}`}>
-                <Bell size={20} strokeWidth={activeTab === 'notices' ? 2.5 : 1.8} />
-                <span className="text-[9px] font-bold uppercase tracking-wide">Notices</span>
-              </button>
-              <button onClick={() => setActiveTab('settings')}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'settings' ? 'border-slate-700 text-slate-700' : 'border-transparent text-slate-400'}`}>
-                <Settings size={20} strokeWidth={activeTab === 'settings' ? 2.5 : 1.8} />
-                <span className="text-[9px] font-bold uppercase tracking-wide">Settings</span>
-              </button>
-            </>)}
-          </div>
-        </nav>
-
-        </main>
-      </div>
+          </main>
+        </div>
       )}
     </div>
   );

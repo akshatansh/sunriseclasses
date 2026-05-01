@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { Medal, Search, Sparkles, Trophy, BookOpen, TrendingUp } from 'lucide-react';
+import { Medal, Search, Sparkles, Trophy, BookOpen, TrendingUp, Download } from 'lucide-react';
 import Seo from '../components/Seo';
 import StudentProgressChart from '../components/StudentProgressChart';
+import { generateStudentRankCardPDF } from '../lib/pdfUtils';
 import {
   getAllStudentResults,
   getCurrentMonthLabel,
@@ -9,7 +10,8 @@ import {
   loadResultsPortalData,
   type ResultsPortalData,
 } from '../lib/resultsPortal';
-import { getStudentsWithHomework, type StudentWithHomework } from '../lib/homeworkPortal';
+import { getAvailableHomeworkMonths, getStudentsWithHomework, type StudentWithHomework } from '../lib/homeworkPortal';
+import { getMonthlyAttendanceStats } from '../lib/attendancePortal';
 
 /** Normalize className string to '9th' | '10th' | 'other' */
 function normalizeClass(className?: string | null): '9th' | '10th' | 'other' {
@@ -26,11 +28,46 @@ export default function ResultsPage() {
   const [selectedClass, setSelectedClass] = useState<'9th' | '10th'>('10th');
   const [selectedStudentForChart, setSelectedStudentForChart] = useState<{name: string, data: any[]} | null>(null);
   const [homeworkData, setHomeworkData] = useState<StudentWithHomework[]>([]);
+  const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [attendanceViewMode, setAttendanceViewMode] = useState<'monthly' | 'daily'>('monthly');
+  const [selectedAttendanceDate, setSelectedAttendanceDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [attendanceStats, setAttendanceStats] = useState<Record<string, { percentage: number, history: {date: string, status: string}[] }>>({});
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadResultsPortalData().then(setData).catch(console.error);
+    Promise.all([
+      loadResultsPortalData(),
+      getAvailableHomeworkMonths()
+    ]).then(([portalData, hwMonths]) => {
+      setData(portalData);
+      
+      const monthsSet = new Set(hwMonths);
+      portalData.results.forEach(r => {
+        const d = new Date(r.testDate);
+        monthsSet.add(d.toLocaleString('default', { month: 'long' }) + ' ' + d.getFullYear());
+      });
+      
+      const combinedMonths = Array.from(monthsSet).sort((a, b) => new Date("1 " + a).getTime() - new Date("1 " + b).getTime());
+      setAvailableMonths(combinedMonths);
+      
+      if (combinedMonths.length > 0) {
+        setSelectedMonth(combinedMonths[combinedMonths.length - 1]);
+      } else {
+        const now = new Date();
+        setSelectedMonth(now.toLocaleString('default', { month: 'long' }) + ' ' + now.getFullYear());
+      }
+    }).catch(console.error);
   }, []);
+
+  // Fetch attendance stats for selected month
+  useEffect(() => {
+    if (!selectedMonth) return;
+    const d = new Date("1 " + selectedMonth);
+    getMonthlyAttendanceStats((d.getMonth() + 1).toString(), d.getFullYear())
+      .then(setAttendanceStats)
+      .catch(console.error);
+  }, [selectedMonth]);
 
   // Auto-scroll to the far right when the tests change or load
   useEffect(() => {
@@ -46,24 +83,24 @@ export default function ResultsPage() {
 
   // Fetch homework data whenever class or month changes
   useEffect(() => {
-    // Build the month label for the current month to fetch homework
-    const now = new Date();
-    const currentMonth = now.toLocaleString('default', { month: 'long' }) + ' ' + now.getFullYear();
-    getStudentsWithHomework(currentMonth).then(all => {
+    if (!selectedMonth) return;
+    getStudentsWithHomework(selectedMonth).then(all => {
       // Filter by selected class
       const filtered = all.filter(s => normalizeClass(s.className) === selectedClass);
       setHomeworkData(filtered);
     }).catch(console.error);
-  }, [selectedClass]);
+  }, [selectedClass, selectedMonth]);
 
   // Filter students and results to only the selected class
-  const classFilteredData = useMemo(() => ({
-    students: data.students.filter(s => normalizeClass(s.className) === selectedClass),
-    results: data.results.filter(r => {
-      const student = data.students.find(s => s.id === r.studentId);
-      return student ? normalizeClass(student.className) === selectedClass : false;
-    }),
-  }), [data, selectedClass]);
+  const classFilteredData = useMemo(() => {
+    return {
+      students: data.students.filter(s => normalizeClass(s.className) === selectedClass),
+      results: data.results.filter(r => {
+        const student = data.students.find(s => s.id === r.studentId);
+        return student ? normalizeClass(student.className) === selectedClass : false;
+      }),
+    };
+  }, [data, selectedClass]);
 
   const referenceDate = useMemo(() => {
     if (classFilteredData.results.length === 0) return new Date();
@@ -301,22 +338,64 @@ export default function ResultsPage() {
                               <p className="font-bold text-[#0f2a5c] truncate text-xs sm:text-sm">{summary.student.name}</p>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-500">{summary.student.className}</p>
-                                <button
-                                  onClick={() => {
-                                    const chartData = summary.allTests
-                                      .sort((a, b) => new Date(a.testDate).getTime() - new Date(b.testDate).getTime())
-                                      .map((t, idx) => ({
-                                        testNumber: idx + 1,
-                                        date: new Date(t.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-                                        percentage: Math.round((t.marksObtained / t.totalMarks) * 100)
-                                      }));
-                                    setSelectedStudentForChart({ name: summary.student.name, data: chartData });
-                                  }}
-                                  className="text-[#f5a623] hover:text-[#e09010] bg-[#fff8e8] hover:bg-[#ffe2ae] p-1 rounded transition-colors"
-                                  title="View Progress Chart"
-                                >
-                                  <TrendingUp size={12} />
-                                </button>
+                                  <button
+                                    onClick={() => {
+                                      const chartData = summary.allTests
+                                        .sort((a, b) => new Date(a.testDate).getTime() - new Date(b.testDate).getTime())
+                                        .map((t, idx) => ({
+                                          testNumber: idx + 1,
+                                          date: new Date(t.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                                          percentage: Math.round((t.marksObtained / t.totalMarks) * 100)
+                                        }));
+                                      setSelectedStudentForChart({ name: summary.student.name, data: chartData });
+                                    }}
+                                    className="text-[#f5a623] hover:text-[#e09010] bg-[#fff8e8] hover:bg-[#ffe2ae] p-1 rounded transition-colors"
+                                    title="View Progress Chart"
+                                  >
+                                    <TrendingUp size={12} />
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      const hwRecord = homeworkData.find(h => h.id === summary.student.id)?.homework;
+                                      const attStat = attendanceStats[summary.student.id];
+                                      
+                                      const currentMonth = selectedMonth || monthLabel;
+                                      
+                                      const pdfTestResults = summary.allTests
+                                        .filter(t => {
+                                          const d = new Date(t.testDate);
+                                          const rMonth = d.toLocaleString('default', { month: 'long' }) + ' ' + d.getFullYear();
+                                          return rMonth === currentMonth;
+                                        })
+                                        .map(t => ({
+                                          testDate: t.testDate,
+                                          subject: t.testName,
+                                          totalMarks: t.totalMarks,
+                                          obtainedMarks: t.marksObtained,
+                                          rank: summary.rank // Global rank for month
+                                        }));
+                                      
+                                      await generateStudentRankCardPDF(
+                                        summary.student.name,
+                                        summary.student.className,
+                                        currentMonth,
+                                        pdfTestResults,
+                                        attStat || null,
+                                        hwRecord ? { completedPages: hwRecord.completedPages, targetPages: hwRecord.targetPages } : null
+                                      );
+                                    }}
+                                    className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1 rounded transition-colors ml-1"
+                                    title={`Download ${selectedMonth || monthLabel} Rank Card`}
+                                  >
+                                    <Download size={12} />
+                                  </button>
+                                {attendanceStats[summary.student.id] && attendanceStats[summary.student.id].history.length > 0 && (
+                                  <div className="flex gap-[2px] ml-1" title={`Monthly Attendance: ${attendanceStats[summary.student.id].percentage}%`}>
+                                    {attendanceStats[summary.student.id].history.slice(-7).map((record, i) => (
+                                      <span key={i} className={`h-1.5 w-1.5 rounded-full ${record.status === 'present' ? 'bg-green-500' : 'bg-red-500'}`} title={`${record.date}: ${record.status}`} />
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -351,91 +430,190 @@ export default function ResultsPage() {
             )}
           </div>
 
-          {/* ── HOMEWORK PROGRESS SECTION ── */}
-          {homeworkData.some(s => s.homework) && (() => {
+          {/* ── ATTENDANCE & HOMEWORK PROGRESS SECTION ── */}
+          {(homeworkData.some(s => s.homework) || availableMonths.length > 0 || Object.keys(attendanceStats).length > 0) && (() => {
             const firstHw = homeworkData.find(s => s.homework)?.homework;
             const target = firstHw?.targetPages ?? 0;
-            const month = firstHw?.month ?? '';
+            const month = selectedMonth;
+            
             return (
               <div className="mt-14 rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-5 sm:p-7 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0f2a5c]/10 shrink-0">
-                      <BookOpen className="text-[#0f2a5c]" size={20} />
-                    </div>
-                    <div>
-                      <h2 className="text-xl sm:text-2xl font-bold text-[#0f2a5c]">Homework Progress</h2>
-                      <p className="text-xs text-slate-500">{month} · Class {selectedClass} · Target: {target} pages</p>
-                    </div>
+                {/* Month Tabs */}
+                {availableMonths.length > 0 && (
+                  <div className="mb-6 flex flex-wrap gap-2 border-b border-slate-100 pb-4">
+                    {availableMonths.map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => {
+                          setSelectedMonth(m);
+                          setAttendanceViewMode('monthly');
+                        }}
+                        className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${
+                          selectedMonth === m
+                            ? 'bg-[#0f2a5c] text-white shadow-md transform scale-105'
+                            : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 hover:text-slate-700'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
                   </div>
-                  <div className="flex gap-3 text-[11px] font-semibold">
-                    <span className="flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded-full">
-                      <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" /> ≥80% Great
-                    </span>
-                    <span className="flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">
-                      <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" /> 50-79% Good
-                    </span>
-                    <span className="flex items-center gap-1.5 bg-red-50 text-red-600 border border-red-200 px-2.5 py-1 rounded-full">
-                      <span className="h-2 w-2 rounded-full bg-red-400 shrink-0" /> &lt;50% Behind
-                    </span>
-                  </div>
-                </div>
-
-                <div className="max-h-[440px] overflow-y-auto rounded-xl border border-slate-100 bg-white">
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10">
-                      <tr>
-                        <th className="py-2.5 px-4 text-left font-semibold text-slate-600 w-8">#</th>
-                        <th className="py-2.5 px-4 text-left font-semibold text-slate-600">Student</th>
-                        <th className="py-2.5 px-4 text-center font-semibold text-slate-600 w-24">Pages</th>
-                        <th className="py-2.5 px-4 text-left font-semibold text-slate-600 hidden sm:table-cell">Progress</th>
-                        <th className="py-2.5 px-4 text-center font-semibold text-slate-600 w-16">%</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {homeworkData
-                        .sort((a, b) => {
-                          const pctA = target > 0 ? ((a.homework?.completedPages ?? 0) / target) : 0;
-                          const pctB = target > 0 ? ((b.homework?.completedPages ?? 0) / target) : 0;
-                          return pctB - pctA;
-                        })
-                        .map((student, idx) => {
-                          const completedPages = student.homework?.completedPages ?? 0;
-                          const pct = target > 0 ? Math.min(100, Math.round((completedPages / target) * 100)) : 0;
-                          const isGood = pct >= 80;
-                          const isMid = pct >= 50 && pct < 80;
-                          const barColor = isGood ? 'bg-green-500' : isMid ? 'bg-amber-400' : 'bg-red-400';
-                          const pctColor = isGood ? 'text-green-700 bg-green-50' : isMid ? 'text-amber-700 bg-amber-50' : 'text-red-600 bg-red-50';
+                )}
+                
+                <div className="flex flex-col lg:flex-row gap-8">
+                  {/* Homework Section */}
+                  <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0f2a5c]/10 shrink-0">
+                          <BookOpen size={20} className="text-[#0f2a5c]" />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-bold text-[#0f2a5c]">Homework Progress</h2>
+                          <p className="text-xs text-slate-500">{month}</p>
+                        </div>
+                      </div>
+                      {target > 0 && (
+                        <div className="rounded-xl border border-dashed border-[#f5a623]/30 bg-[#fff8e8] px-4 py-2">
+                          <p className="text-xs font-semibold text-[#9a5b00]">Monthly Target</p>
+                          <p className="text-sm font-bold text-[#f5a623]">{target} Pages</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {homeworkData.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                        Is mahine ka koi homework record nahi hai.
+                      </div>
+                    ) : (
+                      <div className="grid gap-3">
+                        {homeworkData.map(s => {
+                          if (!s.homework) return null;
+                          const hw = s.homework;
+                          const isComplete = hw.completedPages >= hw.targetPages && hw.targetPages > 0;
+                          const progress = hw.targetPages > 0 ? Math.min(100, Math.round((hw.completedPages / hw.targetPages) * 100)) : 0;
                           return (
-                            <tr key={student.id} className="hover:bg-slate-50/70 transition-colors">
-                              <td className="py-2.5 px-4 text-slate-400 font-medium text-xs">{idx + 1}</td>
-                              <td className="py-2.5 px-4">
-                                <div className="flex items-center gap-2">
-                                  <img
-                                    src={student.image || '/sunrise-logo.png'}
-                                    onError={e => (e.currentTarget.src = '/sunrise-logo.png')}
-                                    className="h-7 w-7 rounded-full object-cover border border-slate-200 shrink-0"
-                                    alt={student.name}
-                                  />
-                                  <span className="font-semibold text-[#0f2a5c] text-sm truncate max-w-[120px] sm:max-w-none">{student.name}</span>
+                            <div key={s.id} className="group relative flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all hover:border-[#f5a623]/30 hover:shadow-md">
+                              <img src={s.image || '/sunrise-logo.png'} alt={s.name} className="h-10 w-10 shrink-0 rounded-full object-cover border border-slate-200" onError={e => e.currentTarget.src = '/sunrise-logo.png'} />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-bold text-slate-800">{s.name}</p>
+                                <div className="mt-1 flex items-center gap-2">
+                                  <div className="h-1.5 w-full max-w-[120px] rounded-full bg-slate-100 overflow-hidden">
+                                    <div className={`h-full rounded-full transition-all duration-500 ${isComplete ? 'bg-green-500' : 'bg-[#f5a623]'}`} style={{ width: `${progress}%` }} />
+                                  </div>
+                                  <span className="text-[10px] font-bold text-slate-500">{hw.completedPages}/{hw.targetPages}</span>
                                 </div>
-                              </td>
-                              <td className="py-2.5 px-4 text-center text-slate-600 font-medium text-xs">
-                                {completedPages}<span className="text-slate-400">/{target}</span>
-                              </td>
-                              <td className="py-2.5 px-4 hidden sm:table-cell">
-                                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
-                                </div>
-                              </td>
-                              <td className="py-2.5 px-4 text-center">
-                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${pctColor}`}>{pct}%</span>
-                              </td>
-                            </tr>
+                              </div>
+                              <div className="shrink-0 text-right">
+                                {isComplete ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-bold text-green-600 border border-green-200">
+                                    <Sparkles size={10} /> Completed
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-500 border border-slate-200">
+                                    Pending
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           );
                         })}
-                    </tbody>
-                  </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Attendance Section */}
+                  <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0f2a5c]/10 shrink-0">
+                          <span className="text-xl">📅</span>
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-bold text-[#0f2a5c]">Attendance Report</h2>
+                          <p className="text-xs text-slate-500">{month}</p>
+                        </div>
+                      </div>
+                      
+                      {Object.keys(attendanceStats).length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => setAttendanceViewMode('monthly')}
+                            className={`px-3 py-1.5 text-[10px] sm:text-xs font-bold rounded-full transition-all ${attendanceViewMode === 'monthly' ? 'bg-[#0f2a5c] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                          >
+                            Monthly
+                          </button>
+                          <input 
+                            type="date" 
+                            value={selectedAttendanceDate}
+                            onChange={(e) => {
+                              setSelectedAttendanceDate(e.target.value);
+                              setAttendanceViewMode('daily');
+                            }}
+                            max={new Date().toISOString().split('T')[0]}
+                            className={`px-3 py-1 text-[10px] sm:text-xs font-bold rounded-full border outline-none transition-all ${attendanceViewMode === 'daily' ? 'bg-[#0f2a5c] text-white border-[#0f2a5c] shadow-sm' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    
+                    {Object.keys(attendanceStats).length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                        Is mahine ki koi attendance record nahi hai.
+                      </div>
+                    ) : (
+                      <div className="grid gap-3">
+                        {classFilteredData.students.map(s => {
+                          const stat = attendanceStats[s.id];
+                          if (!stat || stat.history.length === 0) return null;
+                          const isGood = stat.percentage >= 75;
+                          return (
+                            <div key={s.id} className="group relative flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all hover:border-[#f5a623]/30 hover:shadow-md">
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <img src={s.image || '/sunrise-logo.png'} alt={s.name} className="h-10 w-10 shrink-0 rounded-full object-cover border border-slate-200" onError={e => e.currentTarget.src = '/sunrise-logo.png'} />
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-bold text-slate-800">{s.name}</p>
+                                  {attendanceViewMode === 'monthly' ? (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                      {stat.history.map((record, i) => {
+                                        const day = new Date(record.date).getDate();
+                                        return (
+                                          <div key={i} className={`flex flex-col items-center justify-center w-[22px] h-[24px] rounded shrink-0 transition-all ${record.status === 'present' ? 'bg-green-50 border border-green-100 hover:bg-green-100' : 'bg-red-50 border border-red-100 hover:bg-red-100'}`} title={`${record.date}: ${record.status}`}>
+                                            <span className={`text-[8px] font-bold ${record.status === 'present' ? 'text-green-600' : 'text-red-600'}`}>{day}</span>
+                                            <span className={`h-1 w-1 mt-[1px] rounded-full ${record.status === 'present' ? 'bg-green-500' : 'bg-red-500'}`} />
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (() => {
+                                    const dailyRecord = stat.history.find(r => r.date === selectedAttendanceDate);
+                                    const status = dailyRecord ? dailyRecord.status : null;
+                                    return (
+                                      <div className="mt-2">
+                                        {status === 'present' ? (
+                                          <span className="inline-flex items-center gap-1 rounded bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-600 border border-green-200"><span className="h-1.5 w-1.5 rounded-full bg-green-500"/> Present</span>
+                                        ) : status === 'absent' ? (
+                                          <span className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600 border border-red-200"><span className="h-1.5 w-1.5 rounded-full bg-red-500"/> Absent</span>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1 rounded bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500 border border-slate-200">No Record</span>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                              <div className="shrink-0 text-right ml-2">
+                                <div className={`text-lg font-black ${isGood ? 'text-green-600' : 'text-[#f5a623]'}`}>
+                                  {stat.percentage}%
+                                </div>
+                                <div className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Attendance</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );

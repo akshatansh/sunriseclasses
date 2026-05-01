@@ -14,6 +14,23 @@ export interface StudentWithHomework extends StudentRecord {
   homework: HomeworkRecord | null;
 }
 
+export const getAvailableHomeworkMonths = async (): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase.from('homework_records').select('month');
+    if (error) throw error;
+    
+    // Extract unique months
+    const months = new Set(data.map(r => r.month));
+    // Sort months chronologically (oldest first: April, May, etc.)
+    return Array.from(months).sort((a, b) => {
+      return new Date("1 " + a).getTime() - new Date("1 " + b).getTime();
+    });
+  } catch (error) {
+    console.error('Error fetching available homework months:', error);
+    return [];
+  }
+};
+
 export const getStudentsWithHomework = async (month: string): Promise<StudentWithHomework[]> => {
   try {
     const [studentsResponse, homeworkResponse] = await Promise.all([
