@@ -86,11 +86,11 @@ export default function AdminResultsPage() {
   useEffect(() => {
     loadResultsPortalData().then(setData).catch(console.error);
     if (typeof window !== 'undefined') {
-      const auth = window.localStorage.getItem(ADMIN_SESSION_KEY) === 'true';
+      const auth = window.sessionStorage.getItem(ADMIN_SESSION_KEY) === 'true';
       setIsAuthenticated(auth);
       if (auth) {
-        const role = window.localStorage.getItem(ADMIN_ROLE_KEY);
-        const classAccess = window.localStorage.getItem(ADMIN_CLASS_KEY) || 'all';
+        const role = window.sessionStorage.getItem(ADMIN_ROLE_KEY);
+        const classAccess = window.sessionStorage.getItem(ADMIN_CLASS_KEY) || 'all';
         setLoginRole(role);
         setLoginClassAccess(classAccess);
         if (role === 'superadmin') {
@@ -581,9 +581,9 @@ export default function AdminResultsPage() {
 
       const classAccess = adminData.class_access || 'all';
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem(ADMIN_SESSION_KEY, 'true');
-        window.localStorage.setItem(ADMIN_ROLE_KEY, adminData.role);
-        window.localStorage.setItem(ADMIN_CLASS_KEY, classAccess);
+        window.sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
+        window.sessionStorage.setItem(ADMIN_ROLE_KEY, adminData.role);
+        window.sessionStorage.setItem(ADMIN_CLASS_KEY, classAccess);
       }
       setIsAuthenticated(true);
       setLoginRole(adminData.role);
@@ -601,9 +601,9 @@ export default function AdminResultsPage() {
 
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(ADMIN_SESSION_KEY);
-      window.localStorage.removeItem(ADMIN_ROLE_KEY);
-      window.localStorage.removeItem(ADMIN_CLASS_KEY);
+      window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      window.sessionStorage.removeItem(ADMIN_ROLE_KEY);
+      window.sessionStorage.removeItem(ADMIN_CLASS_KEY);
     }
     setIsAuthenticated(false);
     setLoginRole(null);
