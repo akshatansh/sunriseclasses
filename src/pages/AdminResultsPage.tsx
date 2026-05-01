@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen } from 'lucide-react';
+import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen, Calendar } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { drawPDFHeader, drawPDFFooter } from '../lib/pdfUtils';
@@ -892,6 +892,11 @@ export default function AdminResultsPage() {
                   <BookOpen size={20} />
                   <span>Homework</span>
                 </button>
+                <button onClick={() => setActiveTab('attendance')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'attendance' ? 'bg-white/10 text-teal-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                  <Calendar size={20} />
+                  <span>Attendance</span>
+                </button>
                 <button onClick={() => setActiveTab('notices')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'notices' ? 'bg-white/10 text-blue-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
                   <Bell size={20} />
@@ -1421,6 +1426,11 @@ export default function AdminResultsPage() {
                 <div><HomeworkManagement /></div>
               )}
 
+              {/* ── ATTENDANCE TAB ── super admin only */}
+              {activeTab === 'attendance' && loginRole === 'superadmin' && (
+                <div><AttendanceManagement students={sortedStudents} /></div>
+              )}
+
               {/* ── SETTINGS TAB ── super admin only */}
               {activeTab === 'settings' && loginRole === 'superadmin' && (
                 <div className="space-y-4">
@@ -1782,6 +1792,11 @@ export default function AdminResultsPage() {
                     className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'homework' ? 'border-cyan-600 text-cyan-600' : 'border-transparent text-slate-400'}`}>
                     <BookOpen size={20} strokeWidth={activeTab === 'homework' ? 2.5 : 1.8} />
                     <span className="text-[9px] font-bold uppercase tracking-wide">Homework</span>
+                  </button>
+                  <button onClick={() => setActiveTab('attendance')}
+                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'attendance' ? 'border-teal-600 text-teal-600' : 'border-transparent text-slate-400'}`}>
+                    <Calendar size={20} strokeWidth={activeTab === 'attendance' ? 2.5 : 1.8} />
+                    <span className="text-[9px] font-bold uppercase tracking-wide">Attendance</span>
                   </button>
                   <button onClick={() => setActiveTab('notices')}
                     className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'notices' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400'}`}>
