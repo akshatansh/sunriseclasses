@@ -24,6 +24,7 @@ const FeeManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'partial' | 'paid'>('pending');
+  const [selectedClass, setSelectedClass] = useState<'all' | '9th' | '10th'>('all');
 
   // Payment Modal
   const [paymentModalStudent, setPaymentModalStudent] = useState<StudentFeeStatus | null>(null);
@@ -162,15 +163,28 @@ const FeeManagement = () => {
     doc.save(`Receipt_${student.name}_${month}.pdf`);
   };
 
+  const displayed = students.filter(s => {
+    const matchSearch = (s.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const c = (s.className || '').toLowerCase().replace(/\s+/g, '');
+    const matchClass = selectedClass === 'all' ? true : c.includes(selectedClass.replace('th', ''));
+    if (!matchClass) return false;
+    
+    if (filter === 'pending') return matchSearch && !s.feePaid && !s.isPartial;
+    if (filter === 'partial') return matchSearch && s.isPartial;
+    if (filter === 'paid') return matchSearch && s.feePaid;
+    return matchSearch;
+  });
+
   const handleDownloadReport = async () => {
-    if (students.length === 0) {
+    if (displayed.length === 0) {
       alert('No students to generate report');
       return;
     }
     const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
-    const startY = await drawPDFHeader(doc, `Monthly Fee Report - ${month}`);
+    const classText = selectedClass === 'all' ? 'All Classes' : `Class ${selectedClass.replace('th', '')}`;
+    const startY = await drawPDFHeader(doc, `Monthly Fee Report - ${month} (${classText})`);
     
-    const tableData = students.map((s, i) => [
+    const tableData = displayed.map((s, i) => [
       i + 1,
       s.name,
       s.className,
@@ -204,18 +218,10 @@ const FeeManagement = () => {
     doc.save(`Fee_Report_${month.replace(' ', '_')}.pdf`);
   };
 
-  const displayed = students.filter(s => {
-    const matchSearch = (s.name || '').toLowerCase().includes(searchQuery.toLowerCase());
-    if (filter === 'pending') return matchSearch && !s.feePaid && !s.isPartial;
-    if (filter === 'partial') return matchSearch && s.isPartial;
-    if (filter === 'paid') return matchSearch && s.feePaid;
-    return matchSearch;
-  });
-
-  const totalPaid = students.reduce((a, s) => a + (s.paymentAmount || 0), 0);
-  const paidCount = students.filter(s => s.feePaid).length;
-  const partialCount = students.filter(s => s.isPartial).length;
-  const pendingCount = students.filter(s => !s.feePaid && !s.isPartial).length;
+  const totalPaid = displayed.reduce((a, s) => a + (s.paymentAmount || 0), 0);
+  const paidCount = displayed.filter(s => s.feePaid).length;
+  const partialCount = displayed.filter(s => s.isPartial).length;
+  const pendingCount = displayed.filter(s => !s.feePaid && !s.isPartial).length;
 
   return (
     <div>
@@ -258,6 +264,23 @@ const FeeManagement = () => {
           <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase">Pending</p>
           <p className="text-sm sm:text-lg font-black text-red-500">{pendingCount}</p>
         </div>
+      </div>
+
+      {/* ── Class Filter ── */}
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-1 hide-scrollbar">
+        {(['all', '9th', '10th'] as const).map(cls => (
+          <button
+            key={cls}
+            onClick={() => setSelectedClass(cls)}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
+              selectedClass === cls
+                ? 'bg-[#0f2a5c] text-white shadow-sm'
+                : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {cls === 'all' ? 'All Classes' : `Class ${cls.replace('th', '')}`}
+          </button>
+        ))}
       </div>
 
       {/* ── Search + Filter ── */}
