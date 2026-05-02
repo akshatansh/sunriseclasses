@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen, Calendar, Pencil, Eye } from 'lucide-react';
+import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen, Calendar, Pencil, Eye, User } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { drawPDFHeader, drawPDFFooter } from '../lib/pdfUtils';
@@ -1283,20 +1283,22 @@ export default function AdminResultsPage() {
                                 />
                                 <div>
                                   <p className="font-semibold text-[#0f2a5c]">{student.name}</p>
-                                  <div className="flex flex-col text-[11px] sm:text-xs text-slate-500 mt-1 space-y-1">
-                                    <span className="font-medium px-2 py-0.5 bg-slate-100 rounded text-slate-600 w-fit">
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[10px] sm:text-[11px]">
+                                    <span className="font-semibold px-2 py-0.5 bg-[#0f2a5c]/5 text-[#0f2a5c] rounded-md">
                                       {student.className}
                                     </span>
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1">
-                                      <span className="text-slate-600">
-                                        Father: <span className="font-medium text-[#0f2a5c]">{student.fatherName || 'N/A'}</span>
+                                    {student.fatherName && (
+                                      <span className="flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md" title="Father's Name">
+                                        <User size={10} className="text-slate-400" />
+                                        <span className="font-medium truncate max-w-[100px]">{student.fatherName}</span>
                                       </span>
-                                      <span className="hidden sm:inline text-slate-300">•</span>
-                                      <span className="flex items-center gap-1 text-slate-600">
+                                    )}
+                                    {student.parentPhone && (
+                                      <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md" title="Phone Number">
                                         <Phone size={10} className="text-blue-500" />
-                                        <span className="font-medium text-[#0f2a5c]">{student.parentPhone || 'Not provided'}</span>
+                                        <span className="font-medium tracking-wide">{student.parentPhone}</span>
                                       </span>
-                                    </div>
+                                    )}
                                   </div>
                                 </div>
                               </div>
