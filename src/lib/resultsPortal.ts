@@ -121,6 +121,16 @@ export async function deleteStudentFromDB(id: string) {
   if (error) throw error;
 }
 
+export async function updateStudentInDB(id: string, student: { name: string; className: string; fatherName?: string | null; parentPhone?: string | null }) {
+  const { error } = await supabase.from('students').update({
+    name: student.name,
+    class_name: student.className,
+    father_name: student.fatherName || null,
+    parent_phone: student.parentPhone || null,
+  }).eq('id', id);
+  if (error) throw error;
+}
+
 export async function deleteTestResultFromDB(id: string) {
   const { error } = await supabase.from('test_results').delete().eq('id', id);
   if (error) throw error;

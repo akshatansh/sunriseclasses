@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen, Calendar } from 'lucide-react';
+import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen, Calendar, Pencil } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { drawPDFHeader, drawPDFFooter } from '../lib/pdfUtils';
@@ -11,6 +11,7 @@ import {
   deleteStudentFromDB,
   deleteTestResultFromDB,
   updateTestResultInDB,
+  updateStudentInDB,
   graduateClass10,
   promoteClass9To10,
   type ResultsPortalData,
@@ -63,6 +64,8 @@ export default function AdminResultsPage() {
   const [loginError, setLoginError] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [editStudentId, setEditStudentId] = useState<string | null>(null);
+  const [editStudentForm, setEditStudentForm] = useState({ name: '', className: '', fatherName: '', parentPhone: '' });
   const [editResultId, setEditResultId] = useState<string | null>(null);
   const [editMarksValue, setEditMarksValue] = useState<string>('');
   const [loginRole, setLoginRole] = useState<string | null>(null);
@@ -526,6 +529,25 @@ export default function AdminResultsPage() {
     } catch (err) {
       console.error(err);
       alert("Failed to delete student.");
+    }
+  };
+
+  const handleEditStudentSave = async () => {
+    if (!editStudentId || !editStudentForm.name.trim()) return;
+    const formatName = (n: string) => n.trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    try {
+      await updateStudentInDB(editStudentId, {
+        name: formatName(editStudentForm.name),
+        className: editStudentForm.className.trim(),
+        fatherName: editStudentForm.fatherName.trim() ? formatName(editStudentForm.fatherName) : null,
+        parentPhone: editStudentForm.parentPhone.trim() || null,
+      });
+      await reloadData();
+      showMessage('Student updated successfully.');
+      setEditStudentId(null);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update student.');
     }
   };
 
@@ -1296,14 +1318,32 @@ export default function AdminResultsPage() {
                                     </button>
                                   </div>
                                 ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => setDeleteConfirmId(student.id)}
-                                    className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100"
-                                  >
-                                    <Trash2 size={14} />
-                                    Delete
-                                  </button>
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditStudentId(student.id);
+                                        setEditStudentForm({
+                                          name: student.name || '',
+                                          className: student.className || '',
+                                          fatherName: student.fatherName || '',
+                                          parentPhone: student.parentPhone || '',
+                                        });
+                                      }}
+                                      className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-100"
+                                    >
+                                      <Pencil size={13} />
+                                      Edit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeleteConfirmId(student.id)}
+                                      className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100"
+                                    >
+                                      <Trash2 size={14} />
+                                      Delete
+                                    </button>
+                                  </div>
                                 )
                               )}
                             </div>
@@ -1821,6 +1861,81 @@ export default function AdminResultsPage() {
             </nav>
 
           </main>
+        </div>
+      )}
+
+      {/* ── Edit Student Modal ── */}
+      {editStudentId && (
+        <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={() => setEditStudentId(null)}>
+          <div
+            className="bg-white rounded-t-3xl p-6 w-full max-w-sm shadow-2xl"
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-5" />
+            <h3 className="text-lg font-bold text-[#0f2a5c] mb-4 flex items-center gap-2">
+              <Pencil size={18} className="text-blue-500" /> Edit Student
+            </h3>
+
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="text-xs font-bold text-slate-500 ml-1">Student Name *</label>
+                <input
+                  type="text"
+                  value={editStudentForm.name}
+                  onChange={e => setEditStudentForm(p => ({ ...p, name: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-semibold mt-1 text-sm"
+                  placeholder="Enter student name"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 ml-1">Class</label>
+                <input
+                  type="text"
+                  value={editStudentForm.className}
+                  onChange={e => setEditStudentForm(p => ({ ...p, className: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-semibold mt-1 text-sm"
+                  placeholder="e.g. Class 9, Class 10"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 ml-1">Father's Name</label>
+                <input
+                  type="text"
+                  value={editStudentForm.fatherName}
+                  onChange={e => setEditStudentForm(p => ({ ...p, fatherName: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-semibold mt-1 text-sm"
+                  placeholder="Father's name"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 ml-1">Parent Phone</label>
+                <input
+                  type="tel"
+                  value={editStudentForm.parentPhone}
+                  onChange={e => setEditStudentForm(p => ({ ...p, parentPhone: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-semibold mt-1 text-sm"
+                  placeholder="10-digit mobile number"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEditStudentId(null)}
+                className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-2xl font-bold text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditStudentSave}
+                className="flex-1 bg-[#0f2a5c] text-white py-3 rounded-2xl font-bold text-sm"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
