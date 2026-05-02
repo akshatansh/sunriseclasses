@@ -58,7 +58,7 @@ export default function About() {
               <div className="relative">
                 <div className="absolute inset-0 bg-[#f5a623]/20 rounded-2xl blur-xl" />
                 <img
-                  src="/WhatsApp_Image_2026-04-04_at_11.56.16.jpeg"
+                  src="/director_photo.jpg"
                   alt="Director S.P. Jha"
                   className="relative w-56 h-64 sm:w-64 sm:h-72 rounded-2xl object-cover object-top shadow-2xl border-4 border-[#f5a623]/40"
                 />
