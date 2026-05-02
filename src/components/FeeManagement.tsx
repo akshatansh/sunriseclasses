@@ -3,7 +3,7 @@ import { IndianRupee, MessageCircle, FileText, CheckCircle, Search, X, Phone, Ch
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { drawPDFHeader, drawPDFFooter, drawWatermark, drawOfficialStamp } from '../lib/pdfUtils';
-import { getStudentsWithFeeStatus, recordFeePayment, updateStudentPhone, type StudentFeeStatus } from '../lib/feePortal';
+import { getStudentsWithFeeStatus, recordFeePayment, updateStudentPhone, updateStudentOpeningBalance, type StudentFeeStatus } from '../lib/feePortal';
 
 const MONTHS = [
   'January 2026', 'February 2026', 'March 2026', 'April 2026', 'May 2026', 'June 2026',
@@ -34,6 +34,10 @@ const FeeManagement = () => {
   const [phoneModalStudent, setPhoneModalStudent] = useState<StudentFeeStatus | null>(null);
   const [phoneValue, setPhoneValue] = useState('');
 
+  // Opening Balance modal
+  const [obModalStudent, setObModalStudent] = useState<StudentFeeStatus | null>(null);
+  const [obValue, setObValue] = useState('');
+
   const loadData = useCallback(async () => {
     setLoading(true);
     const data = await getStudentsWithFeeStatus(month, 'all');
@@ -52,6 +56,19 @@ const FeeManagement = () => {
       setPhoneModalStudent(null);
     } else {
       alert('Phone save karne mein dikkat aaye.');
+    }
+  };
+
+  const handleObSave = async () => {
+    if (!obModalStudent) return;
+    const amount = Number(obValue);
+    if (isNaN(amount) || amount < 0) { alert('Valid amount daalo'); return; }
+    const success = await updateStudentOpeningBalance(obModalStudent.id, amount);
+    if (success) {
+      setObModalStudent(null);
+      loadData();
+    } else {
+      alert('Opening balance save nahi hua.');
     }
   };
 
@@ -313,6 +330,19 @@ const FeeManagement = () => {
                 </div>
               </div>
 
+              {/* Opening Balance row */}
+              <div className="flex items-center gap-2 mb-3">
+                <IndianRupee size={12} className="text-slate-400 shrink-0" />
+                <span className="text-xs text-slate-500 flex-1">
+                  Opening Balance: <span className="font-bold text-orange-600">₹{student.openingBalance || 0}</span>
+                </span>
+                <button
+                  onClick={() => { setObModalStudent(student); setObValue(String(student.openingBalance || 0)); }}
+                  className="text-xs text-orange-500 font-semibold shrink-0"
+                >
+                  {(student.openingBalance || 0) > 0 ? 'Edit' : 'Set'}
+                </button>
+              </div>
               {/* Phone row */}
               <div className="flex items-center gap-2 mb-3">
                 <Phone size={12} className="text-slate-400 shrink-0" />
@@ -452,6 +482,30 @@ const FeeManagement = () => {
             <div className="flex gap-3">
               <button onClick={() => setPhoneModalStudent(null)} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-2xl font-bold">Cancel</button>
               <button onClick={handlePhoneSave} className="flex-1 bg-[#0f2a5c] text-white py-3 rounded-2xl font-bold">Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Opening Balance Modal ── */}
+      {obModalStudent && (
+        <div className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={() => setObModalStudent(null)}>
+          <div className="bg-white rounded-t-3xl p-6 w-full max-w-sm shadow-2xl" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }} onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-5" />
+            <h3 className="text-lg font-bold text-[#0f2a5c] mb-0.5">Opening Balance</h3>
+            <p className="text-sm text-slate-500 mb-1">{obModalStudent.name}</p>
+            <p className="text-xs text-slate-400 mb-4">Pehle se due amount daalo (ek baar set karo)</p>
+            <input
+              type="number"
+              value={obValue}
+              onChange={e => setObValue(e.target.value)}
+              placeholder="₹ Pehle se due amount"
+              className="w-full border border-[#f5a623] rounded-2xl px-4 py-3 outline-none focus:border-[#0f2a5c] text-lg font-bold mb-4"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <button onClick={() => setObModalStudent(null)} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-2xl font-bold">Cancel</button>
+              <button onClick={handleObSave} className="flex-1 bg-orange-500 text-white py-3 rounded-2xl font-bold">Save</button>
             </div>
           </div>
         </div>

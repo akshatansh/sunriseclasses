@@ -21,6 +21,8 @@ export interface StudentFeeStatus extends StudentRecord {
   isPartial?: boolean;
   paymentDate?: string;
   receiptId?: string;
+  previousDues?: number;
+  openingBalance?: number;
 }
 
 export const updateStudentPhone = async (studentId: string, phone: string): Promise<boolean> => {
@@ -86,7 +88,9 @@ export const getStudentsWithFeeStatus = async (month: string, className: '9th' |
         }
       }
       
-      const previousDues = Math.max(0, expectedBefore - paidBefore);
+      // Opening balance (pre-existing dues from before the system)
+      const openingBalance = Math.max(0, Number(student.opening_balance) || 0);
+      const previousDues = Math.max(0, expectedBefore - paidBefore) + openingBalance;
 
       // Current month details
       const currentP = allPayments?.find(x => x.student_id === student.id && x.month === month);
@@ -113,6 +117,7 @@ export const getStudentsWithFeeStatus = async (month: string, className: '9th' |
         totalFee: totalPayableThisMonth,
         dueAmount,
         previousDues,
+        openingBalance,
         paymentDate: currentP?.payment_date,
         receiptId: currentP?.id
       };
@@ -167,5 +172,18 @@ export const recordFeePayment = async (studentId: string, amountPayingNow: numbe
   } catch (error) {
     console.error('Error recording payment:', error);
     return null;
+  }
+};
+export const updateStudentOpeningBalance = async (studentId: string, openingBalance: number): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('students')
+      .update({ opening_balance: openingBalance })
+      .eq('id', studentId);
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error updating opening balance:', error);
+    return false;
   }
 };
