@@ -511,7 +511,7 @@ export default function SuccessStories() {
                               loading="lazy"
                               decoding="async"
                               fetchPriority="low"
-                              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 p-2"
+                              className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
                               onError={(e) => {
                                 if (e.currentTarget.src.includes('/gallery/optimized/')) {
                                   e.currentTarget.src = student.photo;
