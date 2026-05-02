@@ -31,7 +31,7 @@ export default function Hero() {
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-4">
-              Future ko direction dene wali
+              Best Coaching in Champanagar Purnia
               <span className="block bg-gradient-to-r from-[#f5a623] via-[#ffd978] to-[#fff0ba] bg-clip-text text-transparent">Sunrise Classes & Academy</span>
             </h1>
 
