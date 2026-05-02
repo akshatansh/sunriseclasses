@@ -13,6 +13,7 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
 
   // Secret bypass check
   const [isBypassed, setIsBypassed] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   useEffect(() => {
     // If the URL has ?bypass=admin, we store it in sessionStorage
@@ -43,6 +44,8 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
         const particleCount = 50 * (timeLeft / duration);
         confetti({ ...defaults, particleCount, origin: { x: Math.random(), y: Math.random() - 0.2 } });
       }, 250);
+
+      setShowWelcomeModal(true);
     };
 
     // Test mode
@@ -74,9 +77,43 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
     return <>{children}</>;
   }
 
+  const welcomeModal = showWelcomeModal && (
+    <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-500">
+      <div className="bg-white rounded-[2rem] p-6 sm:p-8 max-w-md w-full shadow-2xl relative text-center border-4 border-[#f5a623]/20 scale-in-center">
+        <div className="absolute -top-12 left-1/2 -translate-x-1/2">
+          <img 
+            src="/director_photo.jpg" 
+            alt="Director S.P. Jha" 
+            className="w-24 h-24 rounded-full object-cover object-top border-4 border-white shadow-xl bg-white"
+          />
+        </div>
+        <div className="mt-10">
+          <h2 className="text-2xl font-black text-[#0f2a5c] mb-2">Welcome to Sunrise!</h2>
+          <p className="text-[#f5a623] font-bold text-sm uppercase tracking-widest mb-4">New Digital Home</p>
+          <p className="text-gray-600 text-sm leading-relaxed mb-6">
+            "Aapka swagat hai Sunrise Classes & Academy ki official website par! Ab yahan aapko daily videos, notices, aur results sab ek jagah milenge. Padhai hogi aur bhi aasan!"
+            <br/><br/>
+            <strong>- S.P. Jha (Director)</strong>
+          </p>
+          <button 
+            onClick={() => setShowWelcomeModal(false)}
+            className="w-full bg-[linear-gradient(135deg,_#f5a623,_#ffb740)] text-[#0f2a5c] font-black text-lg py-3 rounded-xl shadow-[0_8px_20px_rgba(245,166,35,0.3)] hover:-translate-y-1 transition-all duration-200"
+          >
+            Start Exploring 🚀
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // If time is up, show the actual website
   if (timeLeft <= 0) {
-    return <>{children}</>;
+    return (
+      <>
+        {welcomeModal}
+        {children}
+      </>
+    );
   }
 
   // Calculate time components
