@@ -189,7 +189,7 @@ export default function AdminResultsPage() {
       bodyStyles: { fontSize: 9, textColor: [30, 30, 30] },
       alternateRowStyles: { fillColor: [248, 251, 255] },
       columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },
+        0: { cellWidth: 14, halign: 'center' },
         2: { cellWidth: 22, halign: 'center' },
         5: { cellWidth: 26, halign: 'center' },
       },
