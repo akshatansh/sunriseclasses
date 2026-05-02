@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen, Calendar, Pencil } from 'lucide-react';
+import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen, Calendar, Pencil, Eye } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { drawPDFHeader, drawPDFFooter } from '../lib/pdfUtils';
@@ -23,6 +23,7 @@ import { getNotices, addNotice, deleteNotice, type NoticeRecord } from '../lib/n
 import FeeManagement from '../components/FeeManagement';
 import HomeworkManagement from '../components/HomeworkManagement';
 import AttendanceManagement from '../components/AttendanceManagement';
+import AdminStudentProfile from '../components/AdminStudentProfile';
 
 const ADMIN_SESSION_KEY = 'sunrise-admin-authenticated';
 const ADMIN_ROLE_KEY = 'sunrise-admin-role';
@@ -65,6 +66,7 @@ export default function AdminResultsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editStudentId, setEditStudentId] = useState<string | null>(null);
+  const [profileStudentId, setProfileStudentId] = useState<string | null>(null);
   const [editStudentForm, setEditStudentForm] = useState({ name: '', className: '', fatherName: '', parentPhone: '' });
   const [editResultId, setEditResultId] = useState<string | null>(null);
   const [editMarksValue, setEditMarksValue] = useState<string>('');
@@ -1321,6 +1323,14 @@ export default function AdminResultsPage() {
                                   <div className="flex items-center gap-1.5">
                                     <button
                                       type="button"
+                                      onClick={() => setProfileStudentId(student.id)}
+                                      className="rounded-full bg-blue-50 p-2 text-blue-600 hover:bg-blue-100 shadow-sm"
+                                      title="View Profile"
+                                    >
+                                      <Eye size={16} />
+                                    </button>
+                                    <button
+                                      type="button"
                                       onClick={() => {
                                         setEditStudentId(student.id);
                                         setEditStudentForm({
@@ -1937,6 +1947,15 @@ export default function AdminResultsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Student Profile Modal ── */}
+      {profileStudentId && (
+        <AdminStudentProfile
+          student={data.students.find(s => s.id === profileStudentId)!}
+          allResults={data.results.filter(r => r.studentId === profileStudentId)}
+          onClose={() => setProfileStudentId(null)}
+        />
       )}
     </div>
   );
