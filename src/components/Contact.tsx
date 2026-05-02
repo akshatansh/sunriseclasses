@@ -15,7 +15,7 @@ const info = [
   {
     icon: Phone,
     title: 'Call Us',
-    lines: ['+91 9973152070', 'Mon – Sat, 8 AM – 6 PM'],
+    lines: ['+91 9973152070', '+91 7979732764', 'Mon – Sat, 8 AM – 6 PM'],
   },
   {
     icon: Mail,

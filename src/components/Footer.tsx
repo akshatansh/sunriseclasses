@@ -112,9 +112,12 @@ export default function Footer() {
                   <MapPin size={14} className="text-[#f5a623] flex-shrink-0 mt-0.5" />
                   <span className="text-gray-300 text-xs">Champanagar, Purnia, Bihar Near Cinema Hall – 854201</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Phone size={14} className="text-[#f5a623] flex-shrink-0" />
-                  <span className="text-gray-300 text-xs">+91 9973152070</span>
+                <div className="flex items-start gap-2">
+                  <Phone size={14} className="text-[#f5a623] flex-shrink-0 mt-0.5" />
+                  <div className="flex flex-col">
+                    <span className="text-gray-300 text-xs">+91 9973152070</span>
+                    <span className="text-gray-300 text-xs">+91 7979732764</span>
+                  </div>
                 </div>
               </div>
             </div>
