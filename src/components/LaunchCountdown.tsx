@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import Confetti from 'react-confetti';
+import confetti from 'canvas-confetti';
 
 // ── CHANGE THIS LAUNCH DATE AND TIME ──
 // Format: "YYYY-MM-DDTHH:mm:ss" (Example: "2026-05-04T10:17:00" for May 4, 2026 at 10:17 AM)
@@ -13,14 +13,6 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
 
   // Secret bypass check
   const [isBypassed, setIsBypassed] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
-
-  useEffect(() => {
-    const handleResize = () => setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     // If the URL has ?bypass=admin, we store it in sessionStorage
@@ -46,59 +38,39 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
       const distance = LAUNCH_DATE - now;
       setTimeLeft(distance);
 
-      // Trigger celebration if launch just happened or user visits after launch
-      if (distance <= 0 && !sessionStorage.getItem('launch_celebrated') && !location.pathname.startsWith('/admin')) {
-        setShowConfetti(true);
+      // Trigger celebration if launch just happened or test mode is on
+      if ((distance <= 0 && !sessionStorage.getItem('launch_celebrated') && !location.pathname.startsWith('/admin')) || searchParams.get('test_confetti') === 'true') {
         sessionStorage.setItem('launch_celebrated', 'true');
         
-        // Stop confetti after 30 seconds
-        setTimeout(() => {
-          setShowConfetti(false);
-        }, 30000);
+        // Fireworks effect
+        const duration = 15 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100000 };
+
+        const interval: any = setInterval(function() {
+          const timeLeft = animationEnd - Date.now();
+
+          if (timeLeft <= 0) {
+            return clearInterval(interval);
+          }
+
+          const particleCount = 50 * (timeLeft / duration);
+          confetti({ ...defaults, particleCount, origin: { x: Math.random(), y: Math.random() - 0.2 } });
+        }, 250);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [location.pathname]);
+  }, [location.pathname, searchParams]);
 
   // Admin panel or bypassed users can always access the site
   if (location.pathname.startsWith('/admin') || isBypassed) {
-    return (
-      <>
-        {showConfetti && (
-          <div className="fixed inset-0 z-[100000] pointer-events-none">
-            <Confetti 
-              width={windowSize.width} 
-              height={windowSize.height} 
-              recycle={true} 
-              numberOfPieces={400} 
-              gravity={0.15}
-            />
-          </div>
-        )}
-        {children}
-      </>
-    );
+    return <>{children}</>;
   }
 
   // If time is up, show the actual website
   if (timeLeft <= 0) {
-    return (
-      <>
-        {showConfetti && (
-          <div className="fixed inset-0 z-[100000] pointer-events-none">
-            <Confetti 
-              width={windowSize.width} 
-              height={windowSize.height} 
-              recycle={true} 
-              numberOfPieces={400} 
-              gravity={0.15}
-            />
-          </div>
-        )}
-        {children}
-      </>
-    );
+    return <>{children}</>;
   }
 
   // Calculate time components
