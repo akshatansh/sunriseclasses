@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const SITE_NAME = 'Sunrise Classes & Academy';
-const BASE_URL = 'https://sunriseclasses.vercel.app';
+const BASE_URL = 'https://www.sunriseclasses.co.in/';
 const DEFAULT_IMAGE = '/og-logo-small.png';
 const DEFAULT_DESCRIPTION = 'Join Sunrise Classes & Academy in Champanagar, Purnia, Bihar for expert Class 9 and 10 board exam coaching with personalized support, quality notes, and proven success stories.';
 const DEFAULT_KEYWORDS = 'Sunrise Classes, coaching in Champanagar Purnia, Class 9 coaching in Champanagar Purnia, Class 10 coaching in Champanagar Purnia, board exam preparation, Champanagar coaching, Bihar coaching, success stories, student toppers';
@@ -53,8 +53,8 @@ export default function Seo({ title, description, keywords, image, url }: SeoPro
     updateMetaTag('name', 'author', DEFAULT_AUTHOR);
     updateMetaTag('name', 'robots', 'index, follow');
 
-    const imageUrl = (image || DEFAULT_IMAGE).startsWith('http') 
-      ? (image || DEFAULT_IMAGE) 
+    const imageUrl = (image || DEFAULT_IMAGE).startsWith('http')
+      ? (image || DEFAULT_IMAGE)
       : `${BASE_URL}${image || DEFAULT_IMAGE}`;
 
     updateMetaTag('property', 'og:title', `${title} | ${SITE_NAME}`);
@@ -68,6 +68,12 @@ export default function Seo({ title, description, keywords, image, url }: SeoPro
     updateMetaTag('name', 'twitter:title', `${title} | ${SITE_NAME}`);
     updateMetaTag('name', 'twitter:description', description || DEFAULT_DESCRIPTION);
     updateMetaTag('name', 'twitter:image', imageUrl);
+
+    // GEO Tags for Local SEO
+    updateMetaTag('name', 'geo.region', 'IN-BR');
+    updateMetaTag('name', 'geo.placename', 'Purnia');
+    updateMetaTag('name', 'geo.position', '25.7771;87.4753');
+    updateMetaTag('name', 'ICBM', '25.7771, 87.4753');
 
     updateLinkRel('canonical', pageUrl);
   }, [title, description, keywords, image, pageUrl]);
