@@ -27,34 +27,45 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
   }, [searchParams]);
 
   useEffect(() => {
+    let fireworkInterval: any;
+
+    const triggerFireworks = () => {
+      const duration = 30 * 1000; // 30 seconds
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100000 };
+
+      fireworkInterval = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+        if (timeLeft <= 0) {
+          return clearInterval(fireworkInterval);
+        }
+        const particleCount = 50 * (timeLeft / duration);
+        confetti({ ...defaults, particleCount, origin: { x: Math.random(), y: Math.random() - 0.2 } });
+      }, 250);
+    };
+
+    // Test mode
+    if (searchParams.get('test_confetti') === 'true' && !sessionStorage.getItem('test_celebrated')) {
+      sessionStorage.setItem('test_celebrated', 'true');
+      triggerFireworks();
+    }
+
     const interval = setInterval(() => {
       const now = new Date().getTime();
       const distance = LAUNCH_DATE - now;
       setTimeLeft(distance);
 
-      // Trigger celebration if launch just happened or test mode is on
-      if ((distance <= 0 && !sessionStorage.getItem('launch_celebrated') && !location.pathname.startsWith('/admin')) || searchParams.get('test_confetti') === 'true') {
+      // Trigger celebration if launch just happened
+      if (distance <= 0 && !sessionStorage.getItem('launch_celebrated') && !location.pathname.startsWith('/admin')) {
         sessionStorage.setItem('launch_celebrated', 'true');
-        
-        // Fireworks effect
-        const duration = 15 * 1000;
-        const animationEnd = Date.now() + duration;
-        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100000 };
-
-        const interval: any = setInterval(function() {
-          const timeLeft = animationEnd - Date.now();
-
-          if (timeLeft <= 0) {
-            return clearInterval(interval);
-          }
-
-          const particleCount = 50 * (timeLeft / duration);
-          confetti({ ...defaults, particleCount, origin: { x: Math.random(), y: Math.random() - 0.2 } });
-        }, 250);
+        triggerFireworks();
       }
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (fireworkInterval) clearInterval(fireworkInterval);
+    };
   }, [location.pathname, searchParams]);
 
   // Admin panel or bypassed users can always access the site
