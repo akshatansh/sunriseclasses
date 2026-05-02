@@ -11,6 +11,7 @@ import ContactPage from './pages/ContactPage';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
 import ResultsPage from './pages/ResultsPage';
 import AdminResultsPage from './pages/AdminResultsPage';
+import LaunchCountdown from './components/LaunchCountdown';
 
 function AppContent() {
   const location = useLocation();
@@ -41,7 +42,9 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AppContent />
+      <LaunchCountdown>
+        <AppContent />
+      </LaunchCountdown>
     </Router>
   );
 }
