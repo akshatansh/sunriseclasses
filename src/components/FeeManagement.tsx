@@ -104,7 +104,20 @@ const FeeManagement = () => {
     }
     let phone = student.parentPhone.replace(/\D/g, '');
     if (phone.length === 10) phone = '91' + phone;
-    const msg = `Dear Parent, \nSunrise Classes & Academy inform karta hai ki student *${student.name}* (Class ${student.className}) ki *${month}* mahine ki fees due hai. Kripya samay par jama karein.\n- Sunrise Classes`;
+
+    const pendingAmount = student.dueAmount || 0;
+    const paidAmount = student.paymentAmount || 0;
+    const previousDues = student.previousDues || 0;
+    const monthlyFee = (student.totalFee || getDefaultFee(student.className)) - previousDues;
+
+    const msg = `Dear Parent, \nSunrise Classes & Academy inform karta hai ki student *${student.name}* (Class ${student.className}) ki fee details is prakar hai:\n
+*Month:* ${month}
+*Monthly Fee:* Rs. ${monthlyFee}
+*Previous Dues:* Rs. ${previousDues}
+*Total Payable:* Rs. ${student.totalFee || monthlyFee + previousDues}
+*Paid Amount:* Rs. ${paidAmount}
+*Remaining Dues:* Rs. ${pendingAmount}\n
+Kripya due amount (Rs. ${pendingAmount}) samay par jama karein. \n- Sunrise Classes`;
     const a = document.createElement('a');
     a.href = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
     a.target = '_blank';
