@@ -5,6 +5,7 @@ import About from '../components/About';
 import Courses from '../components/Courses';
 import Videos from '../components/Videos';
 import Gallery from '../components/Gallery';
+import SeoContentBlock from '../components/SeoContentBlock';
 import Contact from '../components/Contact';
 
 export default function Home() {
@@ -26,6 +27,7 @@ export default function Home() {
       <Courses />
       <Videos />
       <Gallery previewCount={3} showViewAll />
+      <SeoContentBlock />
       <Contact />
     </div>
   );
