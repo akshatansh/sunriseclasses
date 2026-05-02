@@ -297,7 +297,7 @@ const FeeManagement = () => {
                   <img
                     src={student.image || '/sunrise-logo.png'}
                     onError={e => (e.currentTarget.src = '/sunrise-logo.png')}
-                    className="h-10 w-10 rounded-full object-cover border border-slate-200 shrink-0"
+                    className="h-10 w-10 rounded-full object-cover object-top border border-slate-200 shrink-0"
                     alt={student.name}
                   />
                   <div>

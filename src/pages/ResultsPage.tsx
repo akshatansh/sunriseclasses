@@ -232,7 +232,7 @@ export default function ResultsPage() {
                       <img
                         src={summary.student.image || '/sunrise-logo.png'}
                         alt={summary.student.name}
-                        className="h-20 w-20 rounded-2xl object-cover border border-slate-200 bg-slate-50"
+                        className="h-20 w-20 rounded-2xl object-cover object-top border border-slate-200 bg-slate-50"
                         onError={(e) => {
                           e.currentTarget.src = '/sunrise-logo.png';
                         }}
@@ -329,7 +329,7 @@ export default function ResultsPage() {
                             <img
                               src={summary.student.image || '/sunrise-logo.png'}
                               alt={summary.student.name}
-                              className="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover border border-slate-200 bg-slate-50 shrink-0"
+                              className="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover object-top border border-slate-200 bg-slate-50 shrink-0"
                               onError={(e) => {
                                 e.currentTarget.src = '/sunrise-logo.png';
                               }}
@@ -494,7 +494,7 @@ export default function ResultsPage() {
                           const progress = hw.targetPages > 0 ? Math.min(100, Math.round((hw.completedPages / hw.targetPages) * 100)) : 0;
                           return (
                             <div key={s.id} className="group relative flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all hover:border-[#f5a623]/30 hover:shadow-md">
-                              <img src={s.image || '/sunrise-logo.png'} alt={s.name} className="h-10 w-10 shrink-0 rounded-full object-cover border border-slate-200" onError={e => e.currentTarget.src = '/sunrise-logo.png'} />
+                              <img src={s.image || '/sunrise-logo.png'} alt={s.name} className="h-10 w-10 shrink-0 rounded-full object-cover object-top border border-slate-200" onError={e => e.currentTarget.src = '/sunrise-logo.png'} />
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm font-bold text-slate-800">{s.name}</p>
                                 <div className="mt-1 flex items-center gap-2">
@@ -570,7 +570,7 @@ export default function ResultsPage() {
                           return (
                             <div key={s.id} className="group relative flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all hover:border-[#f5a623]/30 hover:shadow-md">
                               <div className="flex items-center gap-3 min-w-0 flex-1">
-                                <img src={s.image || '/sunrise-logo.png'} alt={s.name} className="h-10 w-10 shrink-0 rounded-full object-cover border border-slate-200" onError={e => e.currentTarget.src = '/sunrise-logo.png'} />
+                                <img src={s.image || '/sunrise-logo.png'} alt={s.name} className="h-10 w-10 shrink-0 rounded-full object-cover object-top border border-slate-200" onError={e => e.currentTarget.src = '/sunrise-logo.png'} />
                                 <div className="min-w-0 flex-1">
                                   <p className="truncate text-sm font-bold text-slate-800">{s.name}</p>
                                   {attendanceViewMode === 'monthly' ? (

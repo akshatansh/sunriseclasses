@@ -295,7 +295,7 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
                     <img 
                       src={student.image || '/sunrise-logo.png'} 
                       alt={student.name}
-                      className="w-10 h-10 rounded-full object-cover border border-white shadow-sm"
+                      className="w-10 h-10 rounded-full object-cover object-top border border-white shadow-sm"
                       onError={e => (e.currentTarget.src = '/sunrise-logo.png')}
                     />
                     <div>

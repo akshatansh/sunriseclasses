@@ -79,7 +79,7 @@ export default function Gallery({ previewCount, showViewAll = false }: GalleryPr
               <img
                 src={src}
                 alt={`Sunrise Classes Champanagar Purnia - Classroom Photo ${index + 1}`}
-                className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
+                className="w-full h-64 object-cover object-top group-hover:scale-105 transition-transform duration-500"
                 onError={(e) => {
                   e.currentTarget.src = '/sunrise-logo.png'; // Fallback to logo if image fails
                 }}

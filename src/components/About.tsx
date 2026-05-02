@@ -60,7 +60,7 @@ export default function About() {
                 <img
                   src="/WhatsApp_Image_2026-04-04_at_11.56.16.jpeg"
                   alt="Director S.P. Jha"
-                  className="relative w-56 h-64 sm:w-64 sm:h-72 rounded-2xl object-cover shadow-2xl border-4 border-[#f5a623]/40"
+                  className="relative w-56 h-64 sm:w-64 sm:h-72 rounded-2xl object-cover object-top shadow-2xl border-4 border-[#f5a623]/40"
                 />
               </div>
               <div className="text-center bg-[linear-gradient(135deg,_#0f2a5c,_#173873)] text-white px-4 sm:px-6 py-3 rounded-2xl shadow-lg text-sm sm:text-base w-full">

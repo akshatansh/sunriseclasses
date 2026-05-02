@@ -313,7 +313,7 @@ export default function Videos() {
                             <img
                               src={video.thumbnail}
                               alt=""
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
                             />
                             <div className="absolute inset-0 bg-[#0f2a5c]/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                               <div className="w-14 h-14 bg-red-600 rounded-full flex items-center justify-center shadow-lg">

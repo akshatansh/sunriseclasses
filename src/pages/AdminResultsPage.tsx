@@ -1051,7 +1051,7 @@ export default function AdminResultsPage() {
                           />
                           {studentForm.image && studentForm.image !== '/sunrise-logo.png' && (
                             <div className="mt-2 flex items-center gap-2">
-                              <img src={studentForm.image} alt="Preview" className="h-10 w-10 rounded-full object-cover border border-slate-200" />
+                              <img src={studentForm.image} alt="Preview" className="h-10 w-10 rounded-full object-cover object-top border border-slate-200" />
                               <span className="text-xs text-green-600 font-semibold">Photo attached!</span>
                             </div>
                           )}
@@ -1177,7 +1177,7 @@ export default function AdminResultsPage() {
                                       <div className="flex items-center gap-2">
                                         <div className="h-6 w-6 rounded-full bg-slate-200 overflow-hidden shrink-0 flex items-center justify-center text-[10px] text-slate-500">
                                           {student.image && student.image !== '/sunrise-logo.png' ? (
-                                            <img src={student.image} alt={student.name} className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                                            <img src={student.image} alt={student.name} className="h-full w-full object-cover object-top" onError={(e) => { e.currentTarget.style.display = 'none' }} />
                                           ) : student.name.charAt(0)}
                                         </div>
                                         <span>{student.name} <span className="text-xs text-slate-400 font-normal ml-1">({student.className})</span></span>
@@ -1274,7 +1274,7 @@ export default function AdminResultsPage() {
                                 <img
                                   src={student.image || '/sunrise-logo.png'}
                                   alt={student.name}
-                                  className="h-12 w-12 rounded-xl object-cover border border-slate-200 bg-white"
+                                  className="h-12 w-12 rounded-xl object-cover object-top border border-slate-200 bg-white"
                                   onError={(e) => {
                                     e.currentTarget.src = '/sunrise-logo.png';
                                   }}
