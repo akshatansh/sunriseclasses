@@ -24,12 +24,6 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
     if (sessionStorage.getItem('launch_bypass') === 'true') {
       setIsBypassed(true);
     }
-
-    // Temporary test parameter
-    if (searchParams.get('test_confetti') === 'true') {
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 30000);
-    }
   }, [searchParams]);
 
   useEffect(() => {
