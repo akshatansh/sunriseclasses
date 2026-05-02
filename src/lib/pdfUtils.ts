@@ -234,67 +234,146 @@ export async function generateStudentRankCardPDF(
   
   y = (doc as any).lastAutoTable.finalY + 12;
   
-  // Daily Attendance Record Table
+  // Calendar-style Attendance Grid
   if (attendance && attendance.history.length > 0) {
-    if (y + 40 > doc.internal.pageSize.getHeight() - 20) {
+    if (y + 55 > doc.internal.pageSize.getHeight() - 20) {
       doc.addPage();
       y = 15;
       drawWatermark(doc);
     }
 
-    doc.setFontSize(12);
+    doc.setFontSize(10);
     doc.setTextColor(15, 42, 92);
     doc.setFont('helvetica', 'bold');
-    doc.text('Daily Attendance Record', 10, y);
-    y += 4;
-    
-    // We will split the history into 3 columns to save vertical space.
-    // Each column: Date | Status
-    // Total 6 columns in the table: Date, Status, Date, Status, Date, Status
-    const cols = 3;
-    const body: string[][] = [];
-    const rows = Math.ceil(attendance.history.length / cols);
-    
-    for (let i = 0; i < rows; i++) {
-      const row = [];
-      for (let j = 0; j < cols; j++) {
-        const idx = i + j * rows; // This fills column by column
-        if (idx < attendance.history.length) {
-          const rec = attendance.history[idx];
-          const d = new Date(rec.date);
-          const dateStr = `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })}`;
-          row.push(dateStr, rec.status === 'present' ? 'Present' : 'Absent');
-        } else {
-          row.push('', '');
+    doc.text('Attendance Calendar', 10, y);
+    y += 5;
+
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const cellW = (pageW - 20) / 7;
+    const cellH = 8;
+
+    // Draw day headers
+    days.forEach((day, i) => {
+      doc.setFillColor(15, 42, 92);
+      doc.rect(10 + i * cellW, y, cellW, cellH, 'F');
+      doc.setFontSize(7);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.text(day, 10 + i * cellW + cellW / 2, y + 5.5, { align: 'center' });
+    });
+    y += cellH;
+
+    // Build a map of date → status
+    const statusMap: Record<string, string> = {};
+    attendance.history.forEach(h => { statusMap[h.date] = h.status; });
+
+    // Get first and last day of the month
+    const firstRecord = attendance.history[0].date;
+    const monthDate = new Date(firstRecord + 'T00:00:00');
+    const year = monthDate.getFullYear();
+    const month0 = monthDate.getMonth();
+    const daysInMonth = new Date(year, month0 + 1, 0).getDate();
+    const firstDayOfWeek = new Date(year, month0, 1).getDay(); // 0=Sun
+
+    // Draw calendar cells
+    let col = firstDayOfWeek;
+    let rowY = y;
+
+    // Empty cells before month starts
+    for (let e = 0; e < firstDayOfWeek; e++) {
+      doc.setFillColor(245, 245, 245);
+      doc.rect(10 + e * cellW, rowY, cellW, cellH, 'F');
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.2);
+      doc.rect(10 + e * cellW, rowY, cellW, cellH, 'S');
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${year}-${String(month0 + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const status = statusMap[dateStr];
+      const isSun = col === 0;
+
+      // Cell background
+      if (status === 'present') {
+        doc.setFillColor(220, 252, 231); // light green
+      } else if (status === 'absent') {
+        doc.setFillColor(254, 226, 226); // light red
+      } else if (status === 'holiday' || isSun) {
+        doc.setFillColor(254, 249, 195); // light yellow
+      } else {
+        doc.setFillColor(248, 248, 248); // no record
+      }
+
+      doc.rect(10 + col * cellW, rowY, cellW, cellH, 'F');
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.2);
+      doc.rect(10 + col * cellW, rowY, cellW, cellH, 'S');
+
+      // Day number
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      if (status === 'present') doc.setTextColor(21, 128, 61);
+      else if (status === 'absent') doc.setTextColor(185, 28, 28);
+      else if (status === 'holiday' || isSun) doc.setTextColor(161, 120, 0);
+      else doc.setTextColor(150, 150, 150);
+
+      doc.text(String(day), 10 + col * cellW + cellW / 2, rowY + 3.5, { align: 'center' });
+
+      // Status letter below day number
+      doc.setFontSize(5.5);
+      doc.setFont('helvetica', 'normal');
+      const letter = status === 'present' ? 'P' : status === 'absent' ? 'A' : status === 'holiday' ? 'H' : isSun ? 'H' : '';
+      if (letter) {
+        doc.text(letter, 10 + col * cellW + cellW / 2, rowY + 6.8, { align: 'center' });
+      }
+
+      col++;
+      if (col === 7) {
+        col = 0;
+        rowY += cellH;
+        // Check page overflow
+        if (rowY + cellH > doc.internal.pageSize.getHeight() - 20) {
+          doc.addPage();
+          rowY = 15;
+          drawWatermark(doc);
         }
       }
-      body.push(row);
     }
-    
-    autoTable(doc, {
-      startY: y,
-      head: [['Date', 'Status', 'Date', 'Status', 'Date', 'Status']],
-      body: body,
-      theme: 'grid',
-      headStyles: { fillColor: [15, 42, 92], fontSize: 8, cellPadding: 1.5 },
-      bodyStyles: { fontSize: 8, cellPadding: 1.5 },
-      didParseCell: function(data: any) {
-        // Color the 'Status' cells based on text
-        if (data.section === 'body' && (data.column.index % 2 === 1)) {
-          if (data.cell.raw === 'Present') {
-            data.cell.styles.textColor = [40, 160, 80]; // Green
-            data.cell.styles.fontStyle = 'bold';
-          } else if (data.cell.raw === 'Absent') {
-            data.cell.styles.textColor = [220, 50, 50]; // Red
-            data.cell.styles.fontStyle = 'bold';
-          }
-        }
-      },
-      margin: { left: 10, right: 10 }
+
+    // Fill remaining cells in last row
+    if (col > 0) {
+      for (let e = col; e < 7; e++) {
+        doc.setFillColor(245, 245, 245);
+        doc.rect(10 + e * cellW, rowY, cellW, cellH, 'F');
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.2);
+        doc.rect(10 + e * cellW, rowY, cellW, cellH, 'S');
+      }
+      rowY += cellH;
+    }
+
+    // Legend
+    rowY += 3;
+    const legendItems = [
+      { color: [220, 252, 231] as [number,number,number], text: 'P = Present', tc: [21, 128, 61] as [number,number,number] },
+      { color: [254, 226, 226] as [number,number,number], text: 'A = Absent', tc: [185, 28, 28] as [number,number,number] },
+      { color: [254, 249, 195] as [number,number,number], text: 'H = Holiday/Sunday', tc: [161, 120, 0] as [number,number,number] },
+    ];
+    let lx = 10;
+    legendItems.forEach(item => {
+      doc.setFillColor(...item.color);
+      doc.setDrawColor(200, 200, 200);
+      doc.rect(lx, rowY, 5, 4, 'FD');
+      doc.setFontSize(6.5);
+      doc.setTextColor(...item.tc);
+      doc.setFont('helvetica', 'bold');
+      doc.text(item.text, lx + 6, rowY + 3.2);
+      lx += 47;
     });
-    
-    y = (doc as any).lastAutoTable.finalY + 12;
+
+    y = rowY + 10;
   }
+
   
   // Simple Bar Graph
   if (testResults.length > 0) {
