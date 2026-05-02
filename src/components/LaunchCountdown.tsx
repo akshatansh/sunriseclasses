@@ -71,12 +71,6 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
       if (fireworkInterval) clearInterval(fireworkInterval);
     };
   }, [location.pathname, searchParams]);
-
-  // Admin panel or bypassed users can always access the site
-  if (location.pathname.startsWith('/admin') || isBypassed) {
-    return <>{children}</>;
-  }
-
   const welcomeModal = showWelcomeModal && (
     <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-500">
       <div className="bg-white rounded-[2rem] p-6 sm:p-8 max-w-md w-full shadow-2xl relative text-center border-4 border-[#f5a623]/20 scale-in-center">
@@ -105,6 +99,16 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
       </div>
     </div>
   );
+
+  // Admin panel or bypassed users can always access the site
+  if (location.pathname.startsWith('/admin') || isBypassed) {
+    return (
+      <>
+        {welcomeModal}
+        {children}
+      </>
+    );
+  }
 
   // If time is up, show the actual website
   if (timeLeft <= 0) {
