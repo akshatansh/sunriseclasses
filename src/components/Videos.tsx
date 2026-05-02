@@ -130,6 +130,7 @@ export default function Videos() {
   const [categoryVideos, setCategoryVideos] = useState<Record<string, YouTubeVideo[]>>({});
   const [loading, setLoading] = useState(true);
   const [useEmbedFallback, setUseEmbedFallback] = useState(false);
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -302,11 +303,9 @@ export default function Videos() {
                   {videosForCategory.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                       {videosForCategory.map((video) => (
-                        <a
+                        <div
                           key={video.id}
-                          href={`https://www.youtube.com/watch?v=${video.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          onClick={() => setPlayingVideoId(video.id)}
                           className="bg-white rounded-[1.5rem] overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer block"
                         >
                           <div className="relative overflow-hidden aspect-video">
@@ -336,7 +335,7 @@ export default function Videos() {
                               <span className="text-gray-400 text-xs">{formatDate(video.publishedAt)}</span>
                             </div>
                           </div>
-                        </a>
+                        </div>
                       ))}
                     </div>
                   ) : (
@@ -362,6 +361,30 @@ export default function Videos() {
           </a>
         </div>
       </div>
+
+      {/* Video Player Modal */}
+      {playingVideoId && (
+        <div className="fixed inset-0 z-[200000] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="relative w-full max-w-5xl bg-black rounded-2xl overflow-hidden shadow-2xl scale-in-center">
+            <button
+              onClick={() => setPlayingVideoId(null)}
+              className="absolute -top-12 right-0 text-white hover:text-[#f5a623] transition-colors font-bold text-lg flex items-center gap-2 z-50"
+            >
+              Close <span className="text-2xl">&times;</span>
+            </button>
+            <div className="aspect-video w-full bg-gray-900">
+              <iframe
+                className="w-full h-full"
+                src={`https://www.youtube.com/embed/${playingVideoId}?autoplay=1&rel=0`}
+                title="YouTube video player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
