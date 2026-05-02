@@ -20,8 +20,9 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
       sessionStorage.setItem('launch_bypass', 'true');
     }
     
-    // Check if bypass is active
-    if (sessionStorage.getItem('launch_bypass') === 'true') {
+    // Check if bypass is active or if user is a search engine crawler
+    const isCrawler = /bot|googlebot|crawler|spider|robot|crawling/i.test(navigator.userAgent);
+    if (sessionStorage.getItem('launch_bypass') === 'true' || isCrawler) {
       setIsBypassed(true);
     }
   }, [searchParams]);
