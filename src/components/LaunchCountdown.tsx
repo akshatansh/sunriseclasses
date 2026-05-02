@@ -32,6 +32,12 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
     if (sessionStorage.getItem('launch_bypass') === 'true') {
       setIsBypassed(true);
     }
+
+    // Temporary test parameter
+    if (searchParams.get('test_confetti') === 'true') {
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 30000);
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -57,7 +63,22 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
 
   // Admin panel or bypassed users can always access the site
   if (location.pathname.startsWith('/admin') || isBypassed) {
-    return <>{children}</>;
+    return (
+      <>
+        {showConfetti && (
+          <div className="fixed inset-0 z-[100000] pointer-events-none">
+            <Confetti 
+              width={windowSize.width} 
+              height={windowSize.height} 
+              recycle={true} 
+              numberOfPieces={400} 
+              gravity={0.15}
+            />
+          </div>
+        )}
+        {children}
+      </>
+    );
   }
 
   // If time is up, show the actual website
