@@ -34,7 +34,7 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
     const triggerFireworks = () => {
       const duration = 30 * 1000; // 30 seconds
       const animationEnd = Date.now() + duration;
-      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100000 };
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100002 };
 
       fireworkInterval = setInterval(function() {
         const timeLeft = animationEnd - Date.now();
