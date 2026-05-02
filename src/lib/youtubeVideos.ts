@@ -11,7 +11,7 @@ export interface YouTubeVideo {
   publishedAt: string;
 }
 
-const ALLORIGINS = 'https://corsproxy.io/?';
+const RSS2JSON_URL = 'https://api.rss2json.com/v1/api.json?rss_url=';
 
 /** YouTube Atom feed — newest entries first. */
 function rssUrlForChannel(channelId: string) {
@@ -19,53 +19,41 @@ function rssUrlForChannel(channelId: string) {
 }
 
 /**
- * Latest videos from channel RSS (no API key). Uses allorigins.win to bypass CORS.
- * May fail if the proxy is down or YouTube rate-limits the proxy.
+ * Latest videos from channel RSS (no API key). Uses rss2json to bypass CORS and parse XML.
  */
 export async function fetchLatestVideosFromRss(
   channelId: string,
   limit: number
 ): Promise<YouTubeVideo[]> {
   const target = rssUrlForChannel(channelId);
-  const res = await fetch(`${ALLORIGINS}${encodeURIComponent(target)}`);
-  if (!res.ok) throw new Error(`RSS proxy HTTP ${res.status}`);
-
-  const data = await res.text();
-  const xml = data;
-  if (typeof xml !== 'string' || !xml.includes('<entry')) {
-    throw new Error('RSS proxy returned empty or invalid body');
+  const res = await fetch(`${RSS2JSON_URL}${encodeURIComponent(target)}`);
+  
+  if (!res.ok) {
+    throw new Error(`RSS to JSON API HTTP ${res.status}`);
   }
 
-  const doc = new DOMParser().parseFromString(xml, 'text/xml');
-  if (doc.querySelector('parsererror')) {
-    throw new Error('RSS XML parse error');
+  const data = await res.json();
+  
+  if (data.status !== 'ok' || !data.items) {
+    throw new Error('RSS to JSON API returned error or empty items');
   }
 
-  const entries = doc.querySelectorAll('entry');
   const out: YouTubeVideo[] = [];
 
-  entries.forEach((entry) => {
-    const idText = entry.querySelector('id')?.textContent?.trim() ?? '';
-    const id = idText.startsWith('yt:video:') ? idText.slice('yt:video:'.length) : '';
+  data.items.forEach((item: any) => {
+    const link = item.link || '';
+    // YouTube link format: https://www.youtube.com/watch?v=VIDEO_ID
+    const idMatch = link.match(/v=([^&]+)/);
+    const id = idMatch ? idMatch[1] : '';
+    
     if (!id) return;
-
-    const titleEl = entry.getElementsByTagName('title')[0];
-    const title = titleEl?.textContent?.trim() || 'Video';
-    const description =
-      entry.getElementsByTagName('media:description')[0]?.textContent?.trim() ||
-      entry.querySelector('description')?.textContent?.trim() ||
-      '';
-    const published =
-      entry.getElementsByTagName('published')[0]?.textContent ||
-      entry.getElementsByTagName('updated')[0]?.textContent ||
-      new Date().toISOString();
 
     out.push({
       id,
-      title,
-      description,
+      title: item.title || 'Video',
+      description: item.description || '',
       thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
-      publishedAt: published,
+      publishedAt: item.pubDate || new Date().toISOString(),
     });
   });
 
