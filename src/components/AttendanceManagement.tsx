@@ -30,16 +30,17 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
       const records = await getAttendanceByDate(selectedDate);
       const newState: Record<string, 'present' | 'absent' | 'holiday'> = {};
 
-      // Check if selected date is a Sunday (day === 0)
-      const dayOfWeek = new Date(selectedDate + 'T00:00:00').getDay();
+      // Timezone-safe Sunday detection: parse date string directly (YYYY-MM-DD)
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      const dayOfWeek = new Date(year, month - 1, day).getDay(); // local time, no timezone shift
       const isSunday = dayOfWeek === 0;
 
-      // Default: Sunday → holiday, else → present. Override with existing saved records.
       students.forEach(s => {
         if (normalizeClass(s.className) === selectedClass) {
           if (records[s.id]) {
             newState[s.id] = records[s.id].status as any;
           } else {
+            // Sunday → auto holiday, else → present
             newState[s.id] = isSunday ? 'holiday' : 'present';
           }
         }
@@ -49,6 +50,7 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
     
     fetchAttendance();
   }, [selectedDate, selectedClass, students]);
+
 
   const filteredStudents = students.filter(s => normalizeClass(s.className) === selectedClass)
                                    .sort((a, b) => a.name.localeCompare(b.name));
@@ -242,6 +244,21 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
           Class 10
         </button>
       </div>
+
+      {/* Sunday Holiday Banner */}
+      {(() => {
+        const [y, m, d] = selectedDate.split('-').map(Number);
+        const isSunday = new Date(y, m - 1, d).getDay() === 0;
+        return isSunday ? (
+          <div className="mb-6 rounded-xl bg-amber-50 border border-amber-300 p-4 flex items-center gap-3">
+            <Coffee className="text-amber-500 shrink-0" size={22} />
+            <div>
+              <p className="font-bold text-amber-700 text-sm">🌞 Sunday — Auto Holiday</p>
+              <p className="text-xs text-amber-600 mt-0.5">Sab students automatically Holiday mark ho gaye hain. Save karo ya manually change karo.</p>
+            </div>
+          </div>
+        ) : null;
+      })()}
 
       {message && (
         <div className="mb-6 rounded-xl bg-green-50 border border-green-200 p-4 text-green-700 text-sm font-semibold flex items-center justify-between">
