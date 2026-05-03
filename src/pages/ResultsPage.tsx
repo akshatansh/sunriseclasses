@@ -392,7 +392,7 @@ export default function ResultsPage() {
                                 {attendanceStats[summary.student.id] && attendanceStats[summary.student.id].history.length > 0 && (
                                   <div className="flex gap-[2px] ml-1" title={`Monthly Attendance: ${attendanceStats[summary.student.id].percentage}%`}>
                                     {attendanceStats[summary.student.id].history.slice(-7).map((record, i) => (
-                                      <span key={i} className={`h-1.5 w-1.5 rounded-full ${record.status === 'present' ? 'bg-green-500' : 'bg-red-500'}`} title={`${record.date}: ${record.status}`} />
+                                      <span key={i} className={`h-1.5 w-1.5 rounded-full ${record.status === 'present' ? 'bg-green-500' : record.status === 'holiday' ? 'bg-yellow-400' : 'bg-red-500'}`} title={`${record.date}: ${record.status}`} />
                                     ))}
                                   </div>
                                 )}
@@ -578,9 +578,21 @@ export default function ResultsPage() {
                                       {stat.history.map((record, i) => {
                                         const day = new Date(record.date).getDate();
                                         return (
-                                          <div key={i} className={`flex flex-col items-center justify-center w-[22px] h-[24px] rounded shrink-0 transition-all ${record.status === 'present' ? 'bg-green-50 border border-green-100 hover:bg-green-100' : 'bg-red-50 border border-red-100 hover:bg-red-100'}`} title={`${record.date}: ${record.status}`}>
-                                            <span className={`text-[8px] font-bold ${record.status === 'present' ? 'text-green-600' : 'text-red-600'}`}>{day}</span>
-                                            <span className={`h-1 w-1 mt-[1px] rounded-full ${record.status === 'present' ? 'bg-green-500' : 'bg-red-500'}`} />
+                                          <div key={i} className={`flex flex-col items-center justify-center w-[22px] h-[24px] rounded shrink-0 transition-all ${
+                                            record.status === 'present' ? 'bg-green-50 border border-green-100 hover:bg-green-100' 
+                                            : record.status === 'holiday' ? 'bg-yellow-50 border border-yellow-200 hover:bg-yellow-100'
+                                            : 'bg-red-50 border border-red-100 hover:bg-red-100'
+                                          }`} title={`${record.date}: ${record.status}`}>
+                                            <span className={`text-[8px] font-bold ${
+                                              record.status === 'present' ? 'text-green-600' 
+                                              : record.status === 'holiday' ? 'text-yellow-600'
+                                              : 'text-red-600'
+                                            }`}>{day}</span>
+                                            <span className={`h-1 w-1 mt-[1px] rounded-full ${
+                                              record.status === 'present' ? 'bg-green-500' 
+                                              : record.status === 'holiday' ? 'bg-yellow-400'
+                                              : 'bg-red-500'
+                                            }`} />
                                           </div>
                                         );
                                       })}
@@ -594,6 +606,8 @@ export default function ResultsPage() {
                                           <span className="inline-flex items-center gap-1 rounded bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-600 border border-green-200"><span className="h-1.5 w-1.5 rounded-full bg-green-500"/> Present</span>
                                         ) : status === 'absent' ? (
                                           <span className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600 border border-red-200"><span className="h-1.5 w-1.5 rounded-full bg-red-500"/> Absent</span>
+                                        ) : status === 'holiday' ? (
+                                          <span className="inline-flex items-center gap-1 rounded bg-yellow-50 px-2 py-0.5 text-[10px] font-bold text-yellow-600 border border-yellow-200"><span className="h-1.5 w-1.5 rounded-full bg-yellow-400"/> Holiday</span>
                                         ) : (
                                           <span className="inline-flex items-center gap-1 rounded bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500 border border-slate-200">No Record</span>
                                         )}
