@@ -441,3 +441,214 @@ export async function generateStudentRankCardPDF(
   const fileName = `RankCard_${studentName.replace(/\s+/g, '_')}_${month.replace(/\s+/g, '_')}.pdf`;
   doc.save(fileName);
 }
+
+/**
+ * Generates a compact Monthly Class Report PDF (A4 Landscape)
+ * showing ALL students' attendance, marks, homework & remarks in 1-2 pages.
+ * Perfect for sharing in WhatsApp Parents Group.
+ */
+export async function generateMonthlyClassReportPDF(
+  month: string,
+  className: string,
+  students: {
+    id: string;
+    name: string;
+    attendance: { percentage: number; presentDays: number; totalDays: number } | null;
+    avgMarks: number | null;       // percentage 0–100
+    testCount: number;
+    homework: { completedPages: number; targetPages: number } | null;
+  }[]
+): Promise<void> {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth(); // 297
+
+  // ── HEADER ──────────────────────────────────────────────
+  const bannerH = 38;
+  doc.setFillColor(...DARK);
+  doc.rect(0, 0, pageW, bannerH, 'F');
+  doc.setFillColor(...ACCENT);
+  doc.rect(0, bannerH - 3, pageW, 3, 'F');
+
+  // Logo
+  try {
+    const logoRes = await fetch('/sunrise-logo.png');
+    const blob = await logoRes.blob();
+    const base64 = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+    doc.addImage(base64, 'PNG', 8, 5, 26, 26);
+  } catch (_) {}
+
+  doc.setTextColor(...ACCENT);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.text(INSTITUTE, pageW / 2, 14, { align: 'center' });
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(`${ADDRESS}  |  ${MOBILE}`, pageW / 2, 21, { align: 'center' });
+
+  doc.setTextColor(190, 210, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(`MONTHLY PERFORMANCE REPORT — ${month.toUpperCase()} | CLASS ${className}`, pageW / 2, 30, { align: 'center' });
+
+  // ── SUMMARY CHIPS ────────────────────────────────────────
+  let y = bannerH + 6;
+  const totalStudents = students.length;
+  const avgClassAttendance = students.filter(s => s.attendance).length > 0
+    ? Math.round(students.filter(s => s.attendance).reduce((sum, s) => sum + (s.attendance?.percentage ?? 0), 0) / students.filter(s => s.attendance).length)
+    : 0;
+  const avgClassMarks = students.filter(s => s.avgMarks !== null).length > 0
+    ? Math.round(students.filter(s => s.avgMarks !== null).reduce((sum, s) => sum + (s.avgMarks ?? 0), 0) / students.filter(s => s.avgMarks !== null).length)
+    : 0;
+
+  const chips = [
+    { label: 'Total Students', value: String(totalStudents) },
+    { label: 'Class Avg Attendance', value: `${avgClassAttendance}%` },
+    { label: 'Class Avg Marks', value: `${avgClassMarks}%` },
+    { label: 'Month', value: month },
+  ];
+  const chipW = (pageW - 20) / chips.length;
+  chips.forEach((chip, i) => {
+    const cx = 10 + i * chipW;
+    doc.setFillColor(245, 248, 255);
+    doc.setDrawColor(200, 215, 240);
+    doc.roundedRect(cx, y, chipW - 4, 14, 2, 2, 'FD');
+    doc.setFontSize(7);
+    doc.setTextColor(120, 130, 150);
+    doc.setFont('helvetica', 'normal');
+    doc.text(chip.label.toUpperCase(), cx + (chipW - 4) / 2, y + 5, { align: 'center' });
+    doc.setFontSize(11);
+    doc.setTextColor(...DARK);
+    doc.setFont('helvetica', 'bold');
+    doc.text(chip.value, cx + (chipW - 4) / 2, y + 11, { align: 'center' });
+  });
+  y += 20;
+
+  // ── REMARKS GENERATOR ────────────────────────────────────
+  function getRemarks(att: number | null, marks: number | null, hw: number | null): string {
+    const a = att ?? 0;
+    const m = marks ?? 0;
+    const h = hw ?? 0;
+    if (a >= 90 && m >= 80) return '⭐ Outstanding performance!';
+    if (a >= 75 && m >= 70) return '✅ Good — keep it up!';
+    if (a >= 75 && m >= 50) return '📈 Average marks, needs improvement.';
+    if (a < 75 && m >= 70) return '⚠️ Good marks but low attendance.';
+    if (a < 50) return '🔴 Attendance critical — contact parents.';
+    if (m < 40) return '📚 Needs serious focus on studies.';
+    if (h < 50) return '📖 Homework incomplete — follow up needed.';
+    return '🙂 Satisfactory — can do better.';
+  }
+
+  function getGrade(marks: number | null): string {
+    if (marks === null) return '-';
+    if (marks >= 90) return 'A+';
+    if (marks >= 80) return 'A';
+    if (marks >= 70) return 'B+';
+    if (marks >= 60) return 'B';
+    if (marks >= 50) return 'C';
+    if (marks >= 40) return 'D';
+    return 'F';
+  }
+
+  // ── MAIN TABLE ───────────────────────────────────────────
+  const ranked = [...students].sort((a, b) => (b.avgMarks ?? 0) - (a.avgMarks ?? 0));
+
+  const tableHead = [['#', 'Student Name', 'Attendance\n(Days / %)', 'Tests\nDone', 'Avg Marks\n(%)', 'Grade', 'Homework\n(%)', 'Overall\nRemarks']];
+
+  const tableBody = ranked.map((s, idx) => {
+    const attPct = s.attendance?.percentage ?? null;
+    const attDays = s.attendance ? `${s.attendance.presentDays}d / ${s.attendance.percentage}%` : '-';
+    const hwPct = s.homework && s.homework.targetPages > 0
+      ? Math.round((s.homework.completedPages / s.homework.targetPages) * 100)
+      : null;
+    const marks = s.avgMarks !== null ? `${Math.round(s.avgMarks)}%` : '-';
+    const grade = getGrade(s.avgMarks);
+    const remarks = getRemarks(attPct, s.avgMarks, hwPct);
+    return [
+      String(idx + 1),
+      s.name,
+      attDays,
+      String(s.testCount),
+      marks,
+      grade,
+      hwPct !== null ? `${hwPct}%` : '-',
+      remarks,
+    ];
+  });
+
+  autoTable(doc, {
+    startY: y,
+    head: tableHead,
+    body: tableBody,
+    theme: 'grid',
+    headStyles: {
+      fillColor: DARK,
+      textColor: [255, 255, 255],
+      fontSize: 8,
+      fontStyle: 'bold',
+      halign: 'center',
+      cellPadding: 3,
+      lineWidth: 0.3,
+    },
+    bodyStyles: {
+      fontSize: 8,
+      cellPadding: 2.5,
+      lineWidth: 0.2,
+      lineColor: [220, 225, 235],
+    },
+    alternateRowStyles: { fillColor: [247, 250, 255] },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 10 },
+      1: { cellWidth: 50, fontStyle: 'bold' },
+      2: { halign: 'center', cellWidth: 28 },
+      3: { halign: 'center', cellWidth: 16 },
+      4: { halign: 'center', cellWidth: 22 },
+      5: { halign: 'center', cellWidth: 16, fontStyle: 'bold' },
+      6: { halign: 'center', cellWidth: 20 },
+      7: { cellWidth: 'auto', fontSize: 7.5 },
+    },
+    didParseCell(data) {
+      if (data.section === 'body') {
+        // Grade coloring
+        if (data.column.index === 5) {
+          const g = String(data.cell.raw);
+          if (g === 'A+' || g === 'A') { data.cell.styles.textColor = [21, 128, 61]; }
+          else if (g === 'B+' || g === 'B') { data.cell.styles.textColor = [29, 78, 216]; }
+          else if (g === 'C') { data.cell.styles.textColor = [161, 120, 0]; }
+          else if (g === 'D' || g === 'F') { data.cell.styles.textColor = [185, 28, 28]; }
+        }
+        // Attendance % coloring
+        if (data.column.index === 2) {
+          const raw = String(data.cell.raw);
+          const pct = parseInt(raw.split('/')[1] ?? '0');
+          if (pct >= 90) data.cell.styles.textColor = [21, 128, 61];
+          else if (pct >= 75) data.cell.styles.textColor = [29, 78, 216];
+          else if (pct < 50) data.cell.styles.textColor = [185, 28, 28];
+        }
+      }
+    },
+    margin: { left: 10, right: 10 },
+  });
+
+  // ── LEGEND & NOTE ────────────────────────────────────────
+  const finalY = (doc as any).lastAutoTable.finalY + 5;
+  doc.setFontSize(7);
+  doc.setTextColor(120, 120, 120);
+  doc.setFont('helvetica', 'normal');
+  doc.text(
+    'Grade: A+(90%+)  A(80%+)  B+(70%+)  B(60%+)  C(50%+)  D(40%+)  F(<40%)   |   Attendance < 75% needs attention.',
+    10, finalY
+  );
+
+  // Watermark
+  drawWatermark(doc);
+  drawPDFFooter(doc);
+
+  const safeMonth = month.replace(/\s+/g, '_');
+  doc.save(`Monthly_Class_Report_${className}_${safeMonth}.pdf`);
+}

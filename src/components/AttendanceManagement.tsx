@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Calendar, Save, CheckCircle, XCircle, Download, Coffee } from 'lucide-react';
+import { Calendar, Save, CheckCircle, XCircle, Download, Coffee, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getAttendanceByDate, upsertAttendanceRecords, getMonthlyAttendanceStats } from '../lib/attendancePortal';
+import { generateMonthlyClassReportPDF } from '../lib/pdfUtils';
+import { loadResultsPortalData } from '../lib/resultsPortal';
+import { getStudentsWithHomework } from '../lib/homeworkPortal';
 
 interface AttendanceManagementProps {
   students: any[];
@@ -22,6 +25,7 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
   const [attendanceState, setAttendanceState] = useState<Record<string, 'present' | 'absent' | 'holiday'>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
   const [message, setMessage] = useState('');
 
   // Fetch attendance for the selected date
@@ -195,6 +199,66 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
     setIsDownloading(false);
   };
 
+  // ── Monthly Class Report (WhatsApp PDF) ──────────────────────────────────
+  const handleMonthlyClassReport = async () => {
+    setIsReporting(true);
+    try {
+      const d = new Date(selectedDate);
+      const monthStr = (d.getMonth() + 1).toString();
+      const yearStr = d.getFullYear().toString();
+      const monthLabel = d.toLocaleString('default', { month: 'long' }) + ' ' + yearStr;
+
+      // 1. Attendance stats for all students this month
+      const attStats = await getMonthlyAttendanceStats(monthStr, yearStr);
+
+      // 2. Test results for marks calculation
+      const portalData = await loadResultsPortalData();
+
+      // 3. Homework data for this month
+      const hwList = await getStudentsWithHomework(monthLabel);
+
+      // Build per-student data
+      const classStudents = students.filter(s => normalizeClass(s.className) === selectedClass);
+
+      const reportStudents = classStudents.map(s => {
+        // Attendance
+        const att = attStats[s.id];
+        const presentDays = att ? att.history.filter(h => h.status === 'present').length : 0;
+        const totalDays = att ? att.history.filter(h => h.status !== 'holiday').length : 0;
+
+        // Marks — filter to this month
+        const studentResults = portalData.results.filter(r => {
+          const rd = new Date(r.testDate);
+          const rLabel = rd.toLocaleString('default', { month: 'long' }) + ' ' + rd.getFullYear();
+          return r.studentId === s.id && rLabel === monthLabel;
+        });
+        const avgMarks = studentResults.length > 0
+          ? studentResults.reduce((sum, r) => sum + (r.obtainedMarks / r.totalMarks) * 100, 0) / studentResults.length
+          : null;
+
+        // Homework
+        const hw = hwList.find(h => h.id === s.id);
+
+        return {
+          id: s.id,
+          name: s.name,
+          attendance: att ? { percentage: att.percentage, presentDays, totalDays } : null,
+          avgMarks,
+          testCount: studentResults.length,
+          homework: hw?.homework ? { completedPages: hw.homework.completedPages, targetPages: hw.homework.targetPages } : null,
+        };
+      });
+
+      await generateMonthlyClassReportPDF(monthLabel, selectedClass, reportStudents);
+      setMessage(`Monthly Report downloaded for ${monthLabel} — Class ${selectedClass}`);
+      setTimeout(() => setMessage(''), 4000);
+    } catch (err) {
+      console.error(err);
+      alert('Error generating report. Please try again.');
+    }
+    setIsReporting(false);
+  };
+
   return (
     <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -218,10 +282,19 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
             onClick={handleDownloadOfflineRecord}
             disabled={isDownloading}
             className="inline-flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-all disabled:opacity-50"
-            title="Download Monthly Report for Offline Record"
+            title="Download Monthly Attendance Grid for Offline Record"
           >
             <Download size={16} />
-            {isDownloading ? '...' : 'Offline Sheet'}
+            {isDownloading ? '...' : 'Attendance Sheet'}
+          </button>
+          <button
+            onClick={handleMonthlyClassReport}
+            disabled={isReporting}
+            className="inline-flex items-center gap-2 rounded-xl bg-green-50 border border-green-300 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100 transition-all disabled:opacity-50"
+            title="Download Monthly Class Report (All Students) for WhatsApp sharing"
+          >
+            <FileText size={16} />
+            {isReporting ? 'Generating...' : '📋 Monthly Report'}
           </button>
         </div>
       </div>
