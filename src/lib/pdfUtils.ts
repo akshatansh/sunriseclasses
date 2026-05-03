@@ -532,16 +532,26 @@ export async function generateMonthlyClassReportPDF(
   // ── REMARKS GENERATOR ────────────────────────────────────
   function getRemarks(att: number | null, marks: number | null, hw: number | null): string {
     const a = att ?? 0;
-    const m = marks ?? 0;
-    const h = hw ?? 0;
-    if (a >= 90 && m >= 80) return '⭐ Outstanding performance!';
-    if (a >= 75 && m >= 70) return '✅ Good — keep it up!';
-    if (a >= 75 && m >= 50) return '📈 Average marks, needs improvement.';
-    if (a < 75 && m >= 70) return '⚠️ Good marks but low attendance.';
-    if (a < 50) return '🔴 Attendance critical — contact parents.';
-    if (m < 40) return '📚 Needs serious focus on studies.';
-    if (h < 50) return '📖 Homework incomplete — follow up needed.';
-    return '🙂 Satisfactory — can do better.';
+    const m = marks;        // null = no test data this month
+    const h = hw !== null && hw !== undefined ? Math.round((hw as any)) : -1;
+
+    // No test data yet — base remark on attendance only
+    if (m === null) {
+      if (a >= 90) return 'Excellent attendance. Awaiting test results.';
+      if (a >= 75) return 'Good attendance. Awaiting test results.';
+      if (a > 0 && a < 75) return 'Attendance needs improvement.';
+      return 'No data recorded for this month.';
+    }
+
+    if (a >= 90 && m >= 80) return 'Outstanding! Excellent performance overall.';
+    if (a >= 75 && m >= 70) return 'Good performance. Keep it up!';
+    if (a >= 75 && m >= 50) return 'Average marks. Needs more focus on studies.';
+    if (a >= 75 && m < 50)  return 'Low marks. Serious attention needed.';
+    if (a < 75 && m >= 70)  return 'Good marks but attendance is low.';
+    if (a < 50 && m < 50)   return 'Attendance & marks both poor. Urgent action.';
+    if (a < 50)             return 'Attendance critical. Parents to be informed.';
+    if (h >= 0 && h < 50)   return 'Homework incomplete. Follow-up needed.';
+    return 'Satisfactory. Can perform better.';
   }
 
   function getGrade(marks: number | null): string {
