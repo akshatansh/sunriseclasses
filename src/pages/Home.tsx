@@ -12,9 +12,9 @@ export default function Home() {
   return (
     <div>
       <Seo
-        title="Best Class 9 & 10 Board Exam Coaching in Champanagar, Purnia Bihar"
-        description="Sunrise Classes & Academy — Top coaching institute in Champanagar, Purnia, Bihar for Class 9 & 10 board exam preparation. Expert teachers, daily test practice, personalized attention & proven results."
-        keywords="Sunrise Classes Champanagar Purnia, best coaching in Champanagar Purnia, Class 9 coaching Champanagar Purnia, Class 10 coaching Champanagar Purnia, Bihar Board coaching, board exam preparation Purnia, offline coaching classes Champanagar, school tuition Purnia Bihar, coaching institute Purnia Bihar"
+        title="Sunrise Classes Champanagar - #1 Class 9 & 10 Coaching in Purnia Bihar | SP Jha"
+        description="Sunrise Classes & Academy, Champanagar Purnia — Best Bihar Board coaching for Class 9 & 10. SP Jha sir, 15+ yrs experience, daily tests, offline batches. Enroll: 9973152070."
+        keywords="Sunrise Classes Champanagar, Sunrise Classes Purnia Bihar, Sunrise Classes & Academy, SP Jha coaching Champanagar Purnia, best coaching in Champanagar Purnia, Class 9 coaching Champanagar, Class 10 coaching Purnia, BSEB Bihar Board coaching Purnia, offline tuition Champanagar Purnia, Bihar Board exam preparation, coaching institute near Champanagar Purnia, board exam coaching Purnia Bihar"
         url="/"
       />
       <Hero />
