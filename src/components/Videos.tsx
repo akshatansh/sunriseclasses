@@ -80,19 +80,13 @@ const VIDEO_CATEGORIES = [
 ];
 
 const FALLBACK_LATEST_VIDEOS: YouTubeVideo[] = [
+  // Math Fallbacks
   {
     id: 'fI1BE3anzeU',
     title: 'दूरी सूत्र | Distance Formula | Questions, Answers & Objective | Coordinate Geometry BSEB Bihar Board',
     description: 'Class 10 Bihar Board Maths distance formula questions and answers.',
     thumbnail: 'https://i.ytimg.com/vi/fI1BE3anzeU/hqdefault.jpg',
     publishedAt: '2026-04-18T02:50:19+00:00',
-  },
-  {
-    id: 'pl1QdO5TpSU',
-    title: 'मानव नेत्र तथा रंग बिरंगा संसार | Human Eye And Colourful World | Class 10th | Bihar Board',
-    description: 'Class 10 Bihar Board Science human eye and colourful world explanation.',
-    thumbnail: 'https://i.ytimg.com/vi/pl1QdO5TpSU/hqdefault.jpg',
-    publishedAt: '2026-04-18T02:50:01+00:00',
   },
   {
     id: 'pawn1Br2szg',
@@ -107,6 +101,42 @@ const FALLBACK_LATEST_VIDEOS: YouTubeVideo[] = [
     description: 'Maths area of triangle and coordinate geometry for BSEB board.',
     thumbnail: 'https://i.ytimg.com/vi/FSMPBuAxzfU/hqdefault.jpg',
     publishedAt: '2026-04-16T02:45:03+00:00',
+  },
+  {
+    id: 'WCVzRv7BWn4',
+    title: 'दूरी सूत्र | Distance Formula Questions Answers Objective | Coordinate Geometry | BSEB Class 10',
+    description: 'Class 10 Maths distance formula questions and objective for board exam.',
+    thumbnail: 'https://i.ytimg.com/vi/WCVzRv7BWn4/hqdefault.jpg',
+    publishedAt: '2026-04-15T10:00:00+00:00',
+  },
+  // Science Fallbacks
+  {
+    id: 'pl1QdO5TpSU',
+    title: 'मानव नेत्र तथा रंग बिरंगा संसार | Human Eye And Colourful World | Class 10th | Bihar Board',
+    description: 'Class 10 Bihar Board Science human eye and colourful world explanation.',
+    thumbnail: 'https://i.ytimg.com/vi/pl1QdO5TpSU/hqdefault.jpg',
+    publishedAt: '2026-04-18T02:50:01+00:00',
+  },
+  {
+    id: 'BeM03E3Moj0',
+    title: 'मानव नेत्र तथा रंग बिरंगा संसार | Human Eye And Colourful World , Star Points And Some Q / A BSEB',
+    description: 'Science human eye and colourful world Star Points and Q/A.',
+    thumbnail: 'https://i.ytimg.com/vi/BeM03E3Moj0/hqdefault.jpg',
+    publishedAt: '2026-04-19T02:50:01+00:00',
+  },
+  {
+    id: 'owZA8TFybbA',
+    title: 'मानव नेत्र तथा रंग बिरंगा संसार | NCERT Questions & Answers | Class 10 Science BSEB | PART - 4',
+    description: 'Class 10 Science BSEB NCERT questions and answers part 4.',
+    thumbnail: 'https://i.ytimg.com/vi/owZA8TFybbA/hqdefault.jpg',
+    publishedAt: '2026-04-20T02:50:01+00:00',
+  },
+  {
+    id: 'vXd1P-XTxPI',
+    title: 'Human Eye & Colourful World | Extra Questions | Class 10 Bihar Board | Easy Hindi Explanation |',
+    description: 'Human eye and colourful world extra questions class 10.',
+    thumbnail: 'https://i.ytimg.com/vi/vXd1P-XTxPI/hqdefault.jpg',
+    publishedAt: '2026-04-21T02:50:01+00:00',
   },
 ];
 
@@ -159,6 +189,19 @@ export default function Videos() {
         }
       });
 
+      // Fill empty slots with fallback videos to ensure exactly 4 videos are shown
+      VIDEO_CATEGORIES.forEach((cat) => {
+        if (nextCategoryVideos[cat.id].length < LATEST_VIDEO_COUNT) {
+          FALLBACK_LATEST_VIDEOS.forEach((fallbackVideo) => {
+            const fallbackCat = getVideoCategory(fallbackVideo);
+            const isAlreadyAdded = nextCategoryVideos[cat.id].some(v => v.id === fallbackVideo.id);
+            if (fallbackCat === cat.id && !isAlreadyAdded && nextCategoryVideos[cat.id].length < LATEST_VIDEO_COUNT) {
+              nextCategoryVideos[cat.id].push(fallbackVideo);
+            }
+          });
+        }
+      });
+
       setCategoryVideos(nextCategoryVideos);
       setUseEmbedFallback(latestVideos.length === 0);
     } catch (e) {
@@ -168,8 +211,16 @@ export default function Videos() {
         science: [],
       };
 
+      FALLBACK_LATEST_VIDEOS.forEach((video) => {
+        const categoryId = getVideoCategory(video);
+        if (!categoryId) return;
+        if (fallbackCategoryVideos[categoryId].length < LATEST_VIDEO_COUNT) {
+          fallbackCategoryVideos[categoryId].push(video);
+        }
+      });
+
       setCategoryVideos(fallbackCategoryVideos);
-      setUseEmbedFallback(true);
+      setUseEmbedFallback(false);
     } finally {
       setLoading(false);
     }
