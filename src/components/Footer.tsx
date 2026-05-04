@@ -59,7 +59,7 @@ export default function Footer() {
                   <Youtube size={17} />
                 </a>
                 <a
-                  href="https://instagram.com/sunriseclasses"
+                  href="https://www.instagram.com/sunriseclasses81/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-9 h-9 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center hover:from-purple-600 hover:to-pink-600 transition-colors duration-200"
@@ -68,7 +68,7 @@ export default function Footer() {
                   <Instagram size={17} />
                 </a>
                 <a
-                  href="https://facebook.com/sunriseclasses"
+                  href="https://www.facebook.com/profile.php?id=61576476216290"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-700 transition-colors duration-200"
