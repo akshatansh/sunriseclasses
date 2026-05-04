@@ -12,7 +12,7 @@ import {
 } from '../lib/youtubeVideos';
 
 const REFRESH_MS = 15 * 60 * 1000;
-const LATEST_VIDEO_FETCH_COUNT = 20;
+const LATEST_VIDEO_FETCH_COUNT = 50;
 const LATEST_VIDEO_COUNT = 4;
 
 const VIDEO_CATEGORIES = [
@@ -156,6 +156,18 @@ export default function Videos() {
         if (!categoryId) return;
         if (nextCategoryVideos[categoryId].length < LATEST_VIDEO_COUNT) {
           nextCategoryVideos[categoryId].push(video);
+        }
+      });
+
+      // Fill empty categories with fallback videos
+      VIDEO_CATEGORIES.forEach((cat) => {
+        if (nextCategoryVideos[cat.id].length === 0) {
+          FALLBACK_LATEST_VIDEOS.forEach((fallbackVideo) => {
+            const fallbackCat = getVideoCategory(fallbackVideo);
+            if (fallbackCat === cat.id && nextCategoryVideos[cat.id].length < LATEST_VIDEO_COUNT) {
+              nextCategoryVideos[cat.id].push(fallbackVideo);
+            }
+          });
         }
       });
 

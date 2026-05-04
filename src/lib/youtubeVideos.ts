@@ -48,10 +48,18 @@ export async function fetchLatestVideosFromRss(
     
     if (!id) return;
 
+    const title = item.title || 'Video';
+    const description = item.description || '';
+
+    // Exclude shorts
+    if (/#shorts?/i.test(title) || /#shorts?/i.test(description)) {
+      return;
+    }
+
     out.push({
       id,
-      title: item.title || 'Video',
-      description: item.description || '',
+      title,
+      description,
       thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
       publishedAt: item.pubDate || new Date().toISOString(),
     });
@@ -71,6 +79,7 @@ export async function fetchLatestVideosFromApi(
     maxResults: String(limit),
     order: 'date',
     type: 'video',
+    q: '-#shorts -#Shorts', // Exclude shorts
     key: apiKey,
   });
 
@@ -105,10 +114,19 @@ export async function fetchLatestVideosFromApi(
         sn?.thumbnails?.medium?.url ||
         sn?.thumbnails?.default?.url ||
         `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+        
+      const title = sn?.title || 'Video';
+      const description = sn?.description || '';
+
+      // Exclude shorts
+      if (/#shorts?/i.test(title) || /#shorts?/i.test(description)) {
+        return null;
+      }
+
       return {
         id,
-        title: sn?.title || 'Video',
-        description: sn?.description || '',
+        title,
+        description,
         thumbnail: thumb,
         publishedAt: sn?.publishedAt || new Date().toISOString(),
       };
