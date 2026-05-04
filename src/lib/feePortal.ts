@@ -17,11 +17,20 @@ export interface StudentFeeStatus extends StudentRecord {
   feePaid: boolean;
   paymentAmount?: number;
   totalFee?: number;
+  currentMonthFee?: number;
   dueAmount?: number;
   isPartial?: boolean;
   paymentDate?: string;
   receiptId?: string;
-  previousDues?: number;
+  
+  // New exact breakdown fields
+  initialPreviousDues?: number;
+  remainingPreviousDues?: number;
+  paidTowardsPreviousDues?: number;
+  
+  paidTowardsCurrentMonth?: number;
+  remainingCurrentMonthFee?: number;
+  
   openingBalance?: number;
 }
 
@@ -69,7 +78,7 @@ export const getStudentsWithFeeStatus = async (month: string, className: '9th' |
       .select('*');
     if (paymentError) throw paymentError;
 
-    const startIndex = MONTHS.indexOf('April 2026');
+    const startIndex = MONTHS.indexOf('May 2026');
     const currentMonthIndex = MONTHS.indexOf(month);
 
     return (students || []).map(student => {
@@ -78,7 +87,7 @@ export const getStudentsWithFeeStatus = async (month: string, className: '9th' |
       let expectedBefore = 0;
       let paidBefore = 0;
 
-      // Calculate previous dues from April 2026 up to the month BEFORE the selected month
+      // Calculate previous dues from May 2026 up to the month BEFORE the selected month
       if (startIndex !== -1 && currentMonthIndex > startIndex) {
         for (let i = startIndex; i < currentMonthIndex; i++) {
           const m = MONTHS[i];
@@ -90,17 +99,24 @@ export const getStudentsWithFeeStatus = async (month: string, className: '9th' |
       
       // Opening balance (pre-existing dues from before the system)
       const openingBalance = Math.max(0, Number(student.opening_balance) || 0);
-      const previousDues = Math.max(0, expectedBefore - paidBefore) + openingBalance;
+      const initialPreviousDues = Math.max(0, expectedBefore - paidBefore) + openingBalance;
 
       // Current month details
       const currentP = allPayments?.find(x => x.student_id === student.id && x.month === month);
       const currentMonthFee = currentP ? Number(currentP.total_fee) : defaultFee;
       const paidThisMonth = currentP ? Number(currentP.amount) : 0;
       
-      const totalPayableThisMonth = previousDues + currentMonthFee;
-      const dueAmount = Math.max(0, totalPayableThisMonth - paidThisMonth);
+      // Distribution logic: Payment clears old dues first, then current month
+      const paidTowardsPreviousDues = Math.min(paidThisMonth, initialPreviousDues);
+      const remainingPreviousDues = initialPreviousDues - paidTowardsPreviousDues;
+      
+      const paidTowardsCurrentMonth = paidThisMonth - paidTowardsPreviousDues;
+      const remainingCurrentMonthFee = currentMonthFee - paidTowardsCurrentMonth;
 
-      const feePaid = dueAmount === 0;
+      const totalPayableThisMonth = initialPreviousDues + currentMonthFee;
+      const dueAmount = remainingPreviousDues + remainingCurrentMonthFee;
+
+      const feePaid = dueAmount <= 0;
       const isPartial = dueAmount > 0 && paidThisMonth > 0;
 
       return {
@@ -115,8 +131,13 @@ export const getStudentsWithFeeStatus = async (month: string, className: '9th' |
         isPartial,
         paymentAmount: paidThisMonth,
         totalFee: totalPayableThisMonth,
+        currentMonthFee,
         dueAmount,
-        previousDues,
+        initialPreviousDues,
+        remainingPreviousDues,
+        paidTowardsPreviousDues,
+        paidTowardsCurrentMonth,
+        remainingCurrentMonthFee,
         openingBalance,
         paymentDate: currentP?.payment_date,
         receiptId: currentP?.id
@@ -185,5 +206,21 @@ export const updateStudentOpeningBalance = async (studentId: string, openingBala
   } catch (error) {
     console.error('Error updating opening balance:', error);
     return false;
+  }
+};
+
+export const getStudentPaymentHistory = async (studentId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('fee_payments')
+      .select('*')
+      .eq('student_id', studentId)
+      .order('created_at', { ascending: true });
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching history:', error);
+    return [];
   }
 };

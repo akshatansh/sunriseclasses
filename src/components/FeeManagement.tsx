@@ -3,7 +3,7 @@ import { IndianRupee, MessageCircle, FileText, CheckCircle, Search, X, Phone, Ch
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { drawPDFHeader, drawPDFFooter, drawWatermark, drawOfficialStamp } from '../lib/pdfUtils';
-import { getStudentsWithFeeStatus, recordFeePayment, updateStudentPhone, updateStudentOpeningBalance, type StudentFeeStatus } from '../lib/feePortal';
+import { getStudentsWithFeeStatus, recordFeePayment, updateStudentPhone, updateStudentOpeningBalance, getStudentPaymentHistory, type StudentFeeStatus } from '../lib/feePortal';
 
 const MONTHS = [
   'January 2026', 'February 2026', 'March 2026', 'April 2026', 'May 2026', 'June 2026',
@@ -23,7 +23,7 @@ const FeeManagement = () => {
   const [students, setStudents] = useState<StudentFeeStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'partial' | 'paid'>('pending');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'partial' | 'paid'>('all');
   const [selectedClass, setSelectedClass] = useState<'all' | '9th' | '10th'>('all');
 
   // Payment Modal
@@ -73,21 +73,12 @@ const FeeManagement = () => {
     }
   };
 
-  const handleQuickPay = async (student: StudentFeeStatus) => {
-    const amount = getDefaultFee(student.className);
-    const receiptId = await recordFeePayment(student.id, amount, month, amount);
-    if (receiptId) loadData();
-    else alert('Payment save nahi hui.');
-  };
-
   const handleCustomPay = async () => {
     if (!paymentModalStudent || !paymentAmount) return;
     const amount = Number(paymentAmount);
-    const totalFee = paymentModalStudent.isPartial 
-      ? (paymentModalStudent.totalFee || getDefaultFee(paymentModalStudent.className))
-      : Number(paymentModalTotalFee || getDefaultFee(paymentModalStudent.className));
+    const baseFeeForMonth = paymentModalStudent.currentMonthFee || getDefaultFee(paymentModalStudent.className);
 
-    const receiptId = await recordFeePayment(paymentModalStudent.id, amount, month, totalFee);
+    const receiptId = await recordFeePayment(paymentModalStudent.id, amount, month, baseFeeForMonth);
     if (receiptId) {
       setPaymentModalStudent(null);
       loadData();
@@ -107,17 +98,14 @@ const FeeManagement = () => {
 
     const pendingAmount = student.dueAmount || 0;
     const paidAmount = student.paymentAmount || 0;
-    const previousDues = student.previousDues || 0;
-    const monthlyFee = (student.totalFee || getDefaultFee(student.className)) - previousDues;
-
     const msg = `Dear Parent, \nSunrise Classes & Academy inform karta hai ki student *${student.name}* (Class ${student.className}) ki fee details is prakar hai:\n
 *Month:* ${month}
-*Monthly Fee:* Rs. ${monthlyFee}
-*Previous Dues:* Rs. ${previousDues}
-*Total Payable:* Rs. ${student.totalFee || monthlyFee + previousDues}
-*Paid Amount:* Rs. ${paidAmount}
-*Remaining Dues:* Rs. ${pendingAmount}\n
-Kripya due amount (Rs. ${pendingAmount}) samay par jama karein. \n- Sunrise Classes`;
+*Monthly Fee:* Rs. ${student.currentMonthFee}
+*Previous Dues:* Rs. ${student.initialPreviousDues}
+*Total Payable:* Rs. ${student.totalFee}
+*Paid Amount:* Rs. ${student.paymentAmount}
+*Remaining Dues:* Rs. ${student.dueAmount}\n
+Kripya due amount (Rs. ${student.dueAmount}) samay par jama karein. \n- Sunrise Classes`;
     const a = document.createElement('a');
     a.href = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
     a.target = '_blank';
@@ -128,7 +116,7 @@ Kripya due amount (Rs. ${pendingAmount}) samay par jama karein. \n- Sunrise Clas
   };
 
   const handleReceipt = async (student: StudentFeeStatus) => {
-    if (!student.feePaid || !student.paymentAmount || !student.paymentDate) return;
+    if (!student.paymentAmount || !student.paymentDate) return;
     const doc = new jsPDF({ unit: 'mm', format: 'a5' });
     const pageW = doc.internal.pageSize.getWidth();
 
@@ -152,7 +140,9 @@ Kripya due amount (Rs. ${pendingAmount}) samay par jama karein. \n- Sunrise Clas
         ...(student.parentPhone ? [['Mobile No.', student.parentPhone]] : []),
         ['Class', student.className],
         ['Fee Month', month],
-        ['Total Monthly Fee', `Rs. ${student.totalFee}`],
+        ['Monthly Fee', `Rs. ${student.currentMonthFee}`],
+        ...((student.initialPreviousDues || 0) > 0 ? [['Previous Dues', `Rs. ${student.initialPreviousDues}`]] : []),
+        ['Total Payable', `Rs. ${student.totalFee}`],
         ['Amount Paid', `Rs. ${student.paymentAmount}`],
         ['Balance Due', `Rs. ${student.dueAmount}`],
         ['Status', student.dueAmount && student.dueAmount > 0 ? 'PARTIAL PAYMENT' : 'PAID ✔'],
@@ -174,6 +164,65 @@ Kripya due amount (Rs. ${pendingAmount}) samay par jama karein. \n- Sunrise Clas
 
     drawPDFFooter(doc);
     doc.save(`Receipt_${student.name}_${month}.pdf`);
+  };
+
+  const handleDownloadHistory = async (student: StudentFeeStatus) => {
+    const history = await getStudentPaymentHistory(student.id);
+    if (history.length === 0 && !student.openingBalance) {
+      alert('Is student ki koi payment history nahi hai.');
+      return;
+    }
+
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const startY = await drawPDFHeader(doc, `PAYMENT STATEMENT`);
+    
+    // Meta info
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 42, 92);
+    doc.text(`Student: ${student.name}`, 14, startY + 5);
+    doc.text(`Class: ${student.className}`, 14, startY + 10);
+    if (student.fatherName) doc.text(`Father's Name: ${student.fatherName}`, 14, startY + 15);
+    
+    const tableData: any[][] = [];
+    if (student.openingBalance && student.openingBalance > 0) {
+      tableData.push(['-', 'Till Apr 2026', 'Old Dues', '-', `Rs. ${student.openingBalance}`]);
+    }
+    
+    let totalPaid = 0;
+    history.forEach((h: any, i: number) => {
+      const date = new Date(h.payment_date || h.created_at).toLocaleDateString('en-IN');
+      tableData.push([
+        i + 1,
+        date,
+        h.month,
+        `Rs. ${h.total_fee}`,
+        `Rs. ${h.amount}`
+      ]);
+      totalPaid += Number(h.amount);
+    });
+
+    autoTable(doc, {
+      startY: startY + 22,
+      head: [['S.No', 'Date', 'Fee Month', 'Monthly Fee', 'Amount Paid']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 42, 92], textColor: 255 },
+      margin: { left: 14, right: 14 },
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(21, 128, 61);
+    doc.text(`Total Amount Paid: Rs. ${totalPaid}`, 14, finalY + 10);
+    
+    if (student.dueAmount && student.dueAmount > 0) {
+      doc.setTextColor(220, 38, 38);
+      doc.text(`Current Total Dues: Rs. ${student.dueAmount}`, 14, finalY + 16);
+    }
+
+    drawPDFFooter(doc);
+    doc.save(`Statement_${student.name.replace(/\s+/g, '_')}.pdf`);
   };
 
   const displayed = students.filter(s => {
@@ -202,7 +251,7 @@ Kripya due amount (Rs. ${pendingAmount}) samay par jama karein. \n- Sunrise Clas
       s.name,
       s.className,
       s.parentPhone || 'N/A',
-      `Rs. ${s.previousDues || 0}`,
+      `Rs. ${s.initialPreviousDues || 0}`,
       `Rs. ${s.totalFee || 0}`,
       `Rs. ${s.paymentAmount || 0}`,
       `Rs. ${s.dueAmount || 0}`,
@@ -345,22 +394,25 @@ Kripya due amount (Rs. ${pendingAmount}) samay par jama karein. \n- Sunrise Clas
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  {student.feePaid ? (
-                    <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
-                      <CheckCircle size={11} /> ₹{student.paymentAmount}
-                    </span>
-                  ) : student.isPartial ? (
-                    <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
-                      Partial: ₹{student.paymentAmount}
-                    </span>
+                  {student.dueAmount && student.dueAmount > 0 ? (
+                    <div className="flex flex-col items-end">
+                      <span className="text-sm font-black text-red-600">
+                        Total Due: ₹{student.dueAmount}
+                      </span>
+                      {(student.paymentAmount || 0) > 0 && (
+                        <span className="text-[10px] text-orange-600 font-bold">
+                          Paid: ₹{student.paymentAmount}
+                        </span>
+                      )}
+                    </div>
                   ) : (
-                    <span className="bg-red-50 text-red-600 border border-red-200 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
-                      Pending
+                    <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-bold shrink-0">
+                      <CheckCircle size={11} /> All Cleared
                     </span>
                   )}
-                  {(student.previousDues || 0) > 0 && (
+                  {(student.remainingPreviousDues || 0) > 0 && (
                     <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
-                      Prev Due: ₹{student.previousDues}
+                      Incl. Old Dues: ₹{student.remainingPreviousDues}
                     </span>
                   )}
                 </div>
@@ -370,7 +422,7 @@ Kripya due amount (Rs. ${pendingAmount}) samay par jama karein. \n- Sunrise Clas
               <div className="flex items-center gap-2 mb-3">
                 <IndianRupee size={12} className="text-slate-400 shrink-0" />
                 <span className="text-xs text-slate-500 flex-1">
-                  Opening Balance: <span className="font-bold text-orange-600">₹{student.openingBalance || 0}</span>
+                  Old Dues (Till Apr): <span className="font-bold text-orange-600">₹{student.openingBalance || 0}</span>
                 </span>
                 <button
                   onClick={() => { setObModalStudent(student); setObValue(String(student.openingBalance || 0)); }}
@@ -393,9 +445,17 @@ Kripya due amount (Rs. ${pendingAmount}) samay par jama karein. \n- Sunrise Clas
                 </button>
               </div>
 
+              {/* Added: Statement Download */}
+              <button
+                onClick={() => handleDownloadHistory(student)}
+                className="w-full flex items-center justify-center gap-1.5 border border-slate-200 text-[#0f2a5c] hover:bg-slate-50 font-bold text-xs py-2 rounded-xl transition-colors mb-3"
+              >
+                <FileText size={14} /> History / Statement
+              </button>
+
               {/* Action Buttons */}
-              {!student.feePaid ? (
-                <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 mt-2">
+                {!student.feePaid && (
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleReminder(student)}
@@ -403,39 +463,24 @@ Kripya due amount (Rs. ${pendingAmount}) samay par jama karein. \n- Sunrise Clas
                     >
                       <MessageCircle size={15} /> WhatsApp
                     </button>
-                    {!student.isPartial && (
-                      <button
-                        onClick={() => handleQuickPay(student)}
-                        className="flex-1 flex items-center justify-center gap-1 bg-[#0f2a5c] text-white font-bold text-xs py-2.5 rounded-xl active:opacity-80"
-                      >
-                        Quick Pay ₹{getDefaultFee(student.className)}
-                      </button>
-                    )}
                     <button
-                      onClick={() => { setPaymentModalStudent(student); setPaymentAmount(''); setPaymentModalTotalFee(''); }}
-                      className="flex items-center justify-center bg-slate-100 text-slate-500 font-bold text-xs px-3 py-2.5 rounded-xl"
-                      title="Custom Amount"
+                      onClick={() => { setPaymentModalStudent(student); setPaymentAmount(''); }}
+                      className="flex-1 flex items-center justify-center gap-1 bg-[#0f2a5c] text-white font-bold text-xs py-2.5 rounded-xl active:opacity-80"
                     >
-                      ···
+                      Pay Fee
                     </button>
                   </div>
-                  {student.isPartial && (
-                    <button
-                      onClick={() => { setPaymentModalStudent(student); setPaymentAmount(String(student.dueAmount)); setPaymentModalTotalFee(''); }}
-                      className="w-full flex items-center justify-center gap-1 bg-[#f5a623] text-[#0f2a5c] font-bold text-xs py-2.5 rounded-xl active:opacity-80 mt-1"
-                    >
-                      Pay Remaining ₹{student.dueAmount}
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <button
-                  onClick={() => handleReceipt(student)}
-                  className="w-full flex items-center justify-center gap-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold text-xs py-2.5 rounded-xl transition-colors"
-                >
-                  <FileText size={14} /> Download Receipt
-                </button>
-              )}
+                )}
+                
+                {(student.paymentAmount || 0) > 0 && (
+                  <button
+                    onClick={() => handleReceipt(student)}
+                    className="w-full flex items-center justify-center gap-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold text-xs py-2.5 rounded-xl transition-colors"
+                  >
+                    <FileText size={14} /> Download Receipt (Paid: ₹{student.paymentAmount})
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -446,55 +491,37 @@ Kripya due amount (Rs. ${pendingAmount}) samay par jama karein. \n- Sunrise Clas
         <div className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={() => setPaymentModalStudent(null)}>
           <div className="bg-white rounded-t-3xl p-6 w-full max-w-sm shadow-2xl" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }} onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-5" />
-            <h3 className="text-lg font-bold text-[#0f2a5c] mb-0.5">Custom Payment</h3>
+            <h3 className="text-lg font-bold text-[#0f2a5c] mb-0.5">Pay Fee</h3>
             <p className="text-sm text-slate-500 mb-4">{paymentModalStudent.name} • {month}</p>
             
-            {!paymentModalStudent.isPartial ? (
-              <div className="mb-4 space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-500 ml-1">Total Monthly Fee (₹)</label>
-                  <input
-                    type="number"
-                    value={paymentModalTotalFee || getDefaultFee(paymentModalStudent.className)}
-                    onChange={e => setPaymentModalTotalFee(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-bold mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 ml-1">Amount Paying Now (₹)</label>
-                  <input
-                    type="number"
-                    value={paymentAmount}
-                    onChange={e => setPaymentAmount(e.target.value)}
-                    placeholder="Enter amount"
-                    className="w-full border border-[#f5a623] rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-bold text-lg mt-1"
-                    autoFocus
-                  />
-                </div>
+            <div className="mb-4 space-y-3">
+              <div className="bg-orange-50 border border-orange-100 rounded-xl p-3">
+                {(paymentModalStudent.initialPreviousDues || 0) > 0 && (
+                  <p className="text-xs text-orange-800 font-bold">Purana Dues: ₹{paymentModalStudent.initialPreviousDues}</p>
+                )}
+                <p className="text-xs text-orange-800 font-bold">This Month: ₹{paymentModalStudent.currentMonthFee}</p>
+                {paymentModalStudent.isPartial && (
+                  <p className="text-xs text-green-700 font-bold">Paid So Far: ₹{paymentModalStudent.paymentAmount}</p>
+                )}
+                <p className="text-sm text-red-600 font-black mt-1">Total Due: ₹{paymentModalStudent.dueAmount}</p>
               </div>
-            ) : (
-              <div className="mb-4">
-                <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 mb-3">
-                  <p className="text-xs text-orange-800 font-bold">Total Fee: ₹{paymentModalStudent.totalFee}</p>
-                  <p className="text-xs text-orange-800 font-bold">Paid So Far: ₹{paymentModalStudent.paymentAmount}</p>
-                  <p className="text-sm text-red-600 font-black mt-1">Due Amount: ₹{paymentModalStudent.dueAmount}</p>
-                </div>
-                <label className="text-xs font-bold text-slate-500 ml-1">Amount Paying Now (₹)</label>
+              
+              <div>
+                <label className="text-xs font-bold text-slate-500 ml-1">Kitna jama kar rahe hain? (₹)</label>
                 <input
                   type="number"
                   value={paymentAmount}
                   onChange={e => setPaymentAmount(e.target.value)}
-                  placeholder={`Max: ${paymentModalStudent.dueAmount}`}
-                  max={paymentModalStudent.dueAmount}
-                  className="w-full border border-[#f5a623] rounded-xl px-4 py-3 outline-none focus:border-[#0f2a5c] font-bold text-lg mt-1"
+                  placeholder="Enter amount"
+                  className="w-full border border-[#f5a623] rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-bold text-lg mt-1"
                   autoFocus
                 />
               </div>
-            )}
+            </div>
 
             <div className="flex gap-3 mt-2">
               <button onClick={() => setPaymentModalStudent(null)} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-2xl font-bold">Cancel</button>
-              <button onClick={handleCustomPay} className="flex-1 bg-green-500 text-white py-3 rounded-2xl font-bold">Confirm Paid</button>
+              <button onClick={handleCustomPay} className="flex-1 bg-green-500 text-white py-3 rounded-2xl font-bold">Submit</button>
             </div>
           </div>
         </div>
@@ -523,19 +550,19 @@ Kripya due amount (Rs. ${pendingAmount}) samay par jama karein. \n- Sunrise Clas
         </div>
       )}
 
-      {/* ── Opening Balance Modal ── */}
+      {/* ── Old Dues Modal ── */}
       {obModalStudent && (
         <div className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={() => setObModalStudent(null)}>
           <div className="bg-white rounded-t-3xl p-6 w-full max-w-sm shadow-2xl" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }} onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-5" />
-            <h3 className="text-lg font-bold text-[#0f2a5c] mb-0.5">Opening Balance</h3>
+            <h3 className="text-lg font-bold text-[#0f2a5c] mb-0.5">Old Dues (Till Apr)</h3>
             <p className="text-sm text-slate-500 mb-1">{obModalStudent.name}</p>
-            <p className="text-xs text-slate-400 mb-4">Pehle se due amount daalo (ek baar set karo)</p>
+            <p className="text-xs text-slate-400 mb-4">April 2026 tak ka bacha hua dues daalein</p>
             <input
               type="number"
               value={obValue}
               onChange={e => setObValue(e.target.value)}
-              placeholder="₹ Pehle se due amount"
+              placeholder="₹ Old Dues Amount"
               className="w-full border border-[#f5a623] rounded-2xl px-4 py-3 outline-none focus:border-[#0f2a5c] text-lg font-bold mb-4"
               autoFocus
             />
