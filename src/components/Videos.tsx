@@ -159,18 +159,6 @@ export default function Videos() {
         }
       });
 
-      // Fill empty categories with fallback videos
-      VIDEO_CATEGORIES.forEach((cat) => {
-        if (nextCategoryVideos[cat.id].length === 0) {
-          FALLBACK_LATEST_VIDEOS.forEach((fallbackVideo) => {
-            const fallbackCat = getVideoCategory(fallbackVideo);
-            if (fallbackCat === cat.id && nextCategoryVideos[cat.id].length < LATEST_VIDEO_COUNT) {
-              nextCategoryVideos[cat.id].push(fallbackVideo);
-            }
-          });
-        }
-      });
-
       setCategoryVideos(nextCategoryVideos);
       setUseEmbedFallback(latestVideos.length === 0);
     } catch (e) {
@@ -180,16 +168,8 @@ export default function Videos() {
         science: [],
       };
 
-      FALLBACK_LATEST_VIDEOS.forEach((video) => {
-        const categoryId = getVideoCategory(video);
-        if (!categoryId) return;
-        if (fallbackCategoryVideos[categoryId].length < LATEST_VIDEO_COUNT) {
-          fallbackCategoryVideos[categoryId].push(video);
-        }
-      });
-
       setCategoryVideos(fallbackCategoryVideos);
-      setUseEmbedFallback(false);
+      setUseEmbedFallback(true);
     } finally {
       setLoading(false);
     }
