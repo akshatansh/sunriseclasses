@@ -12,6 +12,7 @@ import FloatingWhatsApp from './components/FloatingWhatsApp';
 import ResultsPage from './pages/ResultsPage';
 import AdminResultsPage from './pages/AdminResultsPage';
 import LaunchCountdown from './components/LaunchCountdown';
+import YouTubeFamilyPage from './pages/YouTubeFamilyPage';
 
 function AppContent() {
   const location = useLocation();
@@ -30,6 +31,7 @@ function AppContent() {
           <Route path="/success-stories" element={<SuccessStoriesPage />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/youtube-family" element={<YouTubeFamilyPage />} />
           <Route path="/admin/sunriseclasses" element={<AdminResultsPage />} />
         </Routes>
       </main>

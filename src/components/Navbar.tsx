@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Menu, X, Sparkles, ArrowRight } from 'lucide-react';
+import { Menu, X, Sparkles, ArrowRight, Download } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import NotificationBar from './NotificationBar';
 
@@ -8,6 +8,7 @@ const navLinks = [
   { label: 'About', path: '/about' },
   { label: 'Courses', path: '/courses' },
   { label: 'Videos', path: '/videos' },
+  { label: 'YT Family', path: '/youtube-family' },
   { label: 'Gallery', path: '/gallery' },
   { label: 'Success Stories', path: '/success-stories' },
   { label: 'Results', path: '/results' },
@@ -18,12 +19,35 @@ export default function Navbar() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
+    
+    // PWA Install Prompt Listener
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        console.log('User accepted the install prompt');
+      }
+      setDeferredPrompt(null);
+    }
+  };
 
   useEffect(() => {
     setOpen(false);
@@ -63,12 +87,12 @@ export default function Navbar() {
             </div>
           </Link>
 
-          <div className="hidden md:flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-2 backdrop-blur">
+          <div className="hidden md:flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 backdrop-blur">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${
+                className={`rounded-full px-2.5 py-1.5 text-xs font-medium transition-all duration-200 whitespace-nowrap ${
                   location.pathname === link.path
                     ? 'bg-white text-[#0f2a5c] shadow-sm'
                     : scrolled
@@ -79,12 +103,23 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            
+            {deferredPrompt && (
+              <button
+                onClick={handleInstallClick}
+                className="inline-flex items-center gap-1.5 rounded-full bg-green-500 text-white text-xs font-bold px-3 py-2 hover:bg-green-600 transition-colors duration-200 shadow-lg whitespace-nowrap ml-1"
+              >
+                <Download size={12} />
+                Install App
+              </button>
+            )}
+
             <Link
               to="/contact"
-              className="inline-flex items-center gap-2 rounded-full bg-[#f5a623] text-[#0f2a5c] text-sm font-bold px-5 py-2.5 hover:bg-[#e09010] transition-colors duration-200 shadow-lg shadow-[#f5a623]/20"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#f5a623] text-[#0f2a5c] text-xs font-bold px-4 py-2 hover:bg-[#e09010] transition-colors duration-200 shadow-lg shadow-[#f5a623]/20 whitespace-nowrap"
             >
               Enroll Now
-              <ArrowRight size={14} />
+              <ArrowRight size={12} />
             </Link>
           </div>
 
@@ -127,6 +162,15 @@ export default function Navbar() {
               Enroll Now
               <ArrowRight size={14} />
             </Link>
+            {deferredPrompt && (
+              <button
+                onClick={() => { handleInstallClick(); setOpen(false); }}
+                className="mt-2 inline-flex items-center justify-center gap-2 rounded-2xl bg-green-500 text-white text-sm font-bold px-4 py-3 text-center hover:bg-green-600 transition-colors duration-200"
+              >
+                <Download size={14} />
+                Install Sunrise Classes App
+              </button>
+            )}
           </div>
         </div>
       )}

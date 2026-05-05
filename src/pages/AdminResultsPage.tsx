@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen, Calendar, Pencil, Eye, User } from 'lucide-react';
+import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen, Calendar, Pencil, Eye, User, Youtube } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { drawPDFHeader, drawPDFFooter } from '../lib/pdfUtils';
@@ -24,6 +24,7 @@ import FeeManagement from '../components/FeeManagement';
 import HomeworkManagement from '../components/HomeworkManagement';
 import AttendanceManagement from '../components/AttendanceManagement';
 import AdminStudentProfile from '../components/AdminStudentProfile';
+import YouTubeFamilyAdmin from '../components/YouTubeFamilyAdmin';
 
 const ADMIN_SESSION_KEY = 'sunrise-admin-authenticated';
 const ADMIN_ROLE_KEY = 'sunrise-admin-role';
@@ -82,7 +83,7 @@ export default function AdminResultsPage() {
   const [isSavingNotification, setIsSavingNotification] = useState(false);
   const [notices, setNotices] = useState<NoticeRecord[]>([]);
   const [newNoticeForm, setNewNoticeForm] = useState<{ title: string, content: string, type: 'exam' | 'holiday' | 'general' }>({ title: '', content: '', type: 'general' });
-  const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'homework' | 'attendance' | 'settings'>('marks');
+  const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'homework' | 'attendance' | 'settings' | 'youtube'>('marks');
 
   const fetchAdmins = async () => {
     const { data } = await supabase.from('admins').select('*').order('created_at', { ascending: false });
@@ -938,6 +939,11 @@ export default function AdminResultsPage() {
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'settings' ? 'bg-white/10 text-orange-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
                   <Settings size={20} />
                   <span>Settings</span>
+                </button>
+                <button onClick={() => setActiveTab('youtube')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'youtube' ? 'bg-white/10 text-red-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                  <Youtube size={20} />
+                  <span>YT Family</span>
                 </button>
               </>)}
             </div>
@@ -1817,6 +1823,12 @@ export default function AdminResultsPage() {
                 </div>
               )}
 
+              {activeTab === 'youtube' && loginRole === 'superadmin' && (
+                <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
+                  <YouTubeFamilyAdmin />
+                </div>
+              )}
+
             </div> {/* end tab content */}
 
             {/* ── BOTTOM NAVIGATION BAR — fixed to screen bottom (Mobile Only) ── */}
@@ -1867,6 +1879,11 @@ export default function AdminResultsPage() {
                     className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'settings' ? 'border-slate-700 text-slate-700' : 'border-transparent text-slate-400'}`}>
                     <Settings size={20} strokeWidth={activeTab === 'settings' ? 2.5 : 1.8} />
                     <span className="text-[9px] font-bold uppercase tracking-wide">Settings</span>
+                  </button>
+                  <button onClick={() => setActiveTab('youtube')}
+                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'youtube' ? 'border-red-600 text-red-600' : 'border-transparent text-slate-400'}`}>
+                    <Youtube size={20} strokeWidth={activeTab === 'youtube' ? 2.5 : 1.8} />
+                    <span className="text-[9px] font-bold uppercase tracking-wide">YT Family</span>
                   </button>
                 </>)}
               </div>
