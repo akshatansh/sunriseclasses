@@ -14,7 +14,7 @@ export interface StudentWithHomework extends StudentRecord {
   homework: HomeworkRecord | null;
 }
 
-const MONTHS_ORDER = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS_ORDER = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 function monthLabelToSortKey(label: string): number {
   const parts = (label || '').trim().split(' ');
@@ -48,6 +48,23 @@ export const getStudentsWithHomework = async (month: string): Promise<StudentWit
 
     const students = studentsResponse.data || [];
     const homeworkRecords = homeworkResponse.data || [];
+
+    // --- DUMMY DATA FOR DEMO ---
+    if (month === 'May 2026') {
+      students.forEach((s, idx) => {
+        if (!homeworkRecords.find(h => h.student_id === s.id)) {
+          homeworkRecords.push({
+            id: `dummy-hw-${s.id}`,
+            student_id: s.id,
+            month: 'May 2026',
+            target_pages: 100,
+            completed_pages: Math.max(0, 95 - (idx * 5)), // 95, 90, 85...
+            created_at: new Date().toISOString()
+          });
+        }
+      });
+    }
+    // ---------------------------
 
     return students.map(student => {
       const hw = homeworkRecords.find(h => h.student_id === student.id);
