@@ -13,6 +13,7 @@ import ResultsPage from './pages/ResultsPage';
 import AdminResultsPage from './pages/AdminResultsPage';
 
 import YouTubeFamilyPage from './pages/YouTubeFamilyPage';
+import OnlineTestPortal from './pages/OnlineTestPortal';
 
 function AppContent() {
   const location = useLocation();
@@ -32,6 +33,7 @@ function AppContent() {
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/youtube-family" element={<YouTubeFamilyPage />} />
+          <Route path="/online-tests" element={<OnlineTestPortal />} />
           <Route path="/admin/sunriseclasses" element={<AdminResultsPage />} />
         </Routes>
       </main>

@@ -9,6 +9,7 @@ const navLinks = [
   { label: 'Courses', path: '/courses' },
   { label: 'Videos', path: '/videos' },
   { label: 'YT Family', path: '/youtube-family' },
+  { label: 'Online Tests', path: '/online-tests' },
   { label: 'Gallery', path: '/gallery' },
   { label: 'Success Stories', path: '/success-stories' },
   { label: 'Results', path: '/results' },

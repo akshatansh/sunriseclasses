@@ -9,6 +9,7 @@ export interface StudentRecord {
   image: string;
   fatherName?: string;
   parentPhone?: string;
+  pin?: string;
   createdAt: string;
 }
 
@@ -46,11 +47,14 @@ export function createId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+export const generateRandomPin = () => Math.floor(1000 + Math.random() * 9000).toString();
+
 export async function loadResultsPortalData(): Promise<ResultsPortalData> {
   try {
-    const [{ data: studentsData, error: studentError }, { data: resultsData, error: resultsError }] = await Promise.all([
+    const [{ data: studentsData, error: studentError }, { data: resultsData, error: resultsError }, { data: onlineAttemptsData }] = await Promise.all([
       supabase.from('students').select('*'),
-      supabase.from('test_results').select('*')
+      supabase.from('test_results').select('*'),
+      supabase.from('online_test_attempts').select('*, online_tests(*)')
     ]);
 
     if (studentError) console.error("Supabase student fetch error:", studentError);
@@ -63,6 +67,7 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
       image: s.image,
       fatherName: s.father_name,
       parentPhone: s.parent_phone,
+      pin: s.pin,
       createdAt: s.created_at
     }));
 
@@ -76,6 +81,23 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
       totalMarks: Number(r.total_marks),
       createdAt: r.created_at
     }));
+
+    if (onlineAttemptsData) {
+      onlineAttemptsData.forEach((att: any) => {
+        if (att.online_tests) {
+          results.push({
+            id: att.id,
+            studentId: att.student_id,
+            testName: att.online_tests.title + ' (Online)',
+            subject: att.online_tests.subject,
+            testDate: att.submitted_at,
+            marksObtained: Number(att.score),
+            totalMarks: Number(att.total_marks),
+            createdAt: att.submitted_at
+          });
+        }
+      });
+    }
 
     if (ENABLE_DUMMY_DATA) {
       students.forEach((s, idx) => {
@@ -135,6 +157,7 @@ export async function addStudentToDB(student: Omit<StudentRecord, 'id' | 'create
     image: student.image,
     father_name: student.fatherName,
     parent_phone: student.parentPhone,
+    pin: student.pin || generateRandomPin(),
   }).select().single();
 
   if (error) throw error;
@@ -160,12 +183,13 @@ export async function deleteStudentFromDB(id: string) {
   if (error) throw error;
 }
 
-export async function updateStudentInDB(id: string, student: { name: string; className: string; fatherName?: string | null; parentPhone?: string | null }) {
+export async function updateStudentInDB(id: string, student: { name: string; className: string; fatherName?: string | null; parentPhone?: string | null; pin?: string }) {
   const { error } = await supabase.from('students').update({
     name: student.name,
     class_name: student.className,
     father_name: student.fatherName || null,
     parent_phone: student.parentPhone || null,
+    pin: student.pin || generateRandomPin(),
   }).eq('id', id);
   if (error) throw error;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen, Calendar, Pencil, Eye, User, Youtube } from 'lucide-react';
+import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen, Calendar, Pencil, Eye, User, Youtube, MonitorPlay } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { drawPDFHeader, drawPDFFooter } from '../lib/pdfUtils';
@@ -15,6 +15,7 @@ import {
   graduateClass10,
   promoteClass9To10,
   promoteClass8To9,
+  generateRandomPin,
   type ResultsPortalData,
   type TestResultRecord,
 } from '../lib/resultsPortal';
@@ -26,6 +27,7 @@ import HomeworkManagement from '../components/HomeworkManagement';
 import AttendanceManagement from '../components/AttendanceManagement';
 import AdminStudentProfile from '../components/AdminStudentProfile';
 import YouTubeFamilyAdmin from '../components/YouTubeFamilyAdmin';
+import OnlineTestAdmin from '../components/OnlineTestAdmin';
 
 const ADMIN_SESSION_KEY = 'sunrise-admin-authenticated';
 const ADMIN_ROLE_KEY = 'sunrise-admin-role';
@@ -41,13 +43,14 @@ function normalizeClass(className?: string | null): '8th' | '9th' | '10th' | 'ot
   return 'other';
 }
 
-const emptyStudentForm = {
+const getEmptyStudentForm = () => ({
   name: '',
   className: '',
   image: '',
   fatherName: '',
   parentPhone: '',
-};
+  pin: generateRandomPin(),
+});
 
 const emptyTestDetails = {
   testName: '',
@@ -58,7 +61,7 @@ const emptyTestDetails = {
 
 export default function AdminResultsPage() {
   const [data, setData] = useState<ResultsPortalData>({ students: [], results: [] });
-  const [studentForm, setStudentForm] = useState(emptyStudentForm);
+  const [studentForm, setStudentForm] = useState(getEmptyStudentForm());
   const [testDetails, setTestDetails] = useState(emptyTestDetails);
   const [studentScores, setStudentScores] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
@@ -70,7 +73,7 @@ export default function AdminResultsPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editStudentId, setEditStudentId] = useState<string | null>(null);
   const [profileStudentId, setProfileStudentId] = useState<string | null>(null);
-  const [editStudentForm, setEditStudentForm] = useState({ name: '', className: '', fatherName: '', parentPhone: '' });
+  const [editStudentForm, setEditStudentForm] = useState({ name: '', className: '', fatherName: '', parentPhone: '', pin: '' });
   const [editResultId, setEditResultId] = useState<string | null>(null);
   const [editMarksValue, setEditMarksValue] = useState<string>('');
   const [loginRole, setLoginRole] = useState<string | null>(null);
@@ -85,7 +88,7 @@ export default function AdminResultsPage() {
   const [isSavingNotification, setIsSavingNotification] = useState(false);
   const [notices, setNotices] = useState<NoticeRecord[]>([]);
   const [newNoticeForm, setNewNoticeForm] = useState<{ title: string, content: string, type: 'exam' | 'holiday' | 'general' }>({ title: '', content: '', type: 'general' });
-  const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'homework' | 'attendance' | 'settings' | 'youtube'>('marks');
+  const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'homework' | 'attendance' | 'settings' | 'youtube' | 'onlinetest'>('marks');
 
   // PWA Install Prompt
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -250,11 +253,12 @@ export default function AdminResultsPage() {
         image: studentForm.image.trim() || '/sunrise-logo.png',
         fatherName: studentForm.fatherName.trim() ? formatName(studentForm.fatherName) : null,
         parentPhone: studentForm.parentPhone.trim() || null,
+        pin: studentForm.pin.trim() || generateRandomPin(),
       });
 
       await reloadData();
       showMessage('Student added successfully.');
-      setStudentForm(emptyStudentForm);
+      setStudentForm(getEmptyStudentForm());
     } catch (err) {
       console.error(err);
       alert("Failed to add student to database.");
@@ -569,6 +573,7 @@ export default function AdminResultsPage() {
         className: editStudentForm.className.trim(),
         fatherName: editStudentForm.fatherName.trim() ? formatName(editStudentForm.fatherName) : null,
         parentPhone: editStudentForm.parentPhone.trim() || null,
+        pin: editStudentForm.pin.trim() || generateRandomPin(),
       });
       await reloadData();
       showMessage('Student updated successfully.');
@@ -985,6 +990,11 @@ export default function AdminResultsPage() {
                   <Youtube size={20} />
                   <span>YT Family</span>
                 </button>
+                <button onClick={() => setActiveTab('onlinetest')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'onlinetest' ? 'bg-white/10 text-pink-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
+                  <MonitorPlay size={20} />
+                  <span>Online Tests</span>
+                </button>
               </>)}
             </div>
 
@@ -1100,6 +1110,15 @@ export default function AdminResultsPage() {
                               className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
                               placeholder="10-digit number"
                               maxLength={10}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-semibold text-slate-600">Secret PIN (For Online Test)</label>
+                            <input
+                              value={studentForm.pin}
+                              onChange={(e) => setStudentForm((prev) => ({ ...prev, pin: e.target.value }))}
+                              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20"
+                              placeholder="e.g. 1234"
                             />
                           </div>
                         </div>
@@ -1377,6 +1396,10 @@ export default function AdminResultsPage() {
                                         <span className="font-medium tracking-wide">{student.parentPhone}</span>
                                       </span>
                                     )}
+                                    <span className="flex items-center gap-1 bg-pink-50 text-pink-700 px-2 py-0.5 rounded-md" title="Secret PIN for Online Test">
+                                      <LockKeyhole size={10} className="text-pink-500" />
+                                      <span className="font-bold tracking-wide">PIN: {student.pin || '1234'}</span>
+                                    </span>
                                   </div>
                                 </div>
                               </div>
@@ -1418,6 +1441,7 @@ export default function AdminResultsPage() {
                                           className: student.className || '',
                                           fatherName: student.fatherName || '',
                                           parentPhone: student.parentPhone || '',
+                                          pin: student.pin || generateRandomPin()
                                         });
                                       }}
                                       className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-100"
@@ -1958,6 +1982,12 @@ export default function AdminResultsPage() {
                 </div>
               )}
 
+              {activeTab === 'onlinetest' && loginRole === 'superadmin' && (
+                <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
+                  <OnlineTestAdmin />
+                </div>
+              )}
+
             </div> {/* end tab content */}
 
             {/* ── BOTTOM NAVIGATION BAR — fixed to screen bottom (Mobile Only) ── */}
@@ -1972,47 +2002,53 @@ export default function AdminResultsPage() {
               boxShadow: '0 -4px 20px rgba(0,0,0,0.10)',
               paddingBottom: 'env(safe-area-inset-bottom)'
             }}>
-              <div className="flex items-stretch justify-around max-w-lg mx-auto">
+              <div className="flex items-stretch overflow-x-auto max-w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <style>{`.md\\:hidden::-webkit-scrollbar { display: none; }`}</style>
                 <button onClick={() => setActiveTab('marks')}
-                  className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'marks' ? 'border-[#f5a623] text-[#f5a623]' : 'border-transparent text-slate-400'}`}>
+                  className={`flex flex-col items-center justify-center gap-0.5 min-w-[72px] flex-shrink-0 py-3 transition-colors border-t-2 ${activeTab === 'marks' ? 'border-[#f5a623] text-[#f5a623]' : 'border-transparent text-slate-400'}`}>
                   <Upload size={20} strokeWidth={activeTab === 'marks' ? 2.5 : 1.8} />
                   <span className="text-[9px] font-bold uppercase tracking-wide">Marks</span>
                 </button>
                 {loginRole === 'superadmin' && (<>
                   <button onClick={() => setActiveTab('students')}
-                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'students' ? 'border-[#0f2a5c] text-[#0f2a5c]' : 'border-transparent text-slate-400'}`}>
+                    className={`flex flex-col items-center justify-center gap-0.5 min-w-[72px] flex-shrink-0 py-3 transition-colors border-t-2 ${activeTab === 'students' ? 'border-[#0f2a5c] text-[#0f2a5c]' : 'border-transparent text-slate-400'}`}>
                     <Users size={20} strokeWidth={activeTab === 'students' ? 2.5 : 1.8} />
                     <span className="text-[9px] font-bold uppercase tracking-wide">Students</span>
                   </button>
                   <button onClick={() => setActiveTab('fees')}
-                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'fees' ? 'border-green-600 text-green-600' : 'border-transparent text-slate-400'}`}>
+                    className={`flex flex-col items-center justify-center gap-0.5 min-w-[72px] flex-shrink-0 py-3 transition-colors border-t-2 ${activeTab === 'fees' ? 'border-green-600 text-green-600' : 'border-transparent text-slate-400'}`}>
                     <IndianRupee size={20} strokeWidth={activeTab === 'fees' ? 2.5 : 1.8} />
                     <span className="text-[9px] font-bold uppercase tracking-wide">Fees</span>
                   </button>
                   <button onClick={() => setActiveTab('homework')}
-                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'homework' ? 'border-cyan-600 text-cyan-600' : 'border-transparent text-slate-400'}`}>
+                    className={`flex flex-col items-center justify-center gap-0.5 min-w-[72px] flex-shrink-0 py-3 transition-colors border-t-2 ${activeTab === 'homework' ? 'border-cyan-600 text-cyan-600' : 'border-transparent text-slate-400'}`}>
                     <BookOpen size={20} strokeWidth={activeTab === 'homework' ? 2.5 : 1.8} />
                     <span className="text-[9px] font-bold uppercase tracking-wide">Homework</span>
                   </button>
                   <button onClick={() => setActiveTab('attendance')}
-                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'attendance' ? 'border-teal-600 text-teal-600' : 'border-transparent text-slate-400'}`}>
+                    className={`flex flex-col items-center justify-center gap-0.5 min-w-[72px] flex-shrink-0 py-3 transition-colors border-t-2 ${activeTab === 'attendance' ? 'border-teal-600 text-teal-600' : 'border-transparent text-slate-400'}`}>
                     <Calendar size={20} strokeWidth={activeTab === 'attendance' ? 2.5 : 1.8} />
                     <span className="text-[9px] font-bold uppercase tracking-wide">Attendance</span>
                   </button>
                   <button onClick={() => setActiveTab('notices')}
-                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'notices' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400'}`}>
+                    className={`flex flex-col items-center justify-center gap-0.5 min-w-[72px] flex-shrink-0 py-3 transition-colors border-t-2 ${activeTab === 'notices' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400'}`}>
                     <Bell size={20} strokeWidth={activeTab === 'notices' ? 2.5 : 1.8} />
                     <span className="text-[9px] font-bold uppercase tracking-wide">Notices</span>
                   </button>
                   <button onClick={() => setActiveTab('settings')}
-                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'settings' ? 'border-slate-700 text-slate-700' : 'border-transparent text-slate-400'}`}>
+                    className={`flex flex-col items-center justify-center gap-0.5 min-w-[72px] flex-shrink-0 py-3 transition-colors border-t-2 ${activeTab === 'settings' ? 'border-slate-700 text-slate-700' : 'border-transparent text-slate-400'}`}>
                     <Settings size={20} strokeWidth={activeTab === 'settings' ? 2.5 : 1.8} />
                     <span className="text-[9px] font-bold uppercase tracking-wide">Settings</span>
                   </button>
                   <button onClick={() => setActiveTab('youtube')}
-                    className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-3 transition-colors border-t-2 ${activeTab === 'youtube' ? 'border-red-600 text-red-600' : 'border-transparent text-slate-400'}`}>
+                    className={`flex flex-col items-center justify-center gap-0.5 min-w-[72px] flex-shrink-0 py-3 transition-colors border-t-2 ${activeTab === 'youtube' ? 'border-red-600 text-red-600' : 'border-transparent text-slate-400'}`}>
                     <Youtube size={20} strokeWidth={activeTab === 'youtube' ? 2.5 : 1.8} />
                     <span className="text-[9px] font-bold uppercase tracking-wide">YT Family</span>
+                  </button>
+                  <button onClick={() => setActiveTab('onlinetest')}
+                    className={`flex flex-col items-center justify-center gap-0.5 min-w-[72px] flex-shrink-0 py-3 transition-colors border-t-2 ${activeTab === 'onlinetest' ? 'border-pink-600 text-pink-600' : 'border-transparent text-slate-400'}`}>
+                    <MonitorPlay size={20} strokeWidth={activeTab === 'onlinetest' ? 2.5 : 1.8} />
+                    <span className="text-[9px] font-bold uppercase tracking-wide">Tests</span>
                   </button>
                 </>)}
               </div>
@@ -2075,6 +2111,16 @@ export default function AdminResultsPage() {
                   onChange={e => setEditStudentForm(p => ({ ...p, parentPhone: e.target.value }))}
                   className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-semibold mt-1 text-sm"
                   placeholder="10-digit mobile number"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 ml-1">Secret PIN</label>
+                <input
+                  type="text"
+                  value={editStudentForm.pin}
+                  onChange={e => setEditStudentForm(p => ({ ...p, pin: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-semibold mt-1 text-sm"
+                  placeholder="e.g. 1234"
                 />
               </div>
             </div>
