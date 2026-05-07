@@ -75,43 +75,7 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
       createdAt: r.created_at
     }));
 
-    // --- DUMMY DATA FOR DEMO ---
-    // Inject dummy test results for existing students if they don't have enough
-    students.forEach((s, idx) => {
-      let mathMarks = Math.max(0, 42 - (idx % 10)); // Normal students max 42/50
-      let sciMarks = Math.max(0, 40 - (idx % 15));  // Normal students max 40/50
 
-      const name = s.name.toLowerCase();
-      if (name.includes('rupam kumari')) {
-        mathMarks = 50; sciMarks = 49; // 99%
-      } else if (name.includes('sunny kumar')) {
-        mathMarks = 49; sciMarks = 48; // 97%
-      } else if (name.includes('shivani kumari')) {
-        mathMarks = 48; sciMarks = 47; // 95%
-      }
-
-      results.push({
-        id: `dummy-res-${s.id}-math`,
-        studentId: s.id,
-        testName: 'Mathematics Mock Test',
-        subject: 'Mathematics',
-        testDate: new Date().toISOString(),
-        marksObtained: mathMarks,
-        totalMarks: 50,
-        createdAt: new Date().toISOString()
-      });
-      results.push({
-        id: `dummy-res-${s.id}-sci`,
-        studentId: s.id,
-        testName: 'Science Weekly Test',
-        subject: 'Science',
-        testDate: new Date().toISOString(),
-        marksObtained: sciMarks,
-        totalMarks: 50,
-        createdAt: new Date().toISOString()
-      });
-    });
-    // ---------------------------
 
     return { students, results };
   } catch (error) {
