@@ -11,9 +11,10 @@ interface AttendanceManagementProps {
   students: any[];
 }
 
-function normalizeClass(className?: string | null): '9th' | '10th' | 'other' {
+function normalizeClass(className?: string | null): '8th' | '9th' | '10th' | 'other' {
   if (!className) return 'other';
   const c = String(className).toLowerCase().replace(/\s+/g, '');
+  if (c.includes('8')) return '8th';
   if (c.includes('9')) return '9th';
   if (c.includes('10')) return '10th';
   return 'other';
@@ -21,7 +22,7 @@ function normalizeClass(className?: string | null): '9th' | '10th' | 'other' {
 
 export default function AttendanceManagement({ students }: AttendanceManagementProps) {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [selectedClass, setSelectedClass] = useState<'9th' | '10th'>('10th');
+  const [selectedClass, setSelectedClass] = useState<'8th' | '9th' | '10th'>('10th');
   const [attendanceState, setAttendanceState] = useState<Record<string, 'present' | 'absent' | 'holiday'>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -300,6 +301,14 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
       </div>
 
       <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
+        <button
+          onClick={() => setSelectedClass('8th')}
+          className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all ${
+            selectedClass === '8th' ? 'bg-[#0f2a5c] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+          }`}
+        >
+          Class 8
+        </button>
         <button
           onClick={() => setSelectedClass('9th')}
           className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all ${

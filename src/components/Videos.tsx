@@ -268,7 +268,7 @@ export default function Videos() {
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0f2a5c] mt-2">Board Exams ke liye Free YouTube Classes</h2>
           <div className="w-16 h-1 bg-[#f5a623] mx-auto mt-4 rounded-full" />
           <p className="text-gray-500 mt-4 max-w-xl mx-auto text-sm">
-            Class 9 & 10 ke Math aur Science videos, easy explanation ke saath. Latest lectures yahin se watch karein ya channel par subscribe karein.
+            Class 8, 9 & 10 ke Math aur Science videos, easy explanation ke saath. Latest lectures yahin se watch karein ya channel par subscribe karein.
           </p>
         </div>
 

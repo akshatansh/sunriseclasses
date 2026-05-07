@@ -57,6 +57,7 @@ export default function HomeworkManagement() {
     const c = cls.toLowerCase();
     if (c.includes('10')) return 'Class 10';
     if (c.includes('9')) return 'Class 9';
+    if (c.includes('8')) return 'Class 8';
     return cls;
   };
 
@@ -234,6 +235,7 @@ export default function HomeworkManagement() {
             >
               <option value="Class 10">Class 10</option>
               <option value="Class 9">Class 9</option>
+              <option value="Class 8">Class 8</option>
             </select>
           </div>
 

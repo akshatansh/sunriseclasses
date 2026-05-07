@@ -618,7 +618,7 @@ export default function SuccessStories() {
             <Trophy size={48} className="text-[#f5a623] mx-auto mb-4 relative" />
             <h3 className="relative mb-4 text-2xl font-bold text-[#0f2a5c] sm:text-3xl">Join Our Success Story</h3>
             <p className="relative mx-auto mb-6 max-w-2xl text-gray-700">
-              Our Class 9 and Class 10 coaching in Champanagar, Purnia is built around concept clarity, regular
+              Our Class 8, 9 and Class 10 coaching in Champanagar, Purnia is built around concept clarity, regular
               testing, and personal guidance. Across the student stories shown here, the average score
               is <span className="font-bold text-[#f5a623]">{avgMarks}/500</span>, the top recorded score is
               <span className="font-bold text-[#f5a623]"> {maxScore}/500</span>, and

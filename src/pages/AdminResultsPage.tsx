@@ -14,6 +14,7 @@ import {
   updateStudentInDB,
   graduateClass10,
   promoteClass9To10,
+  promoteClass8To9,
   type ResultsPortalData,
   type TestResultRecord,
 } from '../lib/resultsPortal';
@@ -30,10 +31,11 @@ const ADMIN_SESSION_KEY = 'sunrise-admin-authenticated';
 const ADMIN_ROLE_KEY = 'sunrise-admin-role';
 const ADMIN_CLASS_KEY = 'sunrise-admin-class';
 
-/** Normalize className string to '9th' | '10th' | 'other' */
-function normalizeClass(className?: string | null): '9th' | '10th' | 'other' {
+/** Normalize className string to '8th' | '9th' | '10th' | 'other' */
+function normalizeClass(className?: string | null): '8th' | '9th' | '10th' | 'other' {
   if (!className) return 'other';
   const c = String(className).toLowerCase().replace(/\s+/g, '');
+  if (c.includes('8')) return '8th';
   if (c.includes('9')) return '9th';
   if (c.includes('10')) return '10th';
   return 'other';
@@ -75,7 +77,7 @@ export default function AdminResultsPage() {
   const [loginClassAccess, setLoginClassAccess] = useState<string>('all');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   // For super-admin: which class is active in the upload/students panel
-  const [activeUploadClass, setActiveUploadClass] = useState<'9th' | '10th'>('10th');
+  const [activeUploadClass, setActiveUploadClass] = useState<'8th' | '9th' | '10th'>('10th');
 
   const [adminList, setAdminList] = useState<any[]>([]);
   const [newAdminForm, setNewAdminForm] = useState({ username: '', password: '', role: 'admin', class_access: 'all' });
@@ -170,7 +172,7 @@ export default function AdminResultsPage() {
 
   const handleDownloadStudentList = async () => {
     if (studentsForUpload.length === 0) return;
-    const className = activeUploadClass === '9th' ? 'Class 9' : 'Class 10';
+    const className = activeUploadClass === '8th' ? 'Class 8' : activeUploadClass === '9th' ? 'Class 9' : 'Class 10';
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -780,6 +782,21 @@ export default function AdminResultsPage() {
     }
   };
 
+  const handlePromoteClass8 = async () => {
+    setBatchLoading('promote8to9');
+    try {
+      const count = await promoteClass8To9();
+      await reloadData();
+      setBatchConfirm(null);
+      showMessage(`✅ ${count} students promoted from Class 8 → Class 9. Old results cleared.`);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to promote Class 8. Try again.');
+    } finally {
+      setBatchLoading(null);
+    }
+  };
+
   const handleSaveNotification = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingNotification(true);
@@ -1022,6 +1039,7 @@ export default function AdminResultsPage() {
                             required
                           >
                             <option value="">-- Select Class --</option>
+                            {(loginClassAccess === 'all' || loginClassAccess === '8th') && <option value="Class 8">Class 8</option>}
                             {(loginClassAccess === 'all' || loginClassAccess === '9th') && <option value="Class 9">Class 9</option>}
                             {(loginClassAccess === 'all' || loginClassAccess === '10th') && <option value="Class 10">Class 10</option>}
                           </select>
@@ -1088,6 +1106,16 @@ export default function AdminResultsPage() {
                       </div>
                       {loginClassAccess === 'all' && (
                         <div className="flex items-center gap-1 rounded-full border border-[#f5a623]/40 bg-[#fff8e6] p-1">
+                          <button
+                            type="button"
+                            onClick={() => { setActiveUploadClass('8th'); setStudentScores({}); setTestDetails(emptyTestDetails); }}
+                            className={`rounded-full px-4 py-1.5 text-sm font-bold transition-all ${activeUploadClass === '8th'
+                                ? 'bg-[#0f2a5c] text-white shadow'
+                                : 'text-slate-500 hover:text-slate-700'
+                              }`}
+                          >
+                            Class 8
+                          </button>
                           <button
                             type="button"
                             onClick={() => { setActiveUploadClass('9th'); setStudentScores({}); setTestDetails(emptyTestDetails); }}
@@ -1248,6 +1276,13 @@ export default function AdminResultsPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           {loginClassAccess === 'all' && (
                             <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 p-1">
+                              <button
+                                type="button"
+                                onClick={() => setActiveUploadClass('8th')}
+                                className={`rounded-full px-4 py-1 text-sm font-bold transition-all ${activeUploadClass === '8th' ? 'bg-[#0f2a5c] text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+                              >
+                                Class 8
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => setActiveUploadClass('9th')}
@@ -1536,6 +1571,7 @@ export default function AdminResultsPage() {
                             className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:border-[#f5a623]"
                           >
                             <option value="all">All Classes (Default)</option>
+                            <option value="8th">Class 8 Only</option>
                             <option value="9th">Class 9 Only</option>
                             <option value="10th">Class 10 Only</option>
                           </select>
@@ -1704,6 +1740,14 @@ export default function AdminResultsPage() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
+                        onClick={() => handleDownloadCSV('8')}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-orange-700 shadow-sm border border-orange-200 hover:bg-orange-50"
+                      >
+                        <Download size={14} />
+                        Class 8 Backup
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleDownloadCSV('9')}
                         className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-orange-700 shadow-sm border border-orange-200 hover:bg-orange-50"
                       >
@@ -1819,6 +1863,54 @@ export default function AdminResultsPage() {
                       )}
                     </div>
 
+                    {/* Card 3: Promote Class 8 → 9 */}
+                    <div className="rounded-2xl border border-indigo-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-center gap-3 mb-3">
+                        <ArrowUpCircle size={28} className="text-indigo-500 shrink-0" />
+                        <div>
+                          <h3 className="font-bold text-slate-800">Promote Class 8 → Class 9</h3>
+                          <p className="text-xs text-slate-500 mt-0.5">Class 8 wale ab Class 9 mein aa jayenge.</p>
+                        </div>
+                      </div>
+                      <ul className="mb-4 space-y-1 text-xs text-slate-600">
+                        <li>• Class 8 ke <strong>saare students Class 9 ban jayenge</strong></li>
+                        <li>• Unke <strong>purane results clear</strong> ho jayenge</li>
+                        <li>• Students ke naam aur photos <strong>safe rahenge</strong></li>
+                      </ul>
+                      {batchConfirm === 'promote8to9' ? (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-indigo-600 flex items-center gap-1">
+                            <AlertTriangle size={12} /> Confirm karo — purane results hat jayenge!
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={handlePromoteClass8}
+                              disabled={batchLoading === 'promote8to9'}
+                              className="flex-1 rounded-xl bg-indigo-600 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-60"
+                            >
+                              {batchLoading === 'promote8to9' ? 'Processing...' : 'Haan, Promote Karo'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setBatchConfirm(null)}
+                              className="flex-1 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setBatchConfirm('promote8to9')}
+                          className="w-full rounded-xl border-2 border-indigo-200 py-2 text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-all"
+                        >
+                          ⬆️ Promote Class 8 → Class 9
+                        </button>
+                      )}
+                    </div>
+
                   </div>
                 </div>
               )}
@@ -1925,7 +2017,7 @@ export default function AdminResultsPage() {
                   value={editStudentForm.className}
                   onChange={e => setEditStudentForm(p => ({ ...p, className: e.target.value }))}
                   className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-semibold mt-1 text-sm"
-                  placeholder="e.g. Class 9, Class 10"
+                  placeholder="e.g. Class 8, Class 9, Class 10"
                 />
               </div>
               <div>

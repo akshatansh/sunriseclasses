@@ -10,6 +10,13 @@ const images = [
   '/gallery/WhatsApp Image 2026-04-29 at 21.13.47.jpeg',
   '/gallery/WhatsApp Image 2026-04-29 at 21.13.47 (1).jpeg',
   '/gallery/WhatsApp Image 2026-04-29 at 21.13.47 (2).jpeg',
+  '/gallery/20260505_174925.jpg',
+  '/gallery/20260505_175056.jpg',
+  '/gallery/20260505_175156.jpg',
+  '/gallery/20260505_181239.jpg',
+  '/gallery/20260505_181245.jpg',
+  '/gallery/20260505_181303.jpg',
+  '/gallery/20260505_174923.jpg'
 ];
 
 interface GalleryProps {

@@ -218,6 +218,7 @@ export default function Contact() {
                     className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:border-[#f5a623] focus:ring-2 focus:ring-[#f5a623]/20 transition-all duration-200 bg-white"
                   >
                     <option value="">Select a course</option>
+                    <option>Class 8</option>
                     <option>Class 9</option>
                     <option>Class 10</option>
                   </select>

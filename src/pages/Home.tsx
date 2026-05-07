@@ -12,9 +12,9 @@ export default function Home() {
   return (
     <div>
       <Seo
-        title="Sunrise Classes Champanagar - #1 Class 9 & 10 Coaching in Purnia Bihar | SP Jha"
-        description="Sunrise Classes & Academy, Champanagar Purnia — Best Bihar Board coaching for Class 9 & 10. SP Jha sir, 15+ yrs experience, daily tests, offline batches. Enroll: 9973152070."
-        keywords="Sunrise Classes Champanagar, Sunrise Classes Purnia Bihar, Sunrise Classes & Academy, SP Jha coaching Champanagar Purnia, best coaching in Champanagar Purnia, Class 9 coaching Champanagar, Class 10 coaching Purnia, BSEB Bihar Board coaching Purnia, offline tuition Champanagar Purnia, Bihar Board exam preparation, coaching institute near Champanagar Purnia, board exam coaching Purnia Bihar"
+        title="Sunrise Classes Champanagar - #1 Class 8, 9 & 10 Coaching in Purnia Bihar | SP Jha"
+        description="Sunrise Classes & Academy, Champanagar Purnia — Best Bihar Board coaching for Class 8, 9 & 10. SP Jha sir, 15+ yrs experience, daily tests, offline batches. Enroll: 9973152070."
+        keywords="Sunrise Classes Champanagar, Sunrise Classes Purnia Bihar, Sunrise Classes & Academy, SP Jha coaching Champanagar Purnia, best coaching in Champanagar Purnia, Class 8 coaching Champanagar, Class 9 coaching Champanagar, Class 10 coaching Purnia, BSEB Bihar Board coaching Purnia, offline tuition Champanagar Purnia, Bihar Board exam preparation, coaching institute near Champanagar Purnia, board exam coaching Purnia Bihar"
         url="/"
       />
       <Hero />

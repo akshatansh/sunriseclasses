@@ -1,6 +1,7 @@
 import { Calculator, FlaskConical, Sparkles, ArrowRight } from 'lucide-react';
 
 const courses = [
+  { icon: Sparkles, title: 'Class 8 Coaching', sub: 'Strong Foundation', desc: 'Build a strong base for Class 8 students with detailed Science and Maths coaching. Early preparation and concept clarity for future board exams.', color: 'bg-purple-50 border-purple-200 text-purple-600' },
   { icon: FlaskConical, title: 'Class 9 Coaching', sub: 'CBSE & State Board', desc: 'Comprehensive Class 9 coaching in Champanagar, Purnia with Science, Maths, Social Studies, and Languages. Regular mock tests and doubt clearing sessions for board exam success.', color: 'bg-green-50 border-green-200 text-green-600' },
   { icon: Calculator, title: 'Class 10 Coaching', sub: 'Board Exam Focused', desc: 'Intensive Class 10 board exam preparation in Champanagar, Purnia. Practice tests, model papers, and expert guidance covering CBSE & Bihar state syllabus.', color: 'bg-amber-50 border-amber-200 text-amber-600' },
 ];
@@ -60,11 +61,11 @@ export default function Courses() {
         <div className="mt-12 sm:mt-16 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6">
           <div className="rounded-[2rem] border border-gray-200 bg-white/90 p-6 sm:p-8 shadow-sm">
             <h3 className="text-xl sm:text-2xl font-bold text-[#0f2a5c] mb-4">
-              Detailed Board Exam Preparation for Class 9 and Class 10 Students
+              Detailed Board Exam Preparation for Class 8, 9 and Class 10 Students
             </h3>
             <p className="text-gray-600 leading-relaxed mb-4">
               Our courses are designed for students who want strong school performance as well as
-              better board exam results. Whether you need Class 9 coaching in Champanagar, Purnia to improve your
+              better board exam results. Whether you need Class 8 or 9 coaching in Champanagar, Purnia to improve your
               basics or Class 10 coaching in Champanagar, Purnia for Bihar Board preparation, Sunrise Classes offers
               structured lessons, regular practice, and close teacher guidance.
             </p>

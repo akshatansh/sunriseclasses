@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Youtube, FileText, HelpCircle, Lightbulb, CheckCircle, Plus, Trash2, ExternalLink } from 'lucide-react';
-import { 
+import {
   StudyMaterial, StudentDoubt, TopicRequest,
   getStudyMaterials, addStudyMaterial, deleteStudyMaterial,
   getDoubts, answerDoubt, deleteDoubt,
@@ -14,7 +14,7 @@ const FALLBACK_ADMIN_DOUBTS: StudentDoubt[] = [
 
 export default function YouTubeFamilyAdmin() {
   const [activeTab, setActiveTab] = useState<'notes' | 'doubts' | 'topics'>('notes');
-  
+
   // Data States
   const [materials, setMaterials] = useState<StudyMaterial[]>([]);
   const [doubts, setDoubts] = useState<StudentDoubt[]>(FALLBACK_ADMIN_DOUBTS);
@@ -25,7 +25,7 @@ export default function YouTubeFamilyAdmin() {
   // Form States
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [noteForm, setNoteForm] = useState({ title: '', subject: '', class_name: '', youtube_link: '', drive_link: '' });
-  
+
   const [replyingDoubtId, setReplyingDoubtId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
 
@@ -87,7 +87,7 @@ export default function YouTubeFamilyAdmin() {
     setLoading(true);
     try {
       const doubtToAnswer = doubts.find(d => d.id === id);
-      
+
       let updatedDoubt = { ...doubtToAnswer, status: 'answered', answer_text: replyText } as StudentDoubt;
       try {
         updatedDoubt = await answerDoubt(id, replyText);
@@ -97,7 +97,7 @@ export default function YouTubeFamilyAdmin() {
 
       setDoubts(doubts.map(d => d.id === id ? updatedDoubt : d));
       setReplyingDoubtId(null);
-      
+
       // Option 1: Direct Mailto Link (Completely Free & No Setup)
       if (doubtToAnswer?.student_email) {
         const subject = encodeURIComponent('Your Doubt is Solved! 🎓 Reply from SP Jha Sir | Sunrise Classes');
@@ -113,29 +113,29 @@ ${replyText}
 
 ─────────────────────────────────
 📢 IMPORTANT ANNOUNCEMENT 📢
-Agar aap Class 9 ya 10 mein hain aur Bihar Board (BSEB) ki solid taiyaari karna chahte hain, toh Sunrise Classes ko zarur follow karein:
+Agar aap Class 8, 9 ya 10 mein hain aur Bihar Board (BSEB) ki solid taiyaari karna chahte hain, toh Sunrise Classes ko zarur follow karein:
 
 🔴 YouTube Channel: Daily live classes aur important exam questions ke liye abhi subscribe karein!
 🔗 https://www.youtube.com/@sunriseclasses81
 
 🏫 Offline Batches:
 Agar aap Champanagar, Purnia ke aas-paas rehte hain, toh hamare offline batches join karein. 15+ saal ke anubhav ke sath, hum banate hain toppers! 
-📞 Contact us for admission: +91 8092285189
+📞 Contact us for admission: +91 9973152070
 
 Hamare website par daily free PDFs aur Notes upload hote hain. Dekhna na bhoolein: 
 🌐 https://www.sunriseclasses.co.in/youtube-family
 
 All the best for your studies!
 - Team Sunrise Classes & Academy`);
-        
+
         // This will open the default Email App (Gmail, Outlook, etc.) pre-filled
         window.location.href = `mailto:${doubtToAnswer.student_email}?subject=${subject}&body=${body}`;
-        
+
         showMessage('success', 'Reply saved! Apka Email app khul jayega email bhejne ke liye.');
       } else {
         showMessage('success', 'Reply saved successfully! (No email provided)');
       }
-      
+
       setReplyText('');
     } catch (error) {
       showMessage('error', 'Error sending reply.');
@@ -239,25 +239,25 @@ All the best for your studies!
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Title *</label>
-                  <input required type="text" value={noteForm.title} onChange={e => setNoteForm({...noteForm, title: e.target.value})} className="mt-1 w-full p-2 border rounded-md" placeholder="e.g. Class 10 Science Chapter 1 Notes" />
+                  <input required type="text" value={noteForm.title} onChange={e => setNoteForm({ ...noteForm, title: e.target.value })} className="mt-1 w-full p-2 border rounded-md" placeholder="e.g. Class 10 Science Chapter 1 Notes" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Class</label>
-                    <input type="text" value={noteForm.class_name} onChange={e => setNoteForm({...noteForm, class_name: e.target.value})} className="mt-1 w-full p-2 border rounded-md" placeholder="10th" />
+                    <input type="text" value={noteForm.class_name} onChange={e => setNoteForm({ ...noteForm, class_name: e.target.value })} className="mt-1 w-full p-2 border rounded-md" placeholder="e.g. 8th, 9th, 10th" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Subject</label>
-                    <input type="text" value={noteForm.subject} onChange={e => setNoteForm({...noteForm, subject: e.target.value})} className="mt-1 w-full p-2 border rounded-md" placeholder="Science" />
+                    <input type="text" value={noteForm.subject} onChange={e => setNoteForm({ ...noteForm, subject: e.target.value })} className="mt-1 w-full p-2 border rounded-md" placeholder="Science" />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Drive Link (PDF) *</label>
-                  <input required type="url" value={noteForm.drive_link} onChange={e => setNoteForm({...noteForm, drive_link: e.target.value})} className="mt-1 w-full p-2 border rounded-md" placeholder="https://drive.google.com/..." />
+                  <input required type="url" value={noteForm.drive_link} onChange={e => setNoteForm({ ...noteForm, drive_link: e.target.value })} className="mt-1 w-full p-2 border rounded-md" placeholder="https://drive.google.com/..." />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">YouTube Video Link</label>
-                  <input type="url" value={noteForm.youtube_link} onChange={e => setNoteForm({...noteForm, youtube_link: e.target.value})} className="mt-1 w-full p-2 border rounded-md" placeholder="https://youtube.com/watch?..." />
+                  <input type="url" value={noteForm.youtube_link} onChange={e => setNoteForm({ ...noteForm, youtube_link: e.target.value })} className="mt-1 w-full p-2 border rounded-md" placeholder="https://youtube.com/watch?..." />
                 </div>
               </div>
               <div className="flex justify-end gap-2">
@@ -284,8 +284,8 @@ All the best for your studies!
                     <td className="px-6 py-4 text-sm text-gray-500">{mat.class_name} - {mat.subject}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       <div className="flex gap-2">
-                        {mat.drive_link && <a href={mat.drive_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center"><ExternalLink className="w-3 h-3 mr-1"/> Drive</a>}
-                        {mat.youtube_link && <a href={mat.youtube_link} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline flex items-center ml-3"><Youtube className="w-3 h-3 mr-1"/> Video</a>}
+                        {mat.drive_link && <a href={mat.drive_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center"><ExternalLink className="w-3 h-3 mr-1" /> Drive</a>}
+                        {mat.youtube_link && <a href={mat.youtube_link} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline flex items-center ml-3"><Youtube className="w-3 h-3 mr-1" /> Video</a>}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-right">
@@ -304,7 +304,7 @@ All the best for your studies!
       {activeTab === 'doubts' && (
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Student Doubts ({doubts.filter(d => d.status === 'pending').length} Pending)</h3>
-          
+
           <div className="grid gap-4">
             {doubts.map(doubt => (
               <div key={doubt.id} className={`p-4 rounded-lg border ${doubt.status === 'pending' ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
@@ -314,16 +314,16 @@ All the best for your studies!
                     <span className="text-sm text-gray-500 ml-2">({doubt.class_name} • {doubt.subject})</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {doubt.status === 'answered' && <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded flex items-center"><CheckCircle className="w-3 h-3 mr-1"/> Answered</span>}
+                    {doubt.status === 'answered' && <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded flex items-center"><CheckCircle className="w-3 h-3 mr-1" /> Answered</span>}
                     <button onClick={() => handleDeleteDoubt(doubt.id)} className="text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
-                
+
                 <p className="text-gray-800 bg-white p-3 rounded border mb-3">"{doubt.doubt_text}"</p>
-                
+
                 {doubt.video_link && (
                   <a href={doubt.video_link} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 flex items-center mb-3 hover:underline">
-                    <ExternalLink className="w-3 h-3 mr-1"/> View reference video
+                    <ExternalLink className="w-3 h-3 mr-1" /> View reference video
                   </a>
                 )}
 
@@ -366,7 +366,7 @@ All the best for your studies!
       {activeTab === 'topics' && (
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Topic Requests ({topics.filter(t => t.status === 'pending').length} Pending)</h3>
-          
+
           <div className="bg-white border rounded-lg overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -387,7 +387,7 @@ All the best for your studies!
                       {t.status === 'pending' ? (
                         <button onClick={() => handleCompleteTopic(t.id)} className="text-green-600 hover:text-green-900 mr-3 text-xs font-bold border border-green-600 rounded px-2 py-1">Mark Done</button>
                       ) : (
-                        <span className="text-green-600 mr-3 text-xs font-bold flex items-center justify-end"><CheckCircle className="w-3 h-3 mr-1"/> Done</span>
+                        <span className="text-green-600 mr-3 text-xs font-bold flex items-center justify-end"><CheckCircle className="w-3 h-3 mr-1" /> Done</span>
                       )}
                       <button onClick={() => handleDeleteTopic(t.id)} className="text-red-600 hover:text-red-900"><Trash2 className="w-4 h-4" /></button>
                     </td>

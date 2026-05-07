@@ -7,7 +7,7 @@ const values = [
 ];
 
 const highlights = [
-  'Specialized in Class 9 & 10 Board Exams',
+  'Specialized in Class 8, 9 & 10 Board Exams',
   'Director with B.Ed (75%) and CTET Qualified (Paper I & II)',
   '15+ years of teaching experience',
   'Daily YouTube educational videos',
@@ -76,7 +76,7 @@ export default function About() {
               </h3>
               <p className="text-gray-600 leading-relaxed mb-4">
                 Sunrise Classes & Academy, located in Champanagar, Purnia, Bihar, specializes in
-                Class 9 & 10 board exam preparation with a proven track record of success. Under the
+                Class 8, 9 & 10 board exam preparation with a proven track record of success. Under the
                 visionary leadership of <strong>S.P. Jha (B.Ed Qualified with 75% and C.TET Qualified for Paper I & II: Class 1 to 5 and 6 to 8)</strong> with <strong>15+ years of teaching
                 experience in board exam coaching</strong>, the academy has become the trusted choice for serious students aiming
                 for excellence in their board exams in rural Bihar.
@@ -87,7 +87,7 @@ export default function About() {
                 students learn at their own pace and revise effectively.
               </p>
               <p className="text-gray-600 leading-relaxed mb-6">
-                If you are searching for the best coaching in Champanagar, Purnia for Class 9 and Class 10 students,
+                If you are searching for the best coaching in Champanagar, Purnia for Class 8, 9 and Class 10 students,
                 Sunrise Classes & Academy offers a balanced approach of classroom teaching, regular revision,
                 board-oriented practice, and personal mentoring. Our goal is to help students improve confidence,
                 strengthen fundamentals, and score better in school and board examinations.

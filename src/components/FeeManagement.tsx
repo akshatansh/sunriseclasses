@@ -15,6 +15,7 @@ const getDefaultFee = (className?: string | null) => {
   const c = className.toLowerCase();
   if (c.includes('10')) return 1000;
   if (c.includes('9')) return 500;
+  if (c.includes('8')) return 500;
   return 500;
 };
 
@@ -24,7 +25,7 @@ const FeeManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'partial' | 'paid'>('all');
-  const [selectedClass, setSelectedClass] = useState<'all' | '9th' | '10th'>('all');
+  const [selectedClass, setSelectedClass] = useState<'all' | '8th' | '9th' | '10th'>('all');
 
   // Payment Modal
   const [paymentModalStudent, setPaymentModalStudent] = useState<StudentFeeStatus | null>(null);
@@ -330,7 +331,7 @@ Kripya due amount (Rs. ${student.dueAmount}) samay par jama karein. \n- Sunrise 
 
       {/* ── Class Filter ── */}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1 hide-scrollbar">
-        {(['all', '9th', '10th'] as const).map(cls => (
+        {(['all', '8th', '9th', '10th'] as const).map(cls => (
           <button
             key={cls}
             onClick={() => setSelectedClass(cls)}

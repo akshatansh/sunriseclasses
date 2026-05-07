@@ -13,10 +13,11 @@ import {
 import { getAvailableHomeworkMonths, getStudentsWithHomework, type StudentWithHomework } from '../lib/homeworkPortal';
 import { getMonthlyAttendanceStats } from '../lib/attendancePortal';
 
-/** Normalize className string to '9th' | '10th' | 'other' */
-function normalizeClass(className?: string | null): '9th' | '10th' | 'other' {
+/** Normalize className string to '8th' | '9th' | '10th' | 'other' */
+function normalizeClass(className?: string | null): '8th' | '9th' | '10th' | 'other' {
   if (!className) return 'other';
   const c = String(className).toLowerCase().replace(/\s+/g, '');
+  if (c.includes('8')) return '8th';
   if (c.includes('9')) return '9th';
   if (c.includes('10')) return '10th';
   return 'other';
@@ -25,7 +26,7 @@ function normalizeClass(className?: string | null): '9th' | '10th' | 'other' {
 export default function ResultsPage() {
   const [data, setData] = useState<ResultsPortalData>({ students: [], results: [] });
   const [query, setQuery] = useState('');
-  const [selectedClass, setSelectedClass] = useState<'9th' | '10th'>('10th');
+  const [selectedClass, setSelectedClass] = useState<'8th' | '9th' | '10th'>('10th');
   const [selectedStudentForChart, setSelectedStudentForChart] = useState<{name: string, data: any[]} | null>(null);
   const [homeworkData, setHomeworkData] = useState<StudentWithHomework[]>([]);
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
@@ -169,6 +170,17 @@ export default function ResultsPage() {
               <div className="flex flex-col items-center gap-4">
                 {/* Class Toggle */}
                 <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 p-1">
+                  <button
+                    id="class-8-toggle"
+                    onClick={() => { setSelectedClass('8th'); setQuery(''); }}
+                    className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${
+                      selectedClass === '8th'
+                        ? 'bg-[#0f2a5c] text-white shadow'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    Class 8
+                  </button>
                   <button
                     id="class-9-toggle"
                     onClick={() => { setSelectedClass('9th'); setQuery(''); }}

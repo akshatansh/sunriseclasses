@@ -4,8 +4,8 @@ import { useLocation } from 'react-router-dom';
 const SITE_NAME = 'Sunrise Classes & Academy';
 const BASE_URL = 'https://www.sunriseclasses.co.in/';
 const DEFAULT_IMAGE = '/og-logo-small.png';
-const DEFAULT_DESCRIPTION = 'Join Sunrise Classes & Academy in Champanagar, Purnia, Bihar for expert Class 9 and 10 board exam coaching with personalized support, quality notes, and proven success stories.';
-const DEFAULT_KEYWORDS = 'Sunrise Classes, coaching in Champanagar Purnia, Class 9 coaching in Champanagar Purnia, Class 10 coaching in Champanagar Purnia, board exam preparation, Champanagar coaching, Bihar coaching, success stories, student toppers';
+const DEFAULT_DESCRIPTION = 'Join Sunrise Classes & Academy in Champanagar, Purnia, Bihar for expert Class 8, 9 and 10 board exam coaching with personalized support, quality notes, and proven success stories.';
+const DEFAULT_KEYWORDS = 'Sunrise Classes, coaching in Champanagar Purnia, Class 8 coaching in Champanagar Purnia, Class 9 coaching in Champanagar Purnia, Class 10 coaching in Champanagar Purnia, board exam preparation, Champanagar coaching, Bihar coaching, success stories, student toppers';
 const DEFAULT_AUTHOR = 'Sunrise Classes & Academy';
 
 function updateMetaTag(attribute: 'name' | 'property', key: string, value: string) {

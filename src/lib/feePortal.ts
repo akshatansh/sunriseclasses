@@ -62,7 +62,7 @@ const getDefaultFee = (className?: string | null) => {
   return 500;
 };
 
-export const getStudentsWithFeeStatus = async (month: string, className: '9th' | '10th' | 'all'): Promise<StudentFeeStatus[]> => {
+export const getStudentsWithFeeStatus = async (month: string, className: '8th' | '9th' | '10th' | 'all'): Promise<StudentFeeStatus[]> => {
   try {
     // 1. Get all students
     let studentQuery = supabase.from('students').select('*').order('name');

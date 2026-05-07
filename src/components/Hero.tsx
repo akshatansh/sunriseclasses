@@ -36,7 +36,7 @@ export default function Hero() {
             </h1>
 
             <p className="text-[#c1d4f1] text-base sm:text-lg max-w-2xl mx-auto lg:mx-0 mb-4 leading-relaxed">
-              Expert coaching for Class 9 & 10 board exams in Champanagar, Purnia, Bihar. 
+              Expert coaching for Class 8, 9 & 10 board exams in Champanagar, Purnia, Bihar. 
               With 15+ years of teaching experience, we provide personalized education, daily YouTube educational videos, and comprehensive study materials for rural students in Bihar.
               We also offer offline classroom batches for in-person learning.
             </p>
@@ -76,7 +76,7 @@ export default function Hero() {
               <div className="relative mt-5 grid grid-cols-2 gap-3">
                 <div className="rounded-2xl border border-white/10 bg-[#0f2a5c]/70 p-4 text-left">
                   <p className="text-xs uppercase tracking-[0.2em] text-[#f5a623]">Board Focus</p>
-                  <p className="mt-2 text-lg font-black text-white">Class 9 & 10</p>
+                  <p className="mt-2 text-lg font-black text-white">Class 8, 9 & 10</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/8 p-4 text-left">
                   <p className="text-xs uppercase tracking-[0.2em] text-[#f5a623]">Mode</p>

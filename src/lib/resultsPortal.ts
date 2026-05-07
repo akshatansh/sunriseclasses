@@ -210,6 +210,39 @@ export async function promoteClass9To10(): Promise<number> {
   return ids.length;
 }
 
+/**
+ * BATCH: Promote Class 8 → Class 9
+ * - Clears all existing test results for Class 8 students
+ * - Updates their class_name to 'Class 9'
+ */
+export async function promoteClass8To9(): Promise<number> {
+  // Get all class 8 students
+  const { data: students, error: fetchErr } = await supabase
+    .from('students')
+    .select('id')
+    .ilike('class_name', '%8%');
+  if (fetchErr) throw fetchErr;
+  if (!students || students.length === 0) return 0;
+
+  const ids = students.map((s: any) => s.id);
+
+  // Clear old results (new academic year = fresh start)
+  const { error: resErr } = await supabase
+    .from('test_results')
+    .delete()
+    .in('student_id', ids);
+  if (resErr) throw resErr;
+
+  // Promote: update class_name to Class 9
+  const { error: updateErr } = await supabase
+    .from('students')
+    .update({ class_name: 'Class 9' })
+    .in('id', ids);
+  if (updateErr) throw updateErr;
+
+  return ids.length;
+}
+
 export function getCurrentMonthLabel(referenceDate = new Date()) {
   return referenceDate.toLocaleString('en-IN', {
     month: 'long',

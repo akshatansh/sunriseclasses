@@ -15,7 +15,7 @@ export default function SeoContentBlock() {
               Finding the right guidance for your child’s education is crucial, especially during their formative years. 
               <strong> Sunrise Classes & Academy</strong> is widely recognized as the <strong>best coaching in Champanagar, Purnia</strong> for 
               students preparing for their board exams. Located conveniently in Champanagar, Bihar, we specialize in providing 
-              top-tier education and <strong>Class 9 and 10 coaching</strong> tailored specifically for the Bihar Board syllabus.
+              top-tier education and <strong>Class 8, 9 and 10 coaching</strong> tailored specifically for the Bihar Board syllabus.
             </p>
             
             <p className="mb-6">

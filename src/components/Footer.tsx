@@ -15,6 +15,7 @@ const quickLinks = [
 ];
 
 const courses = [
+  'Class 8 Coaching',
   'Class 9 Coaching',
   'Class 10 Coaching',
 ];
@@ -45,7 +46,7 @@ export default function Footer() {
                 </div>
               </div>
               <p className="text-gray-300 text-xs leading-relaxed mb-4">
-                Leading coaching institute in Champanagar, Purnia, Bihar for Class 9 & 10 board exams. Quality education for rural Bihar students with expert faculty and modern teaching methods.
+                Leading coaching institute in Champanagar, Purnia, Bihar for Class 8, 9 & 10 board exams. Quality education for rural Bihar students with expert faculty and modern teaching methods.
               </p>
               <p className="text-[#f5a623]/80 text-xs italic">"तमसो मा ज्योतिर्गमय"</p>
 

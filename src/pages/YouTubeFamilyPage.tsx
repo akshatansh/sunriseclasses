@@ -88,8 +88,8 @@ export default function YouTubeFamilyPage() {
     <div className="min-h-screen bg-gray-50 pt-24 pb-12">
       <Seo
         title="YouTube Family Zone – Free Notes, Doubts & Topic Requests | Sunrise Classes"
-        description="SP Jha Sir ke YouTube students ke liye free Class 9 & 10 notes download karein, doubts puchein aur naye video topics request karein. Sunrise Classes Champanagar, Purnia Bihar ka free online study portal."
-        keywords="SP Jha Sir free notes, Sunrise Classes YouTube notes download, Class 10 free PDF Bihar, Class 9 notes Purnia, BSEB board exam notes free, doubt portal Bihar board, Champanagar coaching notes, free study material Bihar, SP Jha YouTube classes notes, Sunrise Classes Champanagar Purnia Bihar"
+        description="SP Jha Sir ke YouTube students ke liye free Class 8, 9 & 10 notes download karein, doubts puchein aur naye video topics request karein. Sunrise Classes Champanagar, Purnia Bihar ka free online study portal."
+        keywords="SP Jha Sir free notes, Sunrise Classes YouTube notes download, Class 10 free PDF Bihar, Class 8 notes Purnia, Class 9 notes Purnia, BSEB board exam notes free, doubt portal Bihar board, Champanagar coaching notes, free study material Bihar, SP Jha YouTube classes notes, Sunrise Classes Champanagar Purnia Bihar"
         url="/youtube-family"
       />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -249,7 +249,7 @@ export default function YouTubeFamilyPage() {
                         value={doubtForm.class_name}
                         onChange={e => setDoubtForm({...doubtForm, class_name: e.target.value})}
                         className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-                        placeholder="e.g. 10th"
+                        placeholder="e.g. 8th, 9th, 10th"
                       />
                     </div>
                     <div>
@@ -385,7 +385,7 @@ export default function YouTubeFamilyPage() {
                     value={topicForm.subject}
                     onChange={e => setTopicForm({...topicForm, subject: e.target.value})}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 border"
-                    placeholder="e.g. Class 10 Maths"
+                    placeholder="e.g. Class 8/9/10 Maths"
                   />
                 </div>
                 <div>
@@ -426,7 +426,7 @@ export default function YouTubeFamilyPage() {
                 <div className="bg-red-100 p-2 rounded-lg"><FileText className="w-5 h-5 text-red-600" /></div>
                 <h3 className="font-bold text-gray-900">Free Notes &amp; PDFs</h3>
               </div>
-              <p className="text-sm text-gray-600">SP Jha Sir ki har YouTube class ke liye handwritten notes aur PDF study material yahan se bilkul free download karein. Class 9 aur Class 10 ke sabhi subjects ke notes available hain — Mathematics, Science, Hindi, Social Science.</p>
+              <p className="text-sm text-gray-600">SP Jha Sir ki har YouTube class ke liye handwritten notes aur PDF study material yahan se bilkul free download karein. Class 8, Class 9 aur Class 10 ke sabhi subjects ke notes available hain — Mathematics, Science, Hindi, Social Science.</p>
             </div>
             <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
               <div className="flex items-center gap-3 mb-3">
@@ -473,7 +473,7 @@ export default function YouTubeFamilyPage() {
                 },
                 {
                   q: 'Kya ye notes BSEB Bihar Board exam ke liye helpful hain?',
-                  a: 'Haan bilkul! SP Jha Sir ke 15+ saal ke teaching experience ke saath banaye gaye ye notes specifically BSEB Class 9 aur Class 10 board exam pattern ke hisaab se taiyaar kiye gaye hain. In notes se aap board exam mein bahut achha kar sakte hain.'
+                  a: 'Haan bilkul! SP Jha Sir ke 15+ saal ke teaching experience ke saath banaye gaye ye notes specifically BSEB Class 8, Class 9 aur Class 10 board exam pattern ke hisaab se taiyaar kiye gaye hain. In notes se aap board exam mein bahut achha kar sakte hain.'
                 },
                 {
                   q: 'Kya ye portal sirf offline students ke liye hai?',
@@ -491,7 +491,7 @@ export default function YouTubeFamilyPage() {
           {/* Local SEO paragraph */}
           <div className="mt-8 pt-6 border-t text-sm text-gray-500 leading-relaxed">
             <p>
-              <strong className="text-gray-700">Sunrise Classes &amp; Academy</strong> Champanagar, Purnia, Bihar mein sthit ek prasidh coaching center hai jo pichhle 15+ saalon se Class 9 aur Class 10 ke students ko BSEB Bihar Board pariksha ki taiyaari kara raha hai.
+              <strong className="text-gray-700">Sunrise Classes &amp; Academy</strong> Champanagar, Purnia, Bihar mein sthit ek prasidh coaching center hai jo pichhle 15+ saalon se Class 8, Class 9 aur Class 10 ke students ko BSEB Bihar Board pariksha ki taiyaari kara raha hai.
               SP Jha Sir ka YouTube channel <em>@sunriseclasses81</em> par daily educational videos upload hote hain jisme Maths, Science, Hindi aur Social Science ke topics cover kiye jaate hain.
               Yeh YouTube Family portal unhi students ke liye banaya gaya hai jo ghar baith kar free mein padhna chahte hain.
               Champanagar, Purnia, Katihar, Araria, Kishanganj aur poore Seemanchal kshetra ke students is portal ka labh utha sakte hain.
