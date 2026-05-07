@@ -87,6 +87,29 @@ export default function AdminResultsPage() {
   const [newNoticeForm, setNewNoticeForm] = useState<{ title: string, content: string, type: 'exam' | 'holiday' | 'general' }>({ title: '', content: '', type: 'general' });
   const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'homework' | 'attendance' | 'settings' | 'youtube'>('marks');
 
+  // PWA Install Prompt
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') console.log('Admin accepted install prompt');
+      setDeferredPrompt(null);
+    }
+  };
+
+
+
   const fetchAdmins = async () => {
     const { data } = await supabase.from('admins').select('*').order('created_at', { ascending: false });
     if (data) setAdminList(data);
@@ -965,7 +988,13 @@ export default function AdminResultsPage() {
               </>)}
             </div>
 
-            <div className="p-4 border-t border-white/10">
+            <div className="p-4 border-t border-white/10 flex flex-col gap-3">
+              {deferredPrompt && (
+                <button type="button" onClick={handleInstallClick}
+                  className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-lg">
+                  <Download size={16} /> Install App
+                </button>
+              )}
               <button type="button" onClick={handleLogout}
                 className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl text-sm font-bold transition-all">
                 <LogOut size={16} /> Logout
@@ -989,10 +1018,18 @@ export default function AdminResultsPage() {
                     </p>
                   </div>
                 </div>
-                <button type="button" onClick={handleLogout}
-                  className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-xs font-bold">
-                  <LogOut size={13} /> Logout
-                </button>
+                <div className="flex items-center gap-2">
+                  {deferredPrompt && (
+                    <button type="button" onClick={handleInstallClick}
+                      className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-full text-xs font-bold text-white shadow-md">
+                      <Download size={13} /> Install
+                    </button>
+                  )}
+                  <button type="button" onClick={handleLogout}
+                    className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-xs font-bold">
+                    <LogOut size={13} /> Logout
+                  </button>
+                </div>
               </div>
             </section>
 
@@ -1110,8 +1147,8 @@ export default function AdminResultsPage() {
                             type="button"
                             onClick={() => { setActiveUploadClass('8th'); setStudentScores({}); setTestDetails(emptyTestDetails); }}
                             className={`rounded-full px-4 py-1.5 text-sm font-bold transition-all ${activeUploadClass === '8th'
-                                ? 'bg-[#0f2a5c] text-white shadow'
-                                : 'text-slate-500 hover:text-slate-700'
+                              ? 'bg-[#0f2a5c] text-white shadow'
+                              : 'text-slate-500 hover:text-slate-700'
                               }`}
                           >
                             Class 8
@@ -1120,8 +1157,8 @@ export default function AdminResultsPage() {
                             type="button"
                             onClick={() => { setActiveUploadClass('9th'); setStudentScores({}); setTestDetails(emptyTestDetails); }}
                             className={`rounded-full px-4 py-1.5 text-sm font-bold transition-all ${activeUploadClass === '9th'
-                                ? 'bg-[#0f2a5c] text-white shadow'
-                                : 'text-slate-500 hover:text-slate-700'
+                              ? 'bg-[#0f2a5c] text-white shadow'
+                              : 'text-slate-500 hover:text-slate-700'
                               }`}
                           >
                             Class 9
@@ -1130,8 +1167,8 @@ export default function AdminResultsPage() {
                             type="button"
                             onClick={() => { setActiveUploadClass('10th'); setStudentScores({}); setTestDetails(emptyTestDetails); }}
                             className={`rounded-full px-4 py-1.5 text-sm font-bold transition-all ${activeUploadClass === '10th'
-                                ? 'bg-[#0f2a5c] text-white shadow'
-                                : 'text-slate-500 hover:text-slate-700'
+                              ? 'bg-[#0f2a5c] text-white shadow'
+                              : 'text-slate-500 hover:text-slate-700'
                               }`}
                           >
                             Class 10
@@ -1702,8 +1739,8 @@ export default function AdminResultsPage() {
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs font-bold text-slate-400">{notice.date}</span>
                               <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${notice.type === 'exam' ? 'bg-red-50 text-red-600' :
-                                  notice.type === 'holiday' ? 'bg-green-50 text-green-600' :
-                                    'bg-blue-50 text-blue-600'
+                                notice.type === 'holiday' ? 'bg-green-50 text-green-600' :
+                                  'bg-blue-50 text-blue-600'
                                 }`}>
                                 {notice.type}
                               </span>

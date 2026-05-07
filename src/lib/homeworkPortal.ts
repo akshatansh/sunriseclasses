@@ -1,6 +1,8 @@
 import { supabase } from './supabase';
 import { type StudentRecord } from './resultsPortal';
 
+const ENABLE_DUMMY_DATA = true; // Set this to false to instantly remove dummy homework
+
 export interface HomeworkRecord {
   id: string;
   studentId: string;
@@ -28,6 +30,9 @@ export const getAvailableHomeworkMonths = async (): Promise<string[]> => {
     const { data, error } = await supabase.from('homework_records').select('month');
     if (error) throw error;
     const months = new Set(data.map(r => r.month));
+    if (ENABLE_DUMMY_DATA) {
+      months.add('May 2026');
+    }
     return Array.from(months).sort((a, b) => monthLabelToSortKey(a) - monthLabelToSortKey(b));
   } catch (error) {
     console.error('Error fetching available homework months:', error);
@@ -49,6 +54,20 @@ export const getStudentsWithHomework = async (month: string): Promise<StudentWit
     const students = studentsResponse.data || [];
     const homeworkRecords = homeworkResponse.data || [];
 
+    if (ENABLE_DUMMY_DATA && month === 'May 2026') {
+      students.forEach((s, idx) => {
+        if (!homeworkRecords.find(h => h.student_id === s.id)) {
+          homeworkRecords.push({
+            id: `dummy-hw-${s.id}`,
+            student_id: s.id,
+            month: 'May 2026',
+            target_pages: 100,
+            completed_pages: Math.max(0, 95 - (idx * 5)), 
+            created_at: new Date().toISOString()
+          });
+        }
+      });
+    }
 
     return students.map(student => {
       const hw = homeworkRecords.find(h => h.student_id === student.id);
