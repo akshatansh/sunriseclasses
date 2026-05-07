@@ -11,7 +11,7 @@ import ContactPage from './pages/ContactPage';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
 import ResultsPage from './pages/ResultsPage';
 import AdminResultsPage from './pages/AdminResultsPage';
-import LaunchCountdown from './components/LaunchCountdown';
+
 import YouTubeFamilyPage from './pages/YouTubeFamilyPage';
 
 function AppContent() {
@@ -44,9 +44,7 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <LaunchCountdown>
-        <AppContent />
-      </LaunchCountdown>
+      <AppContent />
     </Router>
   );
 }
