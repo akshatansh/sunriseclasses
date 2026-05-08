@@ -20,6 +20,7 @@ export interface OnlineTestQuestion {
   option_d: string;
   correct_option: string;
   marks: number;
+  question_image?: string;
 }
 
 export interface StudentTestAttempt {
@@ -65,7 +66,7 @@ export async function getActiveTests(className: string) {
 export async function getTestQuestions(testId: string) {
   const { data, error } = await supabase
     .from('online_test_questions')
-    .select('id, test_id, question_text, option_a, option_b, option_c, option_d, marks')
+    .select('id, test_id, question_text, option_a, option_b, option_c, option_d, marks, question_image')
     // We intentionally do not select correct_option to prevent cheating via API inspection
     .eq('test_id', testId);
 
@@ -223,6 +224,21 @@ export async function logProctoringEvent(
   } catch (err) {
     console.error('Error in logProctoringEvent:', err);
   }
+}
+
+export async function uploadQuestionImage(file: File) {
+  const fileName = `q_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+  const { data, error } = await supabase.storage
+    .from('proctoring_proofs') // Reusing this bucket or you can use 'public' if available
+    .upload(fileName, file);
+
+  if (error) throw error;
+
+  const { data: publicUrlData } = supabase.storage
+    .from('proctoring_proofs')
+    .getPublicUrl(data.path);
+    
+  return publicUrlData.publicUrl;
 }
 
 // ---------------- Admin Functions ----------------
