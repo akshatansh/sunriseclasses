@@ -182,11 +182,21 @@ export async function checkTestAttempt(studentId: string, testId: string) {
 export async function getStudentAttempts(studentId: string) {
   const { data, error } = await supabase
     .from('online_test_attempts')
-    .select('*')
+    .select('*, online_tests(*)')
     .eq('student_id', studentId);
-
   if (error) throw error;
   return data as StudentTestAttempt[];
+}
+
+export async function reportTestIssue(studentId: string, issueType: string, description: string) {
+  const { error } = await supabase
+    .from('test_issue_reports')
+    .insert({
+      student_id: studentId,
+      issue_type: issueType,
+      description: description
+    });
+  if (error) throw error;
 }
 
 // Log proctoring events and upload proof

@@ -126,8 +126,88 @@ export default function OnlineTestPortal() {
     );
   }
 
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
+  const [reportIssueType, setReportIssueType] = useState('Technical Issue');
+  const [reportDesc, setReportDesc] = useState('');
+
+  const handleReportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!student) return;
+    setIsReporting(true);
+    try {
+      await reportTestIssue(student.id, reportIssueType, reportDesc);
+      setReportSuccess(true);
+      setReportDesc('');
+      setTimeout(() => {
+        setReportSuccess(false);
+        setShowReportForm(false);
+      }, 3000);
+    } catch (err) {
+      alert("Failed to send report. Please check connection.");
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fbff] pt-[116px] pb-12">
+      {/* Report Issue Modal */}
+      {showReportForm && (
+        <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="bg-blue-600 p-6 text-white text-center">
+              <h3 className="text-xl font-bold">Report an Issue</h3>
+              <p className="text-blue-100 text-sm">Facing trouble with your test?</p>
+            </div>
+            
+            <form onSubmit={handleReportSubmit} className="p-6 space-y-4">
+              {reportSuccess ? (
+                <div className="text-center py-6">
+                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+                  <p className="font-bold text-gray-900">Report Sent!</p>
+                  <p className="text-sm text-gray-600">S.P Sir will check this soon.</p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Issue Type</label>
+                    <select 
+                      value={reportIssueType}
+                      onChange={(e) => setReportIssueType(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option>Automatic Submission</option>
+                      <option>Camera Not Opening</option>
+                      <option>Question Not Loading</option>
+                      <option>Login Issue</option>
+                      <option>Other Problem</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea 
+                      required
+                      value={reportDesc}
+                      onChange={(e) => setReportDesc(e.target.value)}
+                      placeholder="Explain what happened..."
+                      className="w-full px-3 py-2 border rounded-xl h-32 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button type="button" onClick={() => setShowReportForm(false)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold">Cancel</button>
+                    <button type="submit" disabled={isReporting} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold disabled:opacity-50">
+                      {isReporting ? 'Sending...' : 'Send Report'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Pre-Test Anti-Cheat Warning Modal */}
       {testToStart && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
@@ -313,10 +393,19 @@ export default function OnlineTestPortal() {
             </button>
           </div>
 
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Timer className="h-5 w-5 text-green-600" /> 
-            Available Tests
-          </h3>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <Timer className="h-5 w-5 text-green-600" /> 
+              Available Tests
+            </h3>
+            <button 
+              onClick={() => setShowReportForm(true)}
+              className="px-4 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-black border border-red-100 hover:bg-red-100 transition-colors flex items-center gap-2"
+            >
+              <ShieldAlert className="h-3.5 w-3.5" />
+              REPORT TECHNICAL ISSUE
+            </button>
+          </div>
           
           {attemptedError && (
             <div className="mb-4 p-3 bg-yellow-50 text-yellow-800 rounded-md border border-yellow-200">
