@@ -38,7 +38,7 @@ export interface StudentTestAttempt {
 export async function loginStudentForTest(name: string, className: string, pin: string) {
   const { data, error } = await supabase
     .from('students')
-    .select('id, name, class_name')
+    .select('id, name, class_name, image')
     .ilike('name', `%${name}%`)
     .eq('class_name', className)
     .eq('pin', pin)

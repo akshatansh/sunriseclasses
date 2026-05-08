@@ -15,7 +15,7 @@ const LiveTestRunner = React.lazy(() => import('../components/LiveTestRunner'));
 
 export default function OnlineTestPortal() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [student, setStudent] = useState<{ id: string; name: string; class_name: string } | null>(null);
+  const [student, setStudent] = useState<{ id: string; name: string; class_name: string; image?: string } | null>(null);
   
   // Login Form State
   const [name, setName] = useState('');
@@ -23,6 +23,7 @@ export default function OnlineTestPortal() {
   const [pin, setPin] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
 
   // Tests State
   const [tests, setTests] = useState<OnlineTest[]>([]);
@@ -43,8 +44,14 @@ export default function OnlineTestPortal() {
     try {
       const studentData = await loginStudentForTest(name.trim(), className, pin);
       setStudent(studentData);
-      setIsLoggedIn(true);
-      fetchTests(studentData.class_name, studentData.id);
+      setLoginSuccess(true);
+      
+      // Artificial delay for the "Wow" effect with student photo
+      setTimeout(() => {
+        setIsLoggedIn(true);
+        fetchTests(studentData.class_name, studentData.id);
+        setLoginSuccess(false);
+      }, 2000);
     } catch (err: any) {
       setLoginError(err.message || 'Login failed');
     } finally {
@@ -177,6 +184,34 @@ export default function OnlineTestPortal() {
         </div>
       )}
 
+      {/* Login Success Overlay */}
+      {loginSuccess && student && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-[#0f172a]/95 backdrop-blur-xl">
+           <div className="text-center text-white animate-in zoom-in fade-in duration-500">
+             <div className="relative inline-block mb-6">
+                <div className="absolute inset-0 bg-blue-500/30 rounded-full blur-2xl animate-pulse"></div>
+                {student.image ? (
+                  <img src={student.image} className="h-32 w-32 rounded-full mx-auto border-4 border-white shadow-2xl relative z-10" />
+                ) : (
+                  <div className="h-32 w-32 rounded-full bg-white/10 mx-auto flex items-center justify-center relative z-10 border-4 border-white/20">
+                    <Users className="h-16 w-16 text-white" />
+                  </div>
+                )}
+                <div className="absolute -bottom-2 -right-2 bg-green-500 text-white p-2 rounded-full shadow-lg border-2 border-white z-20">
+                  <CheckCircle className="h-5 w-5" />
+                </div>
+             </div>
+             <h2 className="text-4xl font-black tracking-tight">Welcome, {student.name.split(' ')[0]}!</h2>
+             <p className="text-blue-300 font-bold mt-2 tracking-widest uppercase text-xs">Accessing your Secure Dashboard</p>
+             <div className="mt-8 flex justify-center gap-1">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+             </div>
+           </div>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold text-gray-900 mb-4 flex items-center justify-center gap-3">
@@ -253,9 +288,18 @@ export default function OnlineTestPortal() {
       ) : (
         <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Welcome, {student?.name}</h2>
-              <p className="text-gray-600">Class: {student?.class_name}</p>
+            <div className="flex items-center gap-4">
+              {student?.image ? (
+                <img src={student.image} alt={student.name} className="h-16 w-16 rounded-full object-cover border-2 border-blue-100" />
+              ) : (
+                <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center border-2 border-blue-50">
+                  <Users className="h-8 w-8 text-blue-500" />
+                </div>
+              )}
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Welcome, {student?.name}</h2>
+                <p className="text-gray-600">Class: {student?.class_name}</p>
+              </div>
             </div>
             <button 
               onClick={() => {

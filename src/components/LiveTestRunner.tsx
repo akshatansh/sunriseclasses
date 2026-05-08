@@ -31,10 +31,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const [studentName, setStudentName] = useState(''); // To display on result card
   const [studentPhoto, setStudentPhoto] = useState(''); // To display on header
   const [isWarningFlash, setIsWarningFlash] = useState(false); // For red flash effect
-  
+  const [isDownloading, setIsDownloading] = useState(false); // For JPG download state
+
   // Anti-Cheat State
   const [cheatWarnings, setCheatWarnings] = useState(0);
-  
+
   // Results State
   const [result, setResult] = useState<{ score: number, total: number } | null>(null);
 
@@ -139,20 +140,20 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const finishTest = useCallback(async (forced: boolean = false) => {
     if (submitting || result) return;
     setSubmitting(true);
-    
+
     try {
       const finalResult = await submitTest(
-        { 
-          student_id: studentId, 
-          test_id: test.id, 
-          cheat_warnings: cheatWarnings + faceWarnings 
-        }, 
+        {
+          student_id: studentId,
+          test_id: test.id,
+          cheat_warnings: cheatWarnings + faceWarnings
+        },
         answers
       );
-      
+
       localStorage.removeItem(`test_progress_${test.id}_${studentId}`);
       setResult({ score: finalResult.score, total: finalResult.total_marks });
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
       setShowSubmitSummary(false);
     } catch (err) {
       console.error('Error submitting test:', err);
@@ -172,7 +173,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       try {
         const storageKey = `test_progress_${test.id}_${studentId}`;
         const savedProgress = localStorage.getItem(storageKey);
-        
+
         if (savedProgress) {
           const parsed = JSON.parse(savedProgress);
           if (parsed.questions && Array.isArray(parsed.questions)) {
@@ -209,7 +210,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   // Timer
   useEffect(() => {
     if (loading || result) return;
-    
+
     const timerId = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -220,7 +221,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         return prev - 1;
       });
     }, 1000);
-    
+
     return () => clearInterval(timerId);
   }, [loading, result, finishTest]);
 
@@ -232,7 +233,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       if (document.hidden) {
         const blob = await captureScreenshot();
         logProctoringEvent(test.id, studentId, 'Switched Tab / Minimized Browser', blob);
-        
+
         setCheatWarnings(prev => {
           const newCount = prev + 1;
           if (newCount >= 3) {
@@ -247,7 +248,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+
     const handleBlur = () => {
       if (!result && isTestStarted) {
         document.body.classList.add('test-blurred');
@@ -296,7 +297,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   useEffect(() => {
     if (result) return;
     const preventAction = (e: Event) => e.preventDefault();
-    
+
     const handleKeydown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault();
@@ -322,7 +323,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     document.addEventListener('contextmenu', preventAction);
     document.addEventListener('copy', preventAction);
     document.addEventListener('keydown', handleKeydown);
-    
+
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement && !result && isTestStarted) {
         setCheatWarnings(prev => prev + 1);
@@ -395,10 +396,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        try { 
-          await videoRef.current.play(); 
+        try {
+          await videoRef.current.play();
           setCameraActive(true); // Show video immediately
-        } catch (e) {}
+        } catch (e) { }
       }
 
       setCameraError(null);
@@ -426,7 +427,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             }
           }
         }, 3000); // 3-second monitoring interval for strict proctoring
-      } catch (e) {}
+      } catch (e) { }
     };
 
     cameraStartRef.current = startCameraAndAI;
@@ -497,79 +498,296 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
   if (result) {
     const shareMessage = `🎯 I scored ${result.score}/${result.total} in the ${test.title} at Sunrise Classes! 🚀\n\nJoin the elite batch at Sunrise Classes and ace your exams! 📖✨`;
-    
+
     const handleShare = async () => {
-      if (navigator.share) {
-        try {
+      const shareUrl = `https://sunriseclasses.co.in/online-tests`;
+      const text = `Hey! I just scored ${result.score}/${result.total} in the ${test.title} at Sunrise Classes! 🏆 Check it out!`;
+
+      try {
+        // Try to share as a file if supported
+        const canvas = document.createElement('canvas');
+        canvas.width = 1200;
+        canvas.height = 1700;
+        // ... we would need the drawing logic here too, or reuse a hidden canvas
+        // For now, let's just stick to URL/Text share but improve the fallback
+        
+        if (navigator.share) {
           await navigator.share({
-            title: 'My Test Result',
-            text: shareMessage,
-            url: window.location.origin
+            title: 'My Sunrise Classes Result',
+            text: text,
+            url: shareUrl
           });
-        } catch (err) {}
-      } else {
-        window.open(`https://wa.me/?text=${encodeURIComponent(shareMessage)}`, '_blank');
+        } else {
+          window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + shareUrl)}`, '_blank');
+        }
+      } catch (err) { }
+    };
+
+    const downloadCertificate = async () => {
+      setIsDownloading(true);
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1200;
+        canvas.height = 1700;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // 1. Premium Background Layer
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, 1700);
+        bgGrad.addColorStop(0, '#ffffff');
+        bgGrad.addColorStop(1, '#f8fafc');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, 1200, 1700);
+
+        // 2. Artistic Border (Double Border with Patterns)
+        // Outer Thick Border
+        ctx.strokeStyle = '#1e293b'; // Navy
+        ctx.lineWidth = 40;
+        ctx.strokeRect(20, 20, 1160, 1660);
+
+        // Inner Gold Accent Border
+        ctx.strokeStyle = '#eab308'; // Gold
+        ctx.lineWidth = 10;
+        ctx.strokeRect(45, 45, 1110, 1610);
+
+        // Corner Ornaments
+        ctx.fillStyle = '#eab308';
+        const ornamentSize = 60;
+        ctx.fillRect(20, 20, ornamentSize, ornamentSize);
+        ctx.fillRect(1120, 20, ornamentSize, ornamentSize);
+        ctx.fillRect(20, 1620, ornamentSize, ornamentSize);
+        ctx.fillRect(1120, 1620, ornamentSize, ornamentSize);
+
+        // 3. Header Section
+        const headerGrad = ctx.createLinearGradient(0, 60, 1200, 460);
+        headerGrad.addColorStop(0, '#0f172a');
+        headerGrad.addColorStop(1, '#1e293b');
+        ctx.fillStyle = headerGrad;
+        ctx.fillRect(60, 60, 1080, 400);
+
+        // Branding Text
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 90px serif';
+        ctx.fillText('SUNRISE CLASSES', 600, 220);
+        
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.fillText('CHAMPANAGAR, PURNIA, BIHAR', 600, 280);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'italic 28px sans-serif';
+        ctx.fillText('An Institute of Excellence Since 2012', 600, 330);
+
+        // 4. Achievement Title
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 50px sans-serif';
+        ctx.fillText('CERTIFICATE OF ACHIEVEMENT', 600, 560);
+
+        // 5. Student Profile Picture
+        const photoY = 740;
+        const photoSize = 220;
+        if (studentPhoto) {
+          try {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = studentPhoto;
+            await new Promise((res, rej) => {
+              img.onload = res;
+              img.onerror = rej;
+              setTimeout(rej, 4000);
+            });
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(600, photoY, photoSize/2, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.drawImage(img, 600 - photoSize/2, photoY - photoSize/2, photoSize, photoSize);
+            ctx.restore();
+            
+            ctx.strokeStyle = '#eab308';
+            ctx.lineWidth = 8;
+            ctx.stroke();
+          } catch (e) {
+            ctx.fillStyle = '#f1f5f9';
+            ctx.beginPath(); ctx.arc(600, photoY, photoSize/2, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 80px sans-serif';
+            ctx.fillText(studentName.charAt(0), 600, photoY + 30);
+          }
+        }
+
+        // 6. Main Certificate Text
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'italic 36px serif';
+        ctx.fillText('This is to certify that', 600, 920);
+
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 85px sans-serif';
+        ctx.fillText(studentName, 600, 1020);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'italic 34px serif';
+        ctx.fillText('has successfully completed the online objective test for', 600, 1080);
+
+        ctx.fillStyle = '#2563eb';
+        ctx.font = 'black 65px sans-serif';
+        ctx.fillText(test.title.toUpperCase(), 600, 1170);
+
+        // 7. Performance Section
+        const boxWidth = 500;
+        const boxHeight = 160;
+        const boxX = 600 - boxWidth/2;
+        const boxY = 1240;
+
+        ctx.fillStyle = '#f8fafc';
+        if ((ctx as any).roundRect) {
+          (ctx as any).roundRect(boxX, boxY, boxWidth, boxHeight, 20);
+        } else {
+          ctx.rect(boxX, boxY, boxWidth, boxHeight);
+        }
+        ctx.fill();
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#475569';
+        ctx.font = 'bold 30px sans-serif';
+        ctx.fillText('SCORE OBTAINED', 600, 1285);
+
+        ctx.fillStyle = '#059669';
+        ctx.font = 'bold 80px sans-serif';
+        ctx.fillText(`${result.score} / ${result.total}`, 600, 1370);
+
+        // 8. Footer Info
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 24px sans-serif';
+        ctx.fillText(`Certificate ID: SC-${test.id.slice(0, 4)}-${studentId.slice(0, 4)}`, 600, 1500);
+        
+        ctx.font = 'italic 28px sans-serif';
+        ctx.fillText(`Issued on: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`, 600, 1540);
+
+        // Download
+        const link = document.createElement('a');
+        const safeName = studentName.replace(/\s+/g, '_');
+        link.download = `Sunrise_Certificate_${safeName}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        link.click();
+      } catch (err) {
+        console.error(err);
+        alert("Downloading certificate... Please wait.");
+      } finally {
+        setIsDownloading(false);
       }
     };
 
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <div className="max-w-md w-full animate-in fade-in zoom-in duration-700">
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4 sm:p-8">
+        <div className="max-w-2xl w-full animate-in fade-in zoom-in duration-1000">
           {/* Branded Certificate Card */}
-          <div id="result-card" className="bg-white rounded-[2rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.3)] border-8 border-white">
-            <div className="bg-gradient-to-br from-blue-900 to-blue-700 p-8 text-center text-white relative">
-              <div className="absolute top-4 right-4 bg-yellow-400 text-blue-900 text-[10px] font-black px-2 py-1 rounded-md rotate-12 shadow-lg">VERIFIED</div>
-              <img src="/sunrise-logo.png" alt="Logo" className="h-16 w-16 mx-auto mb-4 bg-white rounded-full p-2" />
-              <h2 className="text-xl font-black tracking-widest uppercase mb-1">Sunrise Classes</h2>
-              <p className="text-[10px] text-blue-200 font-bold tracking-[0.2em] uppercase">Purnia's Best Coaching Institute</p>
-            </div>
+          <div id="result-card" className="bg-white rounded-[3rem] overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] border-[16px] border-slate-900 relative">
+            {/* Artistic Inner Border */}
+            <div className="absolute inset-0 border-[2px] border-yellow-500/40 m-4 rounded-[2.5rem] pointer-events-none"></div>
             
-            <div className="p-8 text-center bg-white relative">
-              <Award className="h-12 w-12 text-yellow-500 mx-auto mb-4 animate-bounce" />
-              <h3 className="text-2xl font-bold text-gray-900 mb-1">{studentName}</h3>
-              <p className="text-sm text-gray-400 font-medium mb-6 italic">Has successfully completed the</p>
+            {/* Header Section */}
+            <div className="bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] p-12 text-center text-white relative overflow-hidden">
+              <div className="absolute -top-10 -left-10 w-40 h-40 bg-yellow-500/10 rounded-full blur-3xl"></div>
+              <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
               
-              <div className="bg-blue-50 py-4 px-6 rounded-2xl mb-8 border border-blue-100">
-                <p className="text-xs text-blue-600 font-black uppercase mb-1">{test.title}</p>
-                <div className="flex items-end justify-center gap-1">
-                  <span className="text-5xl font-black text-gray-900 leading-none">{result.score}</span>
-                  <span className="text-xl font-bold text-gray-400">/ {result.total}</span>
+              <div className="absolute top-8 right-8 bg-yellow-500 text-black text-[10px] font-black px-4 py-2 rounded-full rotate-12 shadow-2xl border-2 border-white flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" /> VERIFIED
+              </div>
+              
+              <img src="/sunrise-logo.png" alt="Logo" className="h-24 w-24 mx-auto mb-6 bg-white rounded-3xl p-3 shadow-2xl transform hover:rotate-6 transition-transform duration-500" />
+              <h2 className="text-4xl font-black tracking-tight uppercase mb-2 drop-shadow-2xl">Sunrise Classes</h2>
+              <p className="text-xs text-blue-300 font-bold tracking-[0.4em] uppercase opacity-90">Champanagar, Purnia, Bihar</p>
+              <div className="mt-4 h-1 w-24 bg-yellow-500 mx-auto rounded-full"></div>
+            </div>
+
+            <div className="p-12 text-center bg-white relative">
+              {/* Student Profile with Aura */}
+              <div className="relative inline-block mb-8">
+                <div className="absolute inset-0 bg-yellow-500/20 rounded-full blur-2xl animate-pulse"></div>
+                {studentPhoto ? (
+                  <img src={studentPhoto} className="h-36 w-36 rounded-full object-cover border-8 border-white shadow-[0_20px_50px_rgba(0,0,0,0.15)] relative z-10" />
+                ) : (
+                  <div className="h-36 w-36 rounded-full bg-slate-50 border-8 border-white shadow-2xl flex items-center justify-center relative z-10">
+                    <Award className="h-16 w-16 text-yellow-500" />
+                  </div>
+                )}
+                <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-2.5 rounded-full shadow-2xl border-4 border-white z-20">
+                  <CheckCircle className="h-5 w-5" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-left border-t pt-6">
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase">Subject</p>
-                  <p className="text-sm font-bold text-gray-700">{test.subject}</p>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Certificate of Achievement</p>
+              <h3 className="text-4xl font-black text-slate-900 mb-2 tracking-tight">{studentName}</h3>
+              <p className="text-lg text-slate-500 font-medium italic mb-10">Successfully completed the official test with distinction</p>
+
+              {/* Score Showcase */}
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 py-8 px-10 rounded-[2.5rem] mb-10 border border-slate-200 shadow-inner relative group overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <Award className="h-20 w-20 text-slate-900" />
                 </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase">Date</p>
-                  <p className="text-sm font-bold text-gray-700">{new Date().toLocaleDateString()}</p>
+                <p className="text-xs text-blue-600 font-black uppercase mb-4 tracking-[0.2em]">{test.title}</p>
+                <div className="flex items-end justify-center gap-3">
+                  <span className="text-8xl font-black text-slate-900 leading-none tabular-nums tracking-tighter">{result.score}</span>
+                  <span className="text-3xl font-bold text-slate-300 mb-2 tracking-widest">/ {result.total}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-8 text-left border-t border-slate-100 pt-10">
+                <div className="group">
+                  <p className="text-xs text-slate-400 font-black uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <BookOpen className="h-3 w-3 text-blue-500" /> Subject
+                  </p>
+                  <p className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{test.subject}</p>
+                </div>
+                <div className="group">
+                  <p className="text-xs text-slate-400 font-black uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <ShieldAlert className="h-3 w-3 text-emerald-500" /> Accuracy
+                  </p>
+                  <p className="text-xl font-bold text-emerald-600 group-hover:scale-105 transition-transform origin-left">{Math.round((result.score / result.total) * 100)}% Result</p>
                 </div>
               </div>
             </div>
-            
-            <div className="bg-gray-50 p-4 text-center border-t border-dashed border-gray-200">
-              <p className="text-[9px] text-gray-400 font-medium italic">"Dedicated to Quality Education since 2012"</p>
+
+            {/* Footer Seal */}
+            <div className="bg-slate-50/80 p-8 text-center border-t border-dashed border-slate-200 flex flex-col items-center gap-3">
+              <div className="h-10 w-10 bg-yellow-500/10 rounded-full flex items-center justify-center border border-yellow-500/20">
+                <CheckCircle className="h-5 w-5 text-yellow-600" />
+              </div>
+              <p className="text-xs text-slate-500 font-bold italic">Dedicated to Quality Education since 2012</p>
+              <p className="text-[10px] text-slate-300 font-mono">ID: SC-{test.id.slice(0, 4)}-{studentId.slice(0, 4)}</p>
             </div>
           </div>
 
-          <div className="mt-8 flex flex-col gap-4 px-4">
-            <p className="text-blue-200 text-center text-sm font-medium animate-pulse">🎉 Screenshot & Share on your Story! 📸</p>
+          <div className="mt-8 flex flex-col gap-4 px-4 pb-10">
+            <div className="bg-blue-600/10 p-4 rounded-2xl border border-blue-400/20 text-center">
+              <p className="text-blue-300 text-sm font-bold">🎉 Social Media par share karein aur coaching ko tag karein! 📸</p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
-              <button 
-                onClick={handleShare}
-                className="bg-green-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-green-600 shadow-xl transition-all active:scale-95"
+              <button
+                onClick={downloadCertificate}
+                disabled={isDownloading}
+                className="bg-white text-gray-900 py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-2xl hover:bg-gray-50 transition-all active:scale-95 disabled:opacity-50"
               >
-                <Share2 className="h-5 w-5" /> WhatsApp
+                <Download className={`h-5 w-5 ${isDownloading ? 'animate-spin' : ''}`} /> {isDownloading ? 'Saving...' : 'Save JPG'}
               </button>
-              <button 
-                onClick={onComplete}
-                className="bg-white/10 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition-all border border-white/20"
+              <button
+                onClick={handleShare}
+                className="bg-green-600 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-green-700 shadow-2xl transition-all active:scale-95"
               >
-                Dashboard
+                <Share2 className="h-5 w-5" /> Share
               </button>
             </div>
+
+            <button
+              onClick={onComplete}
+              className="w-full bg-white/5 text-white/60 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-white/10 transition-all text-xs"
+            >
+              Back to Portal
+            </button>
           </div>
         </div>
       </div>
@@ -615,7 +833,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 select-none no-print">
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @media print { body { display: none !important; } }
         .no-print { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
         .test-blurred { filter: blur(20px); pointer-events: none; }
@@ -625,7 +844,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         .animate-spin-slow { animation: spin 3s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}} />
-      
+
       {isWarningFlash && (
         <div className="fixed inset-0 z-[200] pointer-events-none bg-red-600/20 animate-pulse border-[20px] border-red-600/30"></div>
       )}
@@ -713,11 +932,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transform scale-x-[-1] transition-opacity duration-500 ${cameraActive ? 'opacity-100' : 'opacity-20'}`} />
                 <div className={`absolute top-0 right-0 h-2 w-2 rounded-full border border-black ${faceDetectionStatus.includes('⚠️') ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                   <p className="text-[6px] text-white font-bold text-center leading-tight">AI Active</p>
+                  <p className="text-[6px] text-white font-bold text-center leading-tight">AI Active</p>
                 </div>
               </div>
             )}
-            
+
             <div className="flex flex-col">
               <h1 className="text-sm sm:text-base font-bold text-gray-900 leading-none mb-1">{test.title}</h1>
               <div className="flex items-center gap-2">
@@ -736,7 +955,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Accessibility Controls */}
             <div className="hidden md:flex items-center bg-gray-100 rounded-lg p-1">
@@ -745,7 +964,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               <button onClick={() => setFontSize(prev => Math.min(24, prev + 2))} className="px-2 text-xs font-bold text-gray-500 hover:text-blue-600">A+</button>
             </div>
 
-            <button 
+            <button
               onClick={() => setLanguage(l => l === 'EN' ? 'HI' : 'EN')}
               className="text-[10px] font-bold px-2 py-1 bg-blue-50 text-blue-600 rounded-lg border border-blue-100"
             >
@@ -777,7 +996,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                       <p className="font-medium text-gray-900 leading-relaxed" style={{ fontSize: `${fontSize}px` }}>{q.question_text}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button 
+                      <button
                         onClick={() => readQuestion(q.question_text)}
                         className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-full transition-colors"
                         title="Listen to question"
@@ -792,7 +1011,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                       const isSelected = answers[q.id] === opt;
                       return (
                         <button key={opt} onClick={() => handleOptionSelect(q.id, opt)} className={`text-left px-4 py-3 rounded-lg border-2 transition-all ${isSelected ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}`}>
-                          <span className="font-bold mr-2 text-gray-400">{opt}.</span> 
+                          <span className="font-bold mr-2 text-gray-400">{opt}.</span>
                           <span style={{ fontSize: `${fontSize - 2}px` }}>{q[`option_${opt.toLowerCase()}` as keyof OnlineTestQuestion] as string}</span>
                         </button>
                       );
@@ -803,9 +1022,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             </div>
           ))}
           <div className="pt-8 text-center pb-20">
-            <button 
-              onClick={() => setShowSubmitSummary(true)} 
-              disabled={submitting || isOffline} 
+            <button
+              onClick={() => setShowSubmitSummary(true)}
+              disabled={submitting || isOffline}
               className="bg-green-600 text-white py-4 px-16 rounded-full font-bold text-xl hover:bg-green-700 disabled:opacity-50 shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-1"
             >
               {submitting ? 'Submitting...' : t.review}
