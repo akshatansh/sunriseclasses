@@ -140,7 +140,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     return undefined;
   }, []);
 
-  const finishTest = useCallback(async (forced: boolean = false) => {
+  const finishTest = useCallback(async (forced: boolean = false, isRetry: boolean = false) => {
     if (submitting || result) return;
     setSubmitting(true);
 
@@ -168,15 +168,18 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       setShowSubmitSummary(false);
     } catch (err) {
       console.error('Error submitting test:', err);
-      showSubtleMessage("❌ Network Error! Retrying submission...");
-      // Wait 3 seconds and retry once automatically
-      setTimeout(() => {
-        if (!result) finishTest(forced);
-      }, 3000);
+      setSubmitting(false); // Reset so retry can proceed
+      if (!isRetry) {
+        // Only retry once to prevent infinite loops
+        showSubtleMessage("❌ Network Error! Retrying in 3 seconds...");
+        setTimeout(() => finishTest(forced, true), 3000);
+      } else {
+        showSubtleMessage("❌ Submission failed. Your answers are saved locally. Please refresh and try again.");
+      }
     } finally {
-      setSubmitting(false);
+      if (result) setSubmitting(false); // Only clear if already submitted
     }
-  }, [answers, cheatWarnings, faceWarnings, result, studentId, submitting, test.id]);
+  }, [answers, cheatWarnings, faceWarnings, result, studentId, submitting, test.id, showSubtleMessage]);
 
   // Load Questions
   useEffect(() => {
@@ -187,13 +190,17 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
         if (savedProgress) {
           const parsed = JSON.parse(savedProgress);
-          if (parsed.questions && Array.isArray(parsed.questions)) {
+          // Only use cached progress if questions exist AND time is still valid
+          if (parsed.questions && Array.isArray(parsed.questions) && parsed.questions.length > 0 && parsed.timeLeft > 0) {
             setQuestions(parsed.questions);
             setAnswers(parsed.answers || {});
             setMarkedForReview(parsed.markedForReview || {});
             if (parsed.timeLeft < timeLeft) setTimeLeft(parsed.timeLeft);
             setLoading(false);
             return;
+          } else {
+            // Stale or invalid cache — clear it
+            localStorage.removeItem(storageKey);
           }
         }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe } from 'lucide-react';
-import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, OnlineTest, StudentTestAttempt } from '../lib/onlineTests';
+import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, reportTestIssue, OnlineTest, StudentTestAttempt } from '../lib/onlineTests';
 
 // Lazy load the runner to prevent heavy TFJS imports from crashing the main bundle
 const LiveTestRunner = React.lazy(() => 
@@ -106,30 +106,11 @@ export default function OnlineTestPortal() {
     if (student) fetchTests(student.class_name, student.id); // Refresh list
   };
 
-  // If a test is active, show the runner
-  if (activeTest && student) {
-    return (
-      <React.Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-900">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-            <p className="text-white font-medium">Initializing Secure Environment...</p>
-          </div>
-        </div>
-      }>
-        <LiveTestRunner 
-          test={activeTest} 
-          studentId={student.id} 
-          onComplete={handleTestComplete} 
-        />
-      </React.Suspense>
-    );
-  }
-
+  // Report Form State — MUST be declared before any early returns (React Rules of Hooks)
   const [showReportForm, setShowReportForm] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
-  const [reportIssueType, setReportIssueType] = useState('Technical Issue');
+  const [reportIssueType, setReportIssueType] = useState('Automatic Submission');
   const [reportDesc, setReportDesc] = useState('');
 
   const handleReportSubmit = async (e: React.FormEvent) => {
@@ -150,6 +131,26 @@ export default function OnlineTestPortal() {
       setIsReporting(false);
     }
   };
+
+  // If a test is active, show the runner — early return AFTER all hooks
+  if (activeTest && student) {
+    return (
+      <React.Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-900">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <p className="text-white font-medium">Initializing Secure Environment...</p>
+          </div>
+        </div>
+      }>
+        <LiveTestRunner 
+          test={activeTest} 
+          studentId={student.id} 
+          onComplete={handleTestComplete} 
+        />
+      </React.Suspense>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fbff] pt-[116px] pb-12">
