@@ -548,38 +548,42 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        // Helper to load images safely using Blob fetch (More reliable for Canvas/CORS)
+        // Helper to load images safely using Blob fetch + Proxy Fallback
         const loadImage = async (src: string): Promise<HTMLImageElement> => {
-          try {
-            // Add cache buster
-            const cacheBuster = `cb=${new Date().getTime()}`;
-            const url = src.includes('?') ? `${src}&${cacheBuster}` : `${src}?${cacheBuster}`;
-            
-            // Fetch as blob first to bypass some canvas tainting issues
+          const tryLoad = async (url: string) => {
             const response = await fetch(url);
             if (!response.ok) throw new Error("Fetch failed");
             const blob = await response.blob();
-            
-            return new Promise((res, rej) => {
+            return new Promise<HTMLImageElement>((res, rej) => {
               const img = new Image();
-              img.onload = () => {
-                // Important: Clean up the object URL after loading
-                // URL.revokeObjectURL(img.src); // We can't do this here yet as we need it to draw
-                res(img);
-              };
+              img.onload = () => res(img);
               img.onerror = rej;
               img.src = URL.createObjectURL(blob);
             });
+          };
+
+          try {
+            // 1. Try direct fetch with cache buster
+            const cacheBuster = `cb=${new Date().getTime()}`;
+            const url = src.includes('?') ? `${src}&${cacheBuster}` : `${src}?${cacheBuster}`;
+            return await tryLoad(url);
           } catch (e) {
-            console.error("loadImage failed, trying fallback:", e);
-            // Fallback to traditional image loading if fetch fails
-            return new Promise((res, rej) => {
-              const img = new Image();
-              img.crossOrigin = "anonymous";
-              img.src = src;
-              img.onload = () => res(img);
-              img.onerror = rej;
-            });
+            console.warn("Direct load failed, trying proxy:", e);
+            try {
+              // 2. Try via proxy (weserv.nl is great for bypassing CORS issues)
+              const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(src.replace(/^https?:\/\//, ''))}&cb=${new Date().getTime()}`;
+              return await tryLoad(proxyUrl);
+            } catch (e2) {
+              console.error("Proxy load failed too:", e2);
+              // 3. Last resort: traditional image load
+              return new Promise((res, rej) => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.src = src;
+                img.onload = () => res(img);
+                img.onerror = rej;
+              });
+            }
           }
         };
 
