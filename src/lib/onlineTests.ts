@@ -313,3 +313,26 @@ export async function getProctoringLogsAdmin(testId: string) {
   if (error) throw error;
   return data;
 }
+
+/**
+ * ADMIN: Reset a student's test attempt
+ * Deletes the attempt row so the student can retake the test fresh.
+ * Also deletes related proctoring logs for that student+test.
+ */
+export async function resetStudentAttempt(studentId: string, testId: string) {
+  // Delete proctoring logs first (they reference attempt)
+  await supabase
+    .from('proctoring_logs')
+    .delete()
+    .eq('student_id', studentId)
+    .eq('test_id', testId);
+
+  // Delete the attempt itself
+  const { error } = await supabase
+    .from('online_test_attempts')
+    .delete()
+    .eq('student_id', studentId)
+    .eq('test_id', testId);
+
+  if (error) throw error;
+}

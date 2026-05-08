@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download, Camera, AlertTriangle, Clock } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download, Camera, AlertTriangle, Clock, RotateCcw } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
 import { 
   getAllTestsAdmin, createTestAdmin, updateTestAdmin, deleteTestAdmin,
   getQuestionsAdmin, createQuestionAdmin, deleteQuestionAdmin, getTestAttemptsAdmin, getProctoringLogsAdmin,
+  resetStudentAttempt,
   OnlineTest, OnlineTestQuestion
 } from '../lib/onlineTests';
 
@@ -127,6 +128,21 @@ export default function OnlineTestAdmin() {
       setAttempts(data || []);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleResetAttempt = async (studentId: string, studentName: string) => {
+    if (!currentTest.id) return;
+    if (!window.confirm(`"${studentName}" ka attempt reset kar doge? Unka score delete ho jaayega aur wo dobara test de sakenge.`)) return;
+    try {
+      await resetStudentAttempt(studentId, currentTest.id);
+      // Refresh attempts list
+      const data = await getTestAttemptsAdmin(currentTest.id);
+      setAttempts(data || []);
+      alert(`✅ ${studentName} ka attempt successfully reset ho gaya. Ab wo dobara test de sakte hain.`);
+    } catch (err) {
+      console.error(err);
+      alert('Error resetting attempt. Please try again.');
     }
   };
 
@@ -477,6 +493,7 @@ export default function OnlineTestAdmin() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cheat Warnings</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted At</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -498,6 +515,16 @@ export default function OnlineTestAdmin() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(att.submitted_at).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <button
+                          onClick={() => handleResetAttempt(att.student_id, att.students?.name || 'Unknown')}
+                          title="Reset attempt — student can retake"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 hover:border-orange-400 transition-all"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Reset
+                        </button>
                       </td>
                     </tr>
                   ))}
