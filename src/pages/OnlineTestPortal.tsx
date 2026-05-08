@@ -11,7 +11,15 @@ if (typeof window !== 'undefined') {
 }
 
 // Lazy load the runner to prevent heavy TFJS imports from crashing the main bundle
-const LiveTestRunner = React.lazy(() => import('../components/LiveTestRunner'));
+const LiveTestRunner = React.lazy(() => 
+  import('../components/LiveTestRunner').catch(err => {
+    // If the chunk fails to load (e.g. after a new deploy), reload the page to get the new version
+    if (typeof window !== 'undefined' && (err.name === 'ChunkLoadError' || err.message.includes('Failed to fetch dynamically imported module'))) {
+      window.location.reload();
+    }
+    throw err;
+  })
+);
 
 export default function OnlineTestPortal() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
