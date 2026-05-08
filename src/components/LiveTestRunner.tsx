@@ -167,7 +167,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
   // Anti-Cheat: AI Camera Proctoring
   useEffect(() => {
-    if (result) return; // Don't run if test is finished
+    if (result || loading) return; // Don't run if test is finished or questions are still loading
     
     let stream: MediaStream | null = null;
     let detectionInterval: NodeJS.Timeout;
@@ -236,7 +236,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       }
       clearInterval(detectionInterval);
     };
-  }, [result, finishTest, captureScreenshot, studentId, test.id]);
+  }, [result, loading, finishTest, captureScreenshot, studentId, test.id]);
 
   const handleOptionSelect = (qId: string, option: string) => {
     setAnswers(prev => ({ ...prev, [qId]: option }));
