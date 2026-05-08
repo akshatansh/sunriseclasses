@@ -251,10 +251,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         setCheatWarnings(prev => {
           const newCount = prev + 1;
           if (newCount >= 5) {
-            showSubtleMessage('Multiple cheating attempts detected. Submitting test...');
+            showSubtleMessage('Bahut zyada cheating pakdi gayi! Test submit ho raha hai...');
             finishTest(true);
           } else {
-            showSubtleMessage(`Warning ${newCount}/5: Tab switch detected!`);
+            showSubtleMessage(`⚠️ Warning ${newCount}/5: Tab switch pakda gaya! Dobara mat karna.`);
           }
           return newCount;
         });
@@ -355,7 +355,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       setFaceWarnings(prev => {
         const newCount = prev + 1;
         if (newCount >= 10) {
-          showSubtleMessage(`Multiple AI Warnings. Auto-submitting...`);
+          showSubtleMessage(`Bahut zyada AI warnings! Test submit ho raha hai...`);
           finishTest(true);
         } else {
           showSubtleMessage(msg);
@@ -421,12 +421,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             const predictions = await model.estimateFaces(videoRef.current, false);
             if (predictions.length === 0) {
               setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, camera mein dekho!`);
-              handleWarning(`${studentName.split(' ')[0]}, please look at the camera.`);
+              handleWarning(`${studentName.split(' ')[0]}, camera mein dekho! Chehra nahi dikh raha.`);
             } else if (predictions.length > 1) {
               setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, akele baithiye!`);
-              handleWarning('Multiple faces detected. Please sit alone.');
+              handleWarning(`${studentName.split(' ')[0]}, akele baithiye! Ek se zyada chehra dikh raha hai.`);
             } else {
-              setFaceDetectionStatus('Monitoring Active');
+              setFaceDetectionStatus('Monitoring Active ✓');
             }
           }
         }, 8000); // Increased interval to 8 seconds for better performance on slow devices
