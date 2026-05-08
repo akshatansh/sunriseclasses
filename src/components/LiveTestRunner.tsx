@@ -3,7 +3,10 @@ import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest, logProcto
 import { AlertTriangle, CheckCircle, Clock, ShieldAlert, Camera, CameraOff, RefreshCw, Share2, Award, Download, Smartphone } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import * as tf from '@tensorflow/tfjs';
-import * as blazeface from '@tensorflow-models/blazeface';
+import * as blazefaceModel from '@tensorflow-models/blazeface';
+
+// Ensure blazeface is accessible in different bundler environments
+const blazeface: any = (blazefaceModel as any).default || blazefaceModel;
 
 interface Props {
   test: OnlineTest;
@@ -383,6 +386,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       try {
         await tf.ready();
         const model = await blazeface.load();
+        if (!model || typeof model.estimateFaces !== 'function') {
+          throw new Error('AI Model failed to initialize correctly.');
+        }
         detectionInterval = setInterval(async () => {
           if (videoRef.current && videoRef.current.readyState >= 2 && !isOffline) {
             const predictions = await model.estimateFaces(videoRef.current, false);

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe } from 'lucide-react';
 import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, OnlineTest, StudentTestAttempt } from '../lib/onlineTests';
-import LiveTestRunner from '../components/LiveTestRunner';
+
+// Lazy load the runner to prevent heavy TFJS imports from crashing the main bundle
+const LiveTestRunner = React.lazy(() => import('../components/LiveTestRunner'));
 
 export default function OnlineTestPortal() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -92,11 +94,20 @@ export default function OnlineTestPortal() {
   // If a test is active, show the runner
   if (activeTest && student) {
     return (
-      <LiveTestRunner 
-        test={activeTest} 
-        studentId={student.id} 
-        onComplete={handleTestComplete} 
-      />
+      <React.Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-900">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <p className="text-white font-medium">Initializing Secure Environment...</p>
+          </div>
+        </div>
+      }>
+        <LiveTestRunner 
+          test={activeTest} 
+          studentId={student.id} 
+          onComplete={handleTestComplete} 
+        />
+      </React.Suspense>
     );
   }
 
