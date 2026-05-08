@@ -543,154 +543,162 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       setIsDownloading(true);
       try {
         const canvas = document.createElement('canvas');
-        canvas.width = 1200;
-        canvas.height = 1700;
+        canvas.width = 1500; // Increased resolution
+        canvas.height = 2100;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        // 1. Premium Background Layer
-        const bgGrad = ctx.createLinearGradient(0, 0, 0, 1700);
-        bgGrad.addColorStop(0, '#ffffff');
-        bgGrad.addColorStop(1, '#f8fafc');
-        ctx.fillStyle = bgGrad;
-        ctx.fillRect(0, 0, 1200, 1700);
-
-        // 2. Artistic Border (Double Border with Patterns)
-        // Outer Thick Border
-        ctx.strokeStyle = '#1e293b'; // Navy
-        ctx.lineWidth = 40;
-        ctx.strokeRect(20, 20, 1160, 1660);
-
-        // Inner Gold Accent Border
-        ctx.strokeStyle = '#eab308'; // Gold
-        ctx.lineWidth = 10;
-        ctx.strokeRect(45, 45, 1110, 1610);
-
-        // Corner Ornaments
-        ctx.fillStyle = '#eab308';
-        const ornamentSize = 60;
-        ctx.fillRect(20, 20, ornamentSize, ornamentSize);
-        ctx.fillRect(1120, 20, ornamentSize, ornamentSize);
-        ctx.fillRect(20, 1620, ornamentSize, ornamentSize);
-        ctx.fillRect(1120, 1620, ornamentSize, ornamentSize);
-
-        // 3. Header Section
-        const headerGrad = ctx.createLinearGradient(0, 60, 1200, 460);
-        headerGrad.addColorStop(0, '#0f172a');
-        headerGrad.addColorStop(1, '#1e293b');
-        ctx.fillStyle = headerGrad;
-        ctx.fillRect(60, 60, 1080, 400);
-
-        // Branding Text
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 90px serif';
-        ctx.fillText('SUNRISE CLASSES', 600, 220);
-        
-        ctx.fillStyle = '#fbbf24';
-        ctx.font = 'bold 32px sans-serif';
-        ctx.fillText('CHAMPANAGAR, PURNIA, BIHAR', 600, 280);
-
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'italic 28px sans-serif';
-        ctx.fillText('An Institute of Excellence Since 2012', 600, 330);
-
-        // 4. Achievement Title
-        ctx.fillStyle = '#1e293b';
-        ctx.font = 'bold 50px sans-serif';
-        ctx.fillText('CERTIFICATE OF ACHIEVEMENT', 600, 560);
-
-        // 5. Student Profile Picture
-        const photoY = 740;
-        const photoSize = 220;
-        if (studentPhoto) {
-          try {
+        // Helper to load images safely
+        const loadImage = (src: string): Promise<HTMLImageElement> => {
+          return new Promise((res, rej) => {
             const img = new Image();
             img.crossOrigin = "anonymous";
-            img.src = studentPhoto;
-            await new Promise((res, rej) => {
-              img.onload = res;
-              img.onerror = rej;
-              setTimeout(rej, 4000);
-            });
+            img.src = src;
+            img.onload = () => res(img);
+            img.onerror = rej;
+          });
+        };
+
+        // 1. Premium Background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 1500, 2100);
+
+        // Subtle Pattern Background
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 1500; i += 40) {
+          ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 2100); ctx.stroke();
+        }
+        for (let i = 0; i < 2100; i += 40) {
+          ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1500, i); ctx.stroke();
+        }
+
+        // 2. Heavy Borders
+        // Outer Navy
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 80;
+        ctx.strokeRect(40, 40, 1420, 2020);
+
+        // Inner Gold Accent
+        ctx.strokeStyle = '#eab308';
+        ctx.lineWidth = 15;
+        ctx.strokeRect(95, 95, 1310, 1910);
+
+        // Corner Patterns
+        ctx.fillStyle = '#eab308';
+        const cs = 150;
+        ctx.fillRect(40, 40, cs, cs);
+        ctx.fillRect(1310, 40, cs, cs);
+        ctx.fillRect(40, 1910, cs, cs);
+        ctx.fillRect(1310, 1910, cs, cs);
+
+        // 3. Header Section (Dark Blue Card)
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(110, 110, 1280, 500);
+
+        // Logo Rendering
+        try {
+          const logo = await loadImage('/sunrise-logo.png');
+          ctx.drawImage(logo, 675, 150, 150, 150); // Centered logo
+        } catch (e) {
+          // Fallback if logo fails
+          ctx.fillStyle = '#eab308';
+          ctx.beginPath(); ctx.arc(750, 225, 75, 0, Math.PI*2); ctx.fill();
+        }
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 110px serif';
+        ctx.fillText('SUNRISE CLASSES', 750, 430);
+        
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 40px sans-serif';
+        ctx.fillText('AN INSTITUTE OF EXCELLENCE • CHAMPANAGAR, PURNIA', 750, 500);
+
+        // 4. Certificate Content
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 70px serif';
+        ctx.fillText('CERTIFICATE OF ACHIEVEMENT', 750, 750);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'italic 45px serif';
+        ctx.fillText('This is to proudly certify that', 750, 880);
+
+        // Student Photo
+        const photoY = 1080;
+        const photoSize = 280;
+        if (studentPhoto) {
+          try {
+            const img = await loadImage(studentPhoto);
             ctx.save();
             ctx.beginPath();
-            ctx.arc(600, photoY, photoSize/2, 0, Math.PI * 2);
+            ctx.arc(750, photoY, photoSize/2, 0, Math.PI * 2);
             ctx.clip();
-            ctx.drawImage(img, 600 - photoSize/2, photoY - photoSize/2, photoSize, photoSize);
+            ctx.drawImage(img, 750 - photoSize/2, photoY - photoSize/2, photoSize, photoSize);
             ctx.restore();
-            
             ctx.strokeStyle = '#eab308';
-            ctx.lineWidth = 8;
+            ctx.lineWidth = 12;
             ctx.stroke();
           } catch (e) {
-            ctx.fillStyle = '#f1f5f9';
-            ctx.beginPath(); ctx.arc(600, photoY, photoSize/2, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = 'bold 80px sans-serif';
-            ctx.fillText(studentName.charAt(0), 600, photoY + 30);
+             // Initial placeholder if photo fails
+             ctx.fillStyle = '#f8fafc';
+             ctx.beginPath(); ctx.arc(750, photoY, photoSize/2, 0, Math.PI * 2); ctx.fill();
           }
         }
 
-        // 6. Main Certificate Text
-        ctx.fillStyle = '#64748b';
-        ctx.font = 'italic 36px serif';
-        ctx.fillText('This is to certify that', 600, 920);
-
         ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 85px sans-serif';
-        ctx.fillText(studentName, 600, 1020);
+        ctx.font = 'bold 100px sans-serif';
+        ctx.fillText(studentName.toUpperCase(), 750, 1320);
 
         ctx.fillStyle = '#64748b';
-        ctx.font = 'italic 34px serif';
-        ctx.fillText('has successfully completed the online objective test for', 600, 1080);
+        ctx.font = 'italic 40px serif';
+        ctx.fillText('has demonstrated outstanding performance in the', 750, 1400);
 
         ctx.fillStyle = '#2563eb';
-        ctx.font = 'black 65px sans-serif';
-        ctx.fillText(test.title.toUpperCase(), 600, 1170);
+        ctx.font = 'black 60px sans-serif';
+        ctx.fillText(test.title.toUpperCase(), 750, 1480);
 
-        // 7. Performance Section
-        const boxWidth = 500;
-        const boxHeight = 160;
-        const boxX = 600 - boxWidth/2;
-        const boxY = 1240;
-
+        // 5. Result Box
+        const rx = 450, ry = 1580, rw = 600, rh = 200;
         ctx.fillStyle = '#f8fafc';
-        if ((ctx as any).roundRect) {
-          (ctx as any).roundRect(boxX, boxY, boxWidth, boxHeight, 20);
-        } else {
-          ctx.rect(boxX, boxY, boxWidth, boxHeight);
-        }
+        if ((ctx as any).roundRect) (ctx as any).roundRect(rx, ry, rw, rh, 30); else ctx.rect(rx, ry, rw, rh);
         ctx.fill();
-        ctx.strokeStyle = '#e2e8f0';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 3; ctx.stroke();
 
-        ctx.fillStyle = '#475569';
-        ctx.font = 'bold 30px sans-serif';
-        ctx.fillText('SCORE OBTAINED', 600, 1285);
+        ctx.fillStyle = '#64748b'; ctx.font = 'bold 35px sans-serif';
+        ctx.fillText('FINAL SCORE OBTAINED', 750, 1635);
+        ctx.fillStyle = '#059669'; ctx.font = 'bold 90px sans-serif';
+        ctx.fillText(`${result.score} / ${result.total}`, 750, 1730);
 
-        ctx.fillStyle = '#059669';
-        ctx.font = 'bold 80px sans-serif';
-        ctx.fillText(`${result.score} / ${result.total}`, 600, 1370);
+        // 6. Verified Seal & Signature
+        // Seal
+        ctx.fillStyle = '#eab308';
+        ctx.beginPath(); ctx.arc(300, 1850, 100, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px sans-serif';
+        ctx.fillText('OFFICIAL', 300, 1840); ctx.fillText('VERIFIED', 300, 1870);
 
-        // 8. Footer Info
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'bold 24px sans-serif';
-        ctx.fillText(`Certificate ID: SC-${test.id.slice(0, 4)}-${studentId.slice(0, 4)}`, 600, 1500);
-        
-        ctx.font = 'italic 28px sans-serif';
-        ctx.fillText(`Issued on: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`, 600, 1540);
+        // Signature
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 40px serif';
+        ctx.fillText('Akshat Ansh', 1200, 1850);
+        ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(1050, 1865); ctx.lineTo(1350, 1865); ctx.stroke();
+        ctx.font = 'bold 25px sans-serif'; ctx.fillStyle = '#64748b';
+        ctx.fillText('Director, Sunrise Classes', 1200, 1900);
+
+        // ID
+        ctx.font = '18px monospace'; ctx.fillStyle = '#cbd5e1';
+        ctx.fillText(`VERIFICATION ID: SC-${test.id.slice(0, 8).toUpperCase()}`, 750, 2030);
 
         // Download
         const link = document.createElement('a');
         const safeName = studentName.replace(/\s+/g, '_');
-        link.download = `Sunrise_Certificate_${safeName}.jpg`;
-        link.href = canvas.toDataURL('image/jpeg', 0.95);
+        link.download = `Certificate_${safeName}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.98);
         link.click();
       } catch (err) {
         console.error(err);
-        alert("Downloading certificate... Please wait.");
+        alert("Downloading certificate...");
       } finally {
         setIsDownloading(false);
       }
