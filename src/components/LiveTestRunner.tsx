@@ -159,7 +159,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       );
       localStorage.removeItem(`test_progress_${test.id}_${studentId}`);
       setResult({ score: finalResult.score, total: finalResult.total_marks });
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
       setShowSubmitSummary(false);
     } catch (err) {
       console.error('Error submitting test:', err);
@@ -415,7 +415,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           videoRef.current.oncanplay = onReady;
           // Timeout fallback — if neither event fires in 3s, force it
           setTimeout(() => {
-            videoRef.current?.play().catch(() => {});
+            videoRef.current?.play().catch(() => { });
             setCameraActive(true);
             resolve();
           }, 3000);
@@ -443,6 +443,28 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, akele baithiye!`);
               handleWarning(`${studentName.split(' ')[0]}, akele baithiye! Ek se zyada chehra dikh raha hai.`);
             } else {
+              // Check Face Orientation / "Eye Contact" using landmarks
+              const face = predictions[0] as any;
+              if (face.landmarks && face.landmarks.length >= 3) {
+                const rightEye = face.landmarks[0]; // viewer's left
+                const leftEye = face.landmarks[1];  // viewer's right
+                const nose = face.landmarks[2];
+
+                const eyeDistance = Math.abs(leftEye[0] - rightEye[0]);
+                // Distance from nose to each eye
+                const noseToRightEye = Math.abs(nose[0] - rightEye[0]);
+                const noseToLeftEye = Math.abs(nose[0] - leftEye[0]);
+
+                // If nose is too close to one eye (less than 25% of total eye distance), 
+                // the face is turned significantly left or right
+                if (eyeDistance > 10) { // avoid division by zero or tiny faces
+                  if (noseToRightEye < eyeDistance * 0.25 || noseToLeftEye < eyeDistance * 0.25) {
+                    setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, screen par dhyan do!`);
+                    handleWarning(`${studentName.split(' ')[0]}, idhar-udhar mat dekhiye! Apna dhyan screen par rakhiye.`);
+                    return;
+                  }
+                }
+              }
               setFaceDetectionStatus('Monitoring Active ✓');
             }
           }
@@ -569,8 +591,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               img.src = URL.createObjectURL(blob);
             });
           };
-          try { return await tryBlob(src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now()); } catch (e1) {}
-          try { return await tryBlob(`https://images.weserv.nl/?url=${encodeURIComponent(src.replace(/^https?:\/\//, ''))}&_t=${Date.now()}`); } catch (e2) {}
+          try { return await tryBlob(src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now()); } catch (e1) { }
+          try { return await tryBlob(`https://images.weserv.nl/?url=${encodeURIComponent(src.replace(/^https?:\/\//, ''))}&_t=${Date.now()}`); } catch (e2) { }
           return new Promise((res, rej) => {
             const img = new Image(); img.crossOrigin = 'anonymous';
             img.onload = () => res(img); img.onerror = rej; img.src = src;
@@ -1226,7 +1248,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             <div className="absolute inset-0 bg-red-600/20 rounded-2xl blur-xl animate-pulse group-hover:bg-blue-600/20"></div>
             <div className="relative bg-[#0f172a] rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl w-36 sm:w-48 flex flex-col transition-all duration-500 hover:scale-105">
               {/* Camera Viewport */}
-              <div className="relative bg-black" style={{height: '120px'}}>
+              <div className="relative bg-black" style={{ height: '120px' }}>
                 <video
                   ref={videoRef}
                   autoPlay
@@ -1247,7 +1269,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 {faceDetectionStatus.includes('⚠️') && (
                   <div className="absolute inset-0 flex items-center justify-center bg-red-900/70 backdrop-blur-[2px]">
                     <p className="text-[11px] font-black text-white text-center px-2 animate-pulse uppercase leading-snug">
-                      {studentName.split(' ')[0]},<br/>camera mein dekho!
+                      {studentName.split(' ')[0]},<br />camera mein dekho!
                     </p>
                   </div>
                 )}
