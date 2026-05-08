@@ -102,19 +102,66 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
 
   const { data, error } = await supabase
     .from('online_test_attempts')
-    .insert({
-      student_id: attempt.student_id,
-      test_id: attempt.test_id,
+    .update({
       score,
       total_marks,
       cheat_warnings: attempt.cheat_warnings || 0,
       is_completed: true
     })
+    .eq('student_id', attempt.student_id)
+    .eq('test_id', attempt.test_id)
     .select()
     .single();
 
+  // If no existing row was updated (fallback in case they somehow bypassed startTestAttempt)
+  if (!data) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('online_test_attempts')
+      .insert({
+        student_id: attempt.student_id,
+        test_id: attempt.test_id,
+        score,
+        total_marks,
+        cheat_warnings: attempt.cheat_warnings || 0,
+        is_completed: true
+      })
+      .select()
+      .single();
+    if (fallbackError) throw fallbackError;
+    return fallbackData as StudentTestAttempt;
+  }
+
   if (error) throw error;
   return data as StudentTestAttempt;
+}
+
+// Create initial attempt when test starts to prevent back button cheating
+export async function startTestAttempt(studentId: string, testId: string) {
+  // Check if already exists
+  const { data: existing } = await supabase
+    .from('online_test_attempts')
+    .select('id')
+    .eq('student_id', studentId)
+    .eq('test_id', testId)
+    .maybeSingle();
+
+  if (existing) return existing;
+
+  const { data, error } = await supabase
+    .from('online_test_attempts')
+    .insert({
+      student_id: studentId,
+      test_id: testId,
+      score: 0,
+      total_marks: 0,
+      cheat_warnings: 0,
+      is_completed: false
+    })
+    .select()
+    .single();
+    
+  if (error) throw error;
+  return data;
 }
 
 // Check if student already attempted a specific test

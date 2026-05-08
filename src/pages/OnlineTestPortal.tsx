@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe } from 'lucide-react';
-import { loginStudentForTest, getActiveTests, getStudentAttempts, OnlineTest, StudentTestAttempt } from '../lib/onlineTests';
+import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, OnlineTest, StudentTestAttempt } from '../lib/onlineTests';
 import LiveTestRunner from '../components/LiveTestRunner';
 
 export default function OnlineTestPortal() {
@@ -138,9 +138,15 @@ export default function OnlineTestPortal() {
                   Cancel
                 </button>
                 <button 
-                  onClick={() => {
-                    setActiveTest(testToStart);
-                    setTestToStart(null);
+                  onClick={async () => {
+                    if (!student || !testToStart) return;
+                    try {
+                      await startTestAttempt(student.id, testToStart.id);
+                      setActiveTest(testToStart);
+                      setTestToStart(null);
+                    } catch (err) {
+                      alert("Failed to securely start test. Please check internet connection.");
+                    }
                   }}
                   className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-600/30"
                 >
@@ -286,8 +292,17 @@ export default function OnlineTestPortal() {
                     
                     {isCompleted ? (
                       <div className="bg-white rounded-md border border-green-100 p-3 text-center">
-                        <p className="text-xs text-gray-500 font-semibold mb-1">YOUR SCORE</p>
-                        <p className="text-2xl font-bold text-green-600">{attempt.score} <span className="text-sm text-green-400">/ {attempt.total_marks}</span></p>
+                        {attempt.is_completed ? (
+                          <>
+                            <p className="text-xs text-gray-500 font-semibold mb-1">YOUR SCORE</p>
+                            <p className="text-2xl font-bold text-green-600">{attempt.score} <span className="text-sm text-green-400">/ {attempt.total_marks}</span></p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs text-red-500 font-bold mb-1">TEST ABANDONED</p>
+                            <p className="text-sm text-gray-600">You left this test midway.</p>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <button
