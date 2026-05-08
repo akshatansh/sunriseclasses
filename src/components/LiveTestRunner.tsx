@@ -428,10 +428,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           if (videoRef.current && videoRef.current.readyState >= 2 && !isOffline) {
             const predictions = await model.estimateFaces(videoRef.current, false);
             if (predictions.length === 0) {
-              setFaceDetectionStatus('⚠️ No face detected!');
-              handleWarning('No face detected. Please look at the camera.');
+              setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, camera mein dekho!`);
+              handleWarning(`${studentName.split(' ')[0]}, please look at the camera.`);
             } else if (predictions.length > 1) {
-              setFaceDetectionStatus('⚠️ Multiple faces detected!');
+              setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, akele baithiye!`);
               handleWarning('Multiple faces detected. Please sit alone.');
             } else {
               setFaceDetectionStatus('Monitoring Active');
@@ -1191,7 +1191,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                  {/* Warning Text when face not detected */}
                  {faceDetectionStatus.includes('⚠️') && (
                    <div className="absolute inset-0 flex items-center justify-center bg-red-900/60 backdrop-blur-[2px]">
-                      <p className="text-[10px] font-black text-white text-center px-2 animate-bounce uppercase tracking-tighter">FACE NOT DETECTED • WARNING</p>
+                      <p className="text-[10px] font-black text-white text-center px-2 animate-bounce uppercase tracking-tighter leading-tight">
+                        {studentName.split(' ')[0]}, CAMERA MEIN DEKHO!
+                      </p>
                    </div>
                  )}
                </div>
