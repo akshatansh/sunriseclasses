@@ -685,10 +685,17 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         ctx.strokeStyle = '#F5D78E'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(pCx, pCy, pR + 22, 0, Math.PI * 2); ctx.stroke();
 
-        // 6. STUDENT NAME
-        ctx.fillStyle = '#0D1B3E'; ctx.font = 'bold 92px Georgia, serif';
-        ctx.fillText(studentName.toUpperCase(), cx, B + 1258);
-        const nW = ctx.measureText(studentName.toUpperCase()).width;
+        // 6. STUDENT NAME — Title Case, italic elegant script style
+        const toTitleCase = (str: string) => str.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+        const displayName = toTitleCase(studentName);
+
+        // Shadow for name
+        ctx.shadowColor = 'rgba(13,27,62,0.12)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
+        ctx.fillStyle = '#0D1B3E'; ctx.font = 'bold italic 88px Georgia, serif';
+        ctx.fillText(displayName, cx, B + 1258);
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+        const nW = ctx.measureText(displayName).width;
         const ulG = ctx.createLinearGradient(cx - nW / 2, 0, cx + nW / 2, 0);
         ulG.addColorStop(0, 'transparent'); ulG.addColorStop(0.5, '#C9A84C'); ulG.addColorStop(1, 'transparent');
         ctx.strokeStyle = ulG; ctx.lineWidth = 4;
@@ -696,8 +703,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
         ctx.fillStyle = '#475569'; ctx.font = 'italic 40px Georgia, serif';
         ctx.fillText('has successfully demonstrated outstanding performance in', cx, B + 1346);
+        // Test title in Title Case, not ALL CAPS
         ctx.fillStyle = '#1E40AF'; ctx.font = 'bold 58px Georgia, serif';
-        ctx.fillText(test.title.toUpperCase(), cx, B + 1424);
+        ctx.fillText(toTitleCase(test.title), cx, B + 1424);
         ctx.fillStyle = '#64748B'; ctx.font = '32px sans-serif';
         ctx.fillText('Subject: ' + test.subject + '  |  ' + (test.class_name || ''), cx, B + 1478);
 
