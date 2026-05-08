@@ -425,7 +425,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               setFaceDetectionStatus('Monitoring Active');
             }
           }
-        }, 10000); // Throttled to 10s for low-end devices (RAM/Battery)
+        }, 3000); // 3-second monitoring interval for strict proctoring
       } catch (e) {}
     };
 
