@@ -144,7 +144,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     if (submitting || result) return;
     setSubmitting(true);
 
-    // Stop camera explicitly immediately on submit
+    // Stop camera immediately on submit
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -154,31 +154,25 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
     try {
       const finalResult = await submitTest(
-        {
-          student_id: studentId,
-          test_id: test.id,
-          cheat_warnings: cheatWarnings + faceWarnings
-        },
+        { student_id: studentId, test_id: test.id, cheat_warnings: cheatWarnings + faceWarnings },
         answers
       );
-
       localStorage.removeItem(`test_progress_${test.id}_${studentId}`);
       setResult({ score: finalResult.score, total: finalResult.total_marks });
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       setShowSubmitSummary(false);
     } catch (err) {
       console.error('Error submitting test:', err);
-      setSubmitting(false); // Reset so retry can proceed
+      setSubmitting(false); // Must reset so retry/user can try again
       if (!isRetry) {
-        // Only retry once to prevent infinite loops
-        showSubtleMessage("❌ Network Error! Retrying in 3 seconds...");
+        showSubtleMessage('❌ Network Error! Retrying in 3 seconds...');
         setTimeout(() => finishTest(forced, true), 3000);
       } else {
-        showSubtleMessage("❌ Submission failed. Your answers are saved locally. Please refresh and try again.");
+        showSubtleMessage('❌ Submission failed. Please check connection and try submitting again.');
       }
-    } finally {
-      if (result) setSubmitting(false); // Only clear if already submitted
+      return; // Exit early — do NOT fall through to setSubmitting(false) again
     }
+    setSubmitting(false); // Only reached on success
   }, [answers, cheatWarnings, faceWarnings, result, studentId, submitting, test.id, showSubtleMessage]);
 
   // Load Questions
@@ -225,15 +219,15 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     loadQuestions();
   }, [test.id, onComplete]);
 
-  // Timer
+  // Timer — only runs when test is loaded and actively running
   useEffect(() => {
-    if (loading || result) return;
+    if (loading || result || !isTestStarted) return; // Don't tick timer before test starts
 
     const timerId = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timerId);
-          finishTest(true); // auto submit
+          finishTest(true); // auto submit on timeout
           return 0;
         }
         return prev - 1;
@@ -241,7 +235,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [loading, result, finishTest]);
+  }, [loading, result, isTestStarted, finishTest]);
 
   // Anti-Cheat: Visibility Change (Tab Switch)
   // NOTE: We wait 3 seconds after test start before activating to prevent
