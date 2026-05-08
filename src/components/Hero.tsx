@@ -36,7 +36,7 @@ export default function Hero() {
             </h1>
 
             <p className="text-[#c1d4f1] text-base sm:text-lg max-w-2xl mx-auto lg:mx-0 mb-4 leading-relaxed">
-              Expert coaching for Class 8, 9 & 10 board exams in Champanagar, Purnia, Bihar. 
+              Expert coaching for Class 8, 9 & 10 board exams in Champanagar, Purnia, Bihar.
               With 15+ years of teaching experience, we provide personalized education, daily YouTube educational videos, and comprehensive study materials for rural students in Bihar.
               We also offer offline classroom batches for in-person learning.
             </p>

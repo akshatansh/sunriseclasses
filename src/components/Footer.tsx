@@ -7,7 +7,7 @@ const quickLinks = [
   { label: 'About Us', path: '/about' },
   { label: 'Courses', path: '/courses' },
   { label: 'YouTube Videos', path: '/videos' },
-  { label: '🎯 YouTube Family', path: '/youtube-family' },
+  { label: 'YouTube Family', path: '/youtube-family' },
   { label: 'Gallery', path: '/gallery' },
   { label: 'Success Stories', path: '/success-stories' },
   { label: 'Results', path: '/results' },
