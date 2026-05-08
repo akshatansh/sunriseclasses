@@ -32,6 +32,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const [studentPhoto, setStudentPhoto] = useState(''); // To display on header
   const [isWarningFlash, setIsWarningFlash] = useState(false); // For red flash effect
   const [isDownloading, setIsDownloading] = useState(false); // For JPG download state
+  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
 
   // Anti-Cheat State
   const [cheatWarnings, setCheatWarnings] = useState(0);
@@ -436,7 +437,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               setFaceDetectionStatus('Monitoring Active');
             }
           }
-        }, 3000); // 3-second monitoring interval for strict proctoring
+        }, 8000); // Increased interval to 8 seconds for better performance on slow devices
       } catch (e) { }
     };
 
@@ -1003,55 +1004,101 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
       <div className="max-w-6xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-6">
-          {questions.map((q, idx) => (
-            <div key={q.id} id={`q-${q.id}`} className={`bg-white rounded-xl shadow-sm border p-6 ${answers[q.id] ? 'border-blue-100' : 'border-gray-200'}`}>
-              <div className="flex gap-4">
-                <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold ${answers[q.id] ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{idx + 1}</div>
-                <div className="flex-grow">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-grow">
-                      {q.question_image && (
-                        <div className="mb-4 rounded-lg overflow-hidden border border-gray-100 max-w-md bg-gray-50">
-                          <img src={q.question_image} alt="Question Diagram" className="w-full h-auto object-contain" />
+          {questions.length > 0 && (
+            <div className="animate-in slide-in-from-right-4 duration-300">
+              {(() => {
+                const q = questions[currentQuestionIdx];
+                const idx = currentQuestionIdx;
+                return (
+                  <div key={q.id} className={`bg-white rounded-2xl shadow-xl border-2 p-8 ${answers[q.id] ? 'border-blue-500/20' : 'border-gray-100'}`}>
+                    <div className="flex flex-col sm:flex-row gap-6">
+                      <div className={`flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black shadow-lg ${answers[q.id] ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                        {idx + 1}
+                      </div>
+                      <div className="flex-grow">
+                        <div className="flex justify-between items-start mb-6">
+                          <div className="flex-grow">
+                            {q.question_image && (
+                              <div className="mb-6 rounded-2xl overflow-hidden border-4 border-gray-50 shadow-inner max-w-xl bg-gray-50 group relative">
+                                <img src={q.question_image} alt="Question Diagram" className="w-full h-auto object-contain transition-transform duration-500 group-hover:scale-105" />
+                                <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">Diagram</div>
+                              </div>
+                            )}
+                            <p className="font-bold text-gray-900 leading-relaxed text-xl sm:text-2xl" style={{ fontSize: `${fontSize}px` }}>{q.question_text}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => readQuestion(q.question_text)}
+                              className="p-3 text-blue-500 hover:bg-blue-50 rounded-xl transition-all active:scale-90"
+                              title="Listen to question"
+                            >
+                              <RefreshCw className="h-5 w-5 transform rotate-90" />
+                            </button>
+                            <button 
+                              onClick={() => setMarkedForReview(prev => ({ ...prev, [q.id]: !prev[q.id] }))} 
+                              className={`text-xs font-black px-4 py-2 rounded-xl transition-all ${markedForReview[q.id] ? 'bg-yellow-400 text-white shadow-lg shadow-yellow-400/30' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                            >
+                              {markedForReview[q.id] ? 'MARKED' : 'MARK'}
+                            </button>
+                          </div>
                         </div>
-                      )}
-                      <p className="font-medium text-gray-900 leading-relaxed" style={{ fontSize: `${fontSize}px` }}>{q.question_text}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => readQuestion(q.question_text)}
-                        className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-full transition-colors"
-                        title="Listen to question"
-                      >
-                        <RefreshCw className="h-4 w-4 transform rotate-90" />
-                      </button>
-                      <button onClick={() => setMarkedForReview(prev => ({ ...prev, [q.id]: !prev[q.id] }))} className={`text-[10px] font-bold px-2 py-1 rounded ${markedForReview[q.id] ? 'bg-yellow-100 text-yellow-700' : 'text-gray-400'}`}>{t.marked}</button>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          {['A', 'B', 'C', 'D'].map((opt) => {
+                            const isSelected = answers[q.id] === opt;
+                            return (
+                              <button 
+                                key={opt} 
+                                onClick={() => handleOptionSelect(q.id, opt)} 
+                                className={`text-left px-6 py-5 rounded-2xl border-2 transition-all group relative overflow-hidden ${isSelected ? 'border-blue-600 bg-blue-50/50 shadow-lg shadow-blue-600/10' : 'border-gray-100 hover:border-blue-200 hover:bg-gray-50'}`}
+                              >
+                                {isSelected && <div className="absolute top-0 right-0 p-2 text-blue-600"><CheckCircle className="h-5 w-5" /></div>}
+                                <span className={`font-black mr-3 ${isSelected ? 'text-blue-600' : 'text-gray-300'}`}>{opt}.</span>
+                                <span className={`font-semibold ${isSelected ? 'text-gray-900' : 'text-gray-700'}`} style={{ fontSize: `${fontSize - 2}px` }}>
+                                  {q[`option_${opt.toLowerCase()}` as keyof OnlineTestQuestion] as string}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {['A', 'B', 'C', 'D'].map((opt) => {
-                      const isSelected = answers[q.id] === opt;
-                      return (
-                        <button key={opt} onClick={() => handleOptionSelect(q.id, opt)} className={`text-left px-4 py-3 rounded-lg border-2 transition-all ${isSelected ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}`}>
-                          <span className="font-bold mr-2 text-gray-400">{opt}.</span>
-                          <span style={{ fontSize: `${fontSize - 2}px` }}>{q[`option_${opt.toLowerCase()}` as keyof OnlineTestQuestion] as string}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                );
+              })()}
+
+              {/* Navigation Controls */}
+              <div className="flex items-center justify-between mt-10">
+                <button
+                  disabled={currentQuestionIdx === 0}
+                  onClick={() => setCurrentQuestionIdx(prev => prev - 1)}
+                  className="px-8 py-4 bg-white border-2 border-gray-100 rounded-2xl font-bold text-gray-500 hover:bg-gray-50 hover:border-gray-200 transition-all disabled:opacity-30 disabled:pointer-events-none flex items-center gap-2"
+                >
+                  ← Previous
+                </button>
+                
+                <div className="text-gray-400 font-black tracking-widest text-sm">
+                  {currentQuestionIdx + 1} / {questions.length}
                 </div>
+
+                {currentQuestionIdx === questions.length - 1 ? (
+                  <button
+                    onClick={() => setShowSubmitSummary(true)}
+                    className="px-8 py-4 bg-green-600 text-white rounded-2xl font-black shadow-lg shadow-green-600/30 hover:bg-green-700 transition-all transform hover:-translate-y-1 active:scale-95"
+                  >
+                    Finish Test
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setCurrentQuestionIdx(prev => prev + 1)}
+                    className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center gap-2"
+                  >
+                    Next Question →
+                  </button>
+                )}
               </div>
             </div>
-          ))}
-          <div className="pt-8 text-center pb-20">
-            <button
-              onClick={() => setShowSubmitSummary(true)}
-              disabled={submitting || isOffline}
-              className="bg-green-600 text-white py-4 px-16 rounded-full font-bold text-xl hover:bg-green-700 disabled:opacity-50 shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-1"
-            >
-              {submitting ? 'Submitting...' : t.review}
-            </button>
-          </div>
+          )}
         </div>
 
         <div className="hidden lg:block sticky top-24">
@@ -1059,7 +1106,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             <h3 className="text-sm font-bold mb-4 uppercase tracking-wider">{t.navigator}</h3>
             <div className="palette-grid">
               {questions.map((q, i) => (
-                <button key={q.id} onClick={() => scrollToQuestion(q.id)} className={`h-10 w-10 rounded-lg text-xs font-bold flex items-center justify-center border-2 transition-all ${answers[q.id] ? 'bg-blue-600 border-blue-600 text-white shadow-md' : markedForReview[q.id] ? 'bg-yellow-400 border-yellow-400 text-white' : 'bg-white border-gray-200'}`}>{i + 1}</button>
+                <button key={q.id} onClick={() => setCurrentQuestionIdx(i)} className={`h-10 w-10 rounded-lg text-xs font-bold flex items-center justify-center border-2 transition-all ${currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2' : ''} ${answers[q.id] ? 'bg-blue-600 border-blue-600 text-white shadow-md' : markedForReview[q.id] ? 'bg-yellow-400 border-yellow-400 text-white' : 'bg-white border-gray-200'}`}>{i + 1}</button>
               ))}
             </div>
           </div>
@@ -1076,7 +1123,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             <div className="flex justify-between items-center mb-6"><h3 className="font-bold">{t.jump}</h3><button onClick={() => setShowPalette(false)}>✕</button></div>
             <div className="palette-grid">
               {questions.map((q, i) => (
-                <button key={q.id} onClick={() => scrollToQuestion(q.id)} className={`h-12 w-12 rounded-xl text-sm font-bold flex items-center justify-center border-2 ${answers[q.id] ? 'bg-blue-600 border-blue-600 text-white' : markedForReview[q.id] ? 'bg-yellow-400 border-yellow-400 text-white' : 'bg-white border-gray-200'}`}>{i + 1}</button>
+                <button key={q.id} onClick={() => { setCurrentQuestionIdx(i); setShowPalette(false); }} className={`h-12 w-12 rounded-xl text-sm font-bold flex items-center justify-center border-2 ${currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2' : ''} ${answers[q.id] ? 'bg-blue-600 border-blue-600 text-white' : markedForReview[q.id] ? 'bg-yellow-400 border-yellow-400 text-white' : 'bg-white border-gray-200'}`}>{i + 1}</button>
               ))}
             </div>
           </div>
