@@ -28,6 +28,7 @@ import AttendanceManagement from '../components/AttendanceManagement';
 import AdminStudentProfile from '../components/AdminStudentProfile';
 import YouTubeFamilyAdmin from '../components/YouTubeFamilyAdmin';
 import OnlineTestAdmin from '../components/OnlineTestAdmin';
+import IssueReportAdmin from '../components/IssueReportAdmin';
 
 const ADMIN_SESSION_KEY = 'sunrise-admin-authenticated';
 const ADMIN_ROLE_KEY = 'sunrise-admin-role';
@@ -89,7 +90,7 @@ export default function AdminResultsPage() {
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [notices, setNotices] = useState<NoticeRecord[]>([]);
   const [newNoticeForm, setNewNoticeForm] = useState<{ title: string, content: string, type: 'exam' | 'holiday' | 'general' }>({ title: '', content: '', type: 'general' });
-  const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'homework' | 'attendance' | 'settings' | 'youtube' | 'onlinetest'>('marks');
+  const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'homework' | 'attendance' | 'settings' | 'youtube' | 'onlinetest' | 'reports'>('marks');
 
   // PWA Install Prompt
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -978,6 +979,9 @@ export default function AdminResultsPage() {
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'attendance' ? 'bg-white/10 text-teal-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
                   <Calendar size={20} />
                   <span>Attendance</span>
+                </button>
+                <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all font-bold ${activeTab === 'reports' ? 'bg-red-600 text-white shadow-lg scale-105' : 'text-gray-400 hover:bg-white/5'}`}>
+                  <ShieldAlert className="h-5 w-5" /> Student Reports
                 </button>
                 <button onClick={() => setActiveTab('notices')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'notices' ? 'bg-white/10 text-blue-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
@@ -1990,6 +1994,12 @@ export default function AdminResultsPage() {
               {activeTab === 'onlinetest' && loginRole === 'superadmin' && (
                 <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
                   <OnlineTestAdmin />
+                </div>
+              )}
+
+              {activeTab === 'reports' && loginRole === 'superadmin' && (
+                <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
+                  <IssueReportAdmin />
                 </div>
               )}
 
