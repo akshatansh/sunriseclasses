@@ -239,13 +239,6 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    const handlePopState = (e: PopStateEvent) => {
-      window.history.pushState(null, '', window.location.pathname + window.location.hash);
-      showSubtleMessage("Back button disabled. Please use the 'Submit' button.");
-    };
-    window.history.pushState(null, '', window.location.pathname + window.location.hash);
-    window.addEventListener('popstate', handlePopState);
-
     const handleBlur = () => {
       if (!result && isTestStarted) {
         document.body.classList.add('test-blurred');
@@ -264,18 +257,31 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
-    window.location.hash = 'active';
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('blur', handleBlur);
       window.removeEventListener('focus', handleFocus);
       document.body.classList.remove('test-blurred');
-      window.location.hash = '';
     };
   }, [loading, result, finishTest, captureScreenshot, studentId, test.id, showSubtleMessage, isTestStarted]);
+
+  // Stable Back Button Prevention
+  useEffect(() => {
+    if (loading || result || !isTestStarted) return;
+
+    const handlePopState = (e: PopStateEvent) => {
+      window.history.pushState(null, '', window.location.pathname + '#active');
+      showSubtleMessage("Back button disabled. Please use the 'Submit' button.");
+    };
+
+    window.history.pushState(null, '', window.location.pathname + '#active');
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isTestStarted, loading, result, showSubtleMessage]);
 
   // Anti-Cheat: Prevent Copy/Paste/Right-Click
   useEffect(() => {
