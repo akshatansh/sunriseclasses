@@ -10,7 +10,33 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: {
         importScripts: ['https://cdn.pushalert.co/sw-89176.js'],
-        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024 // Allow up to 10MB to fix TFJS build error
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+        // ✅ Naya SW deploy hone par turant activate ho — purana cache wait na kare
+        skipWaiting: true,
+        clientsClaim: true,
+        // ✅ HTML: hamesha network se fresh fetch karo (cache fallback hi ho)
+        navigationPreload: true,
+        runtimeCaching: [
+          {
+            // HTML pages — Network First: fresh content milega, fail pe cache
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'html-cache',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 }, // 1 day
+            },
+          },
+          {
+            // JS/CSS — StaleWhileRevalidate: fast load + background update
+            urlPattern: /\.(js|css)$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'assets-cache',
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 7 }, // 7 days
+            },
+          },
+        ],
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
@@ -37,3 +63,4 @@ export default defineConfig({
     exclude: ['lucide-react'],
   },
 });
+
