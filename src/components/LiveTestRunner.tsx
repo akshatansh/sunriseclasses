@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest } from '../lib/onlineTests';
+import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest, logProctoringEvent } from '../lib/onlineTests';
 import { AlertTriangle, CheckCircle, Clock, ShieldAlert } from 'lucide-react';
+import * as tf from '@tensorflow/tfjs';
+import * as blazeface from '@tensorflow-models/blazeface';
 
 interface Props {
   test: OnlineTest;
@@ -22,6 +24,31 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   // Results State
   const [result, setResult] = useState<{ score: number, total: number } | null>(null);
 
+  // AI Proctoring State
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [faceDetectionStatus, setFaceDetectionStatus] = useState<string>('Initializing AI...');
+  const [faceWarnings, setFaceWarnings] = useState(0);
+
+  const captureScreenshot = useCallback(async (): Promise<Blob | undefined> => {
+    if (!videoRef.current) return undefined;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth || 640;
+      canvas.height = videoRef.current.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        return await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.6);
+        }) || undefined;
+      }
+    } catch (e) {
+      console.error("Screenshot failed", e);
+    }
+    return undefined;
+  }, []);
+
   const finishTest = useCallback(async (forced: boolean = false) => {
     if (submitting || result) return;
     setSubmitting(true);
@@ -31,7 +58,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         { 
           student_id: studentId, 
           test_id: test.id, 
-          cheat_warnings: cheatWarnings 
+          cheat_warnings: cheatWarnings + faceWarnings 
         }, 
         answers
       );
@@ -51,7 +78,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     } finally {
       setSubmitting(false);
     }
-  }, [answers, cheatWarnings, result, studentId, submitting, test.id]);
+  }, [answers, cheatWarnings, faceWarnings, result, studentId, submitting, test.id]);
 
   // Load Questions
   useEffect(() => {
@@ -94,8 +121,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   useEffect(() => {
     if (loading || result) return;
 
-    const handleVisibilityChange = () => {
+    const handleVisibilityChange = async () => {
       if (document.hidden) {
+        const blob = await captureScreenshot();
+        logProctoringEvent(test.id, studentId, 'Switched Tab / Minimized Browser', blob);
+        
         setCheatWarnings(prev => {
           const newCount = prev + 1;
           if (newCount >= 3) {
@@ -111,7 +141,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [loading, result, finishTest]);
+  }, [loading, result, finishTest, captureScreenshot, studentId, test.id]);
 
   // Anti-Cheat: Prevent Copy/Paste/Right-Click
   useEffect(() => {
@@ -134,6 +164,79 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       document.removeEventListener('copy', preventAction);
     };
   }, [result]);
+
+  // Anti-Cheat: AI Camera Proctoring
+  useEffect(() => {
+    if (result) return; // Don't run if test is finished
+    
+    let stream: MediaStream | null = null;
+    let detectionInterval: NodeJS.Timeout;
+
+    const startCameraAndAI = async () => {
+      try {
+        // 1. Request Camera Permission
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+        setCameraActive(true);
+        setFaceDetectionStatus('Loading AI Model...');
+
+        // 2. Load TensorFlow & Blazeface
+        await tf.ready();
+        const model = await blazeface.load();
+        setFaceDetectionStatus('AI Monitoring Active');
+
+        // 3. Start Detection Loop
+        detectionInterval = setInterval(async () => {
+          if (videoRef.current && videoRef.current.readyState === 4) { // HAVE_ENOUGH_DATA
+            try {
+              const predictions = await model.estimateFaces(videoRef.current, false);
+              
+              if (predictions.length === 0) {
+                setFaceDetectionStatus('WARNING: No face detected!');
+                handleWarning('No face detected. Please look at the camera.');
+              } else if (predictions.length > 1) {
+                setFaceDetectionStatus('WARNING: Multiple faces detected!');
+                handleWarning('Multiple faces detected. Please sit alone.');
+              } else {
+                setFaceDetectionStatus('AI Monitoring Active');
+              }
+            } catch (err) {
+              console.error('Face detection error:', err);
+            }
+          }
+        }, 3000); // Check every 3 seconds
+
+      } catch (err) {
+        console.error('Camera/AI initialization error:', err);
+        alert('Camera access is strictly required for this test. Please allow camera and refresh the page.');
+      }
+    };
+
+    const handleWarning = async (msg: string) => {
+      const blob = await captureScreenshot();
+      logProctoringEvent(test.id, studentId, msg, blob);
+
+      setFaceWarnings(prev => {
+        const newCount = prev + 1;
+        if (newCount >= 5) {
+          alert(`Multiple AI Warnings: ${msg} Test is being auto-submitted.`);
+          finishTest(true);
+        }
+        return newCount;
+      });
+    };
+
+    startCameraAndAI();
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      clearInterval(detectionInterval);
+    };
+  }, [result, finishTest, captureScreenshot, studentId, test.id]);
 
   const handleOptionSelect = (qId: string, option: string) => {
     setAnswers(prev => ({ ...prev, [qId]: option }));
@@ -272,6 +375,45 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           </button>
         </div>
       </div>
+
+      {/* AI Proctoring Video Widget */}
+      {!result && (
+        <div className="fixed bottom-4 right-4 z-50 bg-white rounded-xl shadow-2xl p-3 border-2 border-gray-100 w-48 pointer-events-none transition-all duration-300">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">AI Proctoring</span>
+            <span className="relative flex h-3 w-3">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${faceDetectionStatus.includes('WARNING') ? 'bg-red-400' : 'bg-green-400'}`}></span>
+              <span className={`relative inline-flex rounded-full h-3 w-3 ${faceDetectionStatus.includes('WARNING') ? 'bg-red-500' : 'bg-green-500'}`}></span>
+            </span>
+          </div>
+          
+          <div className="relative rounded-lg bg-gray-900 overflow-hidden aspect-[4/3] border border-gray-800 shadow-inner">
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              muted 
+              className="w-full h-full object-cover transform scale-x-[-1]" 
+            />
+            {!cameraActive && (
+              <div className="absolute inset-0 flex items-center justify-center p-2 text-center">
+                <span className="text-[10px] text-gray-400 font-medium">Starting Camera...</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-2 text-center">
+            <p className={`text-[11px] font-bold ${faceDetectionStatus.includes('WARNING') ? 'text-red-600' : 'text-green-600'}`}>
+              {faceDetectionStatus}
+            </p>
+            {faceWarnings > 0 && (
+              <p className="text-[10px] text-red-500 font-bold mt-1 bg-red-50 py-0.5 rounded">
+                Strikes: {faceWarnings} / 5
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

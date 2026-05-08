@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
+    "@tensorflow-models/blazeface": "^0.1.0",
+    "@tensorflow/tfjs": "^4.22.0",
     "canvas-confetti": "^1.9.4",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",

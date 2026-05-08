@@ -141,6 +141,43 @@ export async function getStudentAttempts(studentId: string) {
   return data as StudentTestAttempt[];
 }
 
+// Log proctoring events and upload proof
+export async function logProctoringEvent(
+  testId: string, 
+  studentId: string, 
+  warningType: string, 
+  imageBlob?: Blob
+) {
+  let proof_image_url = null;
+
+  try {
+    if (imageBlob) {
+      const fileName = `${studentId}_${Date.now()}.jpg`;
+      const { data, error } = await supabase.storage
+        .from('proctoring_proofs')
+        .upload(fileName, imageBlob, { contentType: 'image/jpeg' });
+        
+      if (!error && data) {
+        const { data: publicUrlData } = supabase.storage
+          .from('proctoring_proofs')
+          .getPublicUrl(data.path);
+        proof_image_url = publicUrlData.publicUrl;
+      } else {
+        console.error('Error uploading proof:', error);
+      }
+    }
+
+    await supabase.from('proctoring_logs').insert({
+      test_id: testId,
+      student_id: studentId,
+      warning_type: warningType,
+      proof_image_url
+    });
+  } catch (err) {
+    console.error('Error in logProctoringEvent:', err);
+  }
+}
+
 // ---------------- Admin Functions ----------------
 
 export async function getAllTestsAdmin() {
@@ -214,6 +251,17 @@ export async function getTestAttemptsAdmin(testId: string) {
     .select('*, students(name, class_name)')
     .eq('test_id', testId)
     .order('score', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function getProctoringLogsAdmin(testId: string) {
+  const { data, error } = await supabase
+    .from('proctoring_logs')
+    .select('*, students(name, class_name)')
+    .eq('test_id', testId)
+    .order('created_at', { ascending: false });
 
   if (error) throw error;
   return data;

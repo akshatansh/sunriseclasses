@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download, Camera, AlertTriangle, Clock } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
 import { 
   getAllTestsAdmin, createTestAdmin, updateTestAdmin, deleteTestAdmin,
-  getQuestionsAdmin, createQuestionAdmin, deleteQuestionAdmin, getTestAttemptsAdmin,
+  getQuestionsAdmin, createQuestionAdmin, deleteQuestionAdmin, getTestAttemptsAdmin, getProctoringLogsAdmin,
   OnlineTest, OnlineTestQuestion
 } from '../lib/onlineTests';
 
@@ -13,12 +13,13 @@ export default function OnlineTestAdmin() {
   const [tests, setTests] = useState<OnlineTest[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Views: 'list', 'edit-test', 'manage-questions', 'view-attempts'
-  const [view, setView] = useState<'list' | 'edit-test' | 'manage-questions' | 'view-attempts'>('list');
+  // Views: 'list', 'edit-test', 'manage-questions', 'view-attempts', 'view-proctoring'
+  const [view, setView] = useState<'list' | 'edit-test' | 'manage-questions' | 'view-attempts' | 'view-proctoring'>('list');
   const [currentTest, setCurrentTest] = useState<Partial<OnlineTest>>({});
   
   const [questions, setQuestions] = useState<OnlineTestQuestion[]>([]);
   const [attempts, setAttempts] = useState<any[]>([]);
+  const [proctoringLogs, setProctoringLogs] = useState<any[]>([]);
 
   const classes = ['Class 8', 'Class 9', 'Class 10'];
 
@@ -124,6 +125,17 @@ export default function OnlineTestAdmin() {
     try {
       const data = await getTestAttemptsAdmin(test.id);
       setAttempts(data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleViewProctoringLogs = async (test: OnlineTest) => {
+    setCurrentTest(test);
+    setView('view-proctoring');
+    try {
+      const data = await getProctoringLogsAdmin(test.id);
+      setProctoringLogs(data || []);
     } catch (err) {
       console.error(err);
     }
@@ -310,6 +322,9 @@ export default function OnlineTestAdmin() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => handleViewProctoringLogs(test)} className="text-orange-600 hover:text-orange-900" title="View Proctoring Logs">
+                          <Camera className="h-5 w-5" />
+                        </button>
                         <button onClick={() => handleViewAttempts(test)} className="text-green-600 hover:text-green-900" title="View Results">
                           <Users className="h-5 w-5" />
                         </button>
@@ -496,6 +511,57 @@ export default function OnlineTestAdmin() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {view === 'view-proctoring' && (
+          <div>
+            <div className="flex justify-between items-center mb-6 border-b pb-2">
+              <h3 className="text-xl font-bold text-gray-900">{currentTest.title} - AI Proctoring Logs</h3>
+            </div>
+            {proctoringLogs.length === 0 ? (
+              <div className="p-8 text-center bg-gray-50 border border-dashed rounded-lg">
+                <Camera className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-600">No cheating incidents recorded for this test.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {proctoringLogs.map(log => (
+                  <div key={log.id} className="border border-red-200 rounded-lg overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow">
+                    {log.proof_image_url ? (
+                      <div className="relative aspect-video bg-gray-900 group">
+                        <img 
+                          src={log.proof_image_url} 
+                          alt="Proctoring Proof" 
+                          className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                        />
+                        <div className="absolute inset-0 ring-1 ring-inset ring-black/10"></div>
+                      </div>
+                    ) : (
+                      <div className="aspect-video bg-gray-100 flex items-center justify-center text-gray-400">
+                        <Camera className="h-8 w-8 opacity-20" />
+                        <span className="ml-2 text-sm font-medium">No Image Uploaded</span>
+                      </div>
+                    )}
+                    <div className="p-4 bg-red-50 border-t border-red-100">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-bold text-gray-900 truncate pr-2">{log.students?.name || 'Unknown'}</h4>
+                        <span className="text-[10px] bg-red-100 text-red-800 px-2 py-0.5 rounded font-bold shrink-0 uppercase tracking-wider">
+                          {log.students?.class_name}
+                        </span>
+                      </div>
+                      <p className="text-sm text-red-700 font-bold mb-2 flex items-center gap-1.5">
+                        <AlertTriangle className="h-4 w-4" /> {log.warning_type}
+                      </p>
+                      <p className="text-[11px] text-gray-500 flex items-center gap-1 font-medium">
+                        <Clock className="h-3 w-3" />
+                        {new Date(log.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
