@@ -548,14 +548,19 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        // Helper to load images safely
+        // Helper to load images safely with cache-busting to bypass CORS cache issues
         const loadImage = (src: string): Promise<HTMLImageElement> => {
           return new Promise((res, rej) => {
             const img = new Image();
             img.crossOrigin = "anonymous";
-            img.src = src;
+            // Add cache buster to ensure fresh fetch with CORS headers
+            const cacheBuster = `cb=${new Date().getTime()}`;
+            img.src = src.includes('?') ? `${src}&${cacheBuster}` : `${src}?${cacheBuster}`;
             img.onload = () => res(img);
-            img.onerror = rej;
+            img.onerror = (err) => {
+              console.error("Image load failed:", src, err);
+              rej(err);
+            };
           });
         };
 
