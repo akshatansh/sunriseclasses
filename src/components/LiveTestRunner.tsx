@@ -30,6 +30,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const [showShareModal, setShowShareModal] = useState(false);
   const [studentName, setStudentName] = useState(''); // To display on result card
   const [studentPhoto, setStudentPhoto] = useState(''); // To display on header
+  const [isWarningFlash, setIsWarningFlash] = useState(false); // For red flash effect
   
   // Anti-Cheat State
   const [cheatWarnings, setCheatWarnings] = useState(0);
@@ -58,6 +59,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
   const showSubtleMessage = useCallback((msg: string) => {
     setActiveMessage(msg);
+    if (msg.toLowerCase().includes('warning') || msg.toLowerCase().includes('detected')) {
+      setIsWarningFlash(true);
+      setTimeout(() => setIsWarningFlash(false), 500);
+    }
     if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
     messageTimeoutRef.current = setTimeout(() => {
       setActiveMessage(null);
@@ -270,13 +275,13 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     };
   }, [loading, result, finishTest, captureScreenshot, studentId, test.id, showSubtleMessage, isTestStarted]);
 
-  // Stable Back Button Prevention
+  // Stable Back Button Prevention (Silent)
   useEffect(() => {
     if (loading || result || !isTestStarted) return;
 
     const handlePopState = (e: PopStateEvent) => {
+      // Stay on page silently
       window.history.pushState(null, '', window.location.pathname + '#active');
-      showSubtleMessage("Back button disabled. Please use the 'Submit' button.");
     };
 
     window.history.pushState(null, '', window.location.pathname + '#active');
@@ -285,7 +290,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [isTestStarted, loading, result, showSubtleMessage]);
+  }, [isTestStarted, loading, result]);
 
   // Anti-Cheat: Prevent Copy/Paste/Right-Click
   useEffect(() => {
@@ -621,9 +626,13 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}} />
       
+      {isWarningFlash && (
+        <div className="fixed inset-0 z-[200] pointer-events-none bg-red-600/20 animate-pulse border-[20px] border-red-600/30"></div>
+      )}
+
       {activeMessage && (
         <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] w-max max-w-[90vw]">
-          <div className="bg-gray-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-bounce-subtle border border-white/20">
+          <div className={`backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-bounce-subtle border border-white/20 ${activeMessage.includes('⚠️') || activeMessage.includes('Warning') ? 'bg-red-600/90' : 'bg-gray-900/90'}`}>
             <AlertTriangle className="h-5 w-5 text-yellow-400 flex-shrink-0" />
             <p className="text-sm font-medium">{activeMessage}</p>
           </div>
