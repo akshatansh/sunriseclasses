@@ -177,8 +177,6 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         e.preventDefault();
         return false;
       }
-    };
-
       // Block Esc key (prevent exiting fullscreen)
       if (e.key === 'Escape') {
         e.preventDefault();
