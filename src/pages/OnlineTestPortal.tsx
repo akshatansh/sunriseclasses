@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock } from 'lucide-react';
+import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe } from 'lucide-react';
 import { loginStudentForTest, getActiveTests, getStudentAttempts, OnlineTest, StudentTestAttempt } from '../lib/onlineTests';
 import LiveTestRunner from '../components/LiveTestRunner';
 
@@ -20,6 +20,7 @@ export default function OnlineTestPortal() {
   
   // Active Test State
   const [activeTest, setActiveTest] = useState<OnlineTest | null>(null);
+  const [testToStart, setTestToStart] = useState<OnlineTest | null>(null);
   const [attempts, setAttempts] = useState<StudentTestAttempt[]>([]);
   const [attemptedError, setAttemptedError] = useState('');
 
@@ -71,14 +72,12 @@ export default function OnlineTestPortal() {
       
       // Check full screen support
       if (!document.fullscreenEnabled) {
-        alert("Your browser does not support full-screen mode, which is required for this test.");
-        return;
+        // Just a warning, not blocking, because some mobile browsers report false here.
+        console.warn("Browser may not support full-screen mode properly.");
       }
       
-      // Show confirmation
-      if (window.confirm(`Ready to start "${test.title}"?\n\nAnti-Cheat is ACTIVE:\n1. You must stay in full-screen.\n2. Do NOT change tabs or minimize.\n3. Test will auto-submit if cheating is detected.`)) {
-        setActiveTest(test);
-      }
+      // Show Custom Warning Modal instead of window.confirm
+      setTestToStart(test);
     } catch (err: any) {
       console.error(err);
       setAttemptedError('Failed to verify test status. Try again later.');
@@ -103,6 +102,56 @@ export default function OnlineTestPortal() {
 
   return (
     <div className="min-h-screen bg-[#f8fbff] pt-[116px] pb-12">
+      {/* Pre-Test Anti-Cheat Warning Modal */}
+      {testToStart && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-red-50 p-6 text-center border-b border-red-100">
+              <ShieldAlert className="h-12 w-12 text-red-500 mx-auto mb-3" />
+              <h3 className="text-xl font-bold text-gray-900">Strict Anti-Cheat Active</h3>
+              <p className="text-sm text-red-600 font-medium mt-1">Please read carefully before starting</p>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-gray-700 font-medium mb-4">You are about to start: <strong className="text-gray-900">{testToStart.title}</strong></p>
+              
+              <ul className="space-y-3 mb-6">
+                <li className="flex items-start gap-3 text-sm text-gray-600">
+                  <div className="mt-0.5 bg-red-100 text-red-600 p-1.5 rounded-full shrink-0"><Camera className="h-4 w-4" /></div>
+                  <p><strong>Camera Monitoring:</strong> Your camera will turn on. AI will monitor your face continuously.</p>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-gray-600">
+                  <div className="mt-0.5 bg-red-100 text-red-600 p-1.5 rounded-full shrink-0"><Users className="h-4 w-4" /></div>
+                  <p><strong>Sit Alone:</strong> If multiple faces are detected, the test will auto-submit.</p>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-gray-600">
+                  <div className="mt-0.5 bg-red-100 text-red-600 p-1.5 rounded-full shrink-0"><Globe className="h-4 w-4" /></div>
+                  <p><strong>Do Not Switch Tabs:</strong> Minimizing the app or switching tabs will auto-submit your test and record a screenshot proof.</p>
+                </li>
+              </ul>
+              
+              <div className="flex gap-3 pt-2 border-t border-gray-100">
+                <button 
+                  onClick={() => setTestToStart(null)}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    setActiveTest(testToStart);
+                    setTestToStart(null);
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-600/30"
+                >
+                  I Agree, Start
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold text-gray-900 mb-4 flex items-center justify-center gap-3">
