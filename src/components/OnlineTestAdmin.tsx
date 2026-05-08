@@ -759,18 +759,24 @@ export default function OnlineTestAdmin() {
                 {proctoringLogs.map(log => (
                   <div key={log.id} className="border border-red-200 rounded-lg overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow">
                     {log.proof_image_url ? (
-                      <div className="relative aspect-video bg-gray-900 group">
-                        <img 
-                          src={log.proof_image_url} 
-                          alt="Proctoring Proof" 
-                          className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
-                        />
-                        <div className="absolute inset-0 ring-1 ring-inset ring-black/10"></div>
-                      </div>
+                      log.proof_image_url.match(/\.(webm|mp3|mp4|wav|ogg|m4a)(\?.*)?$/i) ? (
+                        <div className="relative aspect-video bg-gray-900 group flex items-center justify-center p-4">
+                          <audio controls src={log.proof_image_url} className="w-full" />
+                        </div>
+                      ) : (
+                        <div className="relative aspect-video bg-gray-900 group">
+                          <img 
+                            src={log.proof_image_url} 
+                            alt="Proctoring Proof" 
+                            className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                          />
+                          <div className="absolute inset-0 ring-1 ring-inset ring-black/10"></div>
+                        </div>
+                      )
                     ) : (
                       <div className="aspect-video bg-gray-100 flex items-center justify-center text-gray-400">
                         <Camera className="h-8 w-8 opacity-20" />
-                        <span className="ml-2 text-sm font-medium">No Image Uploaded</span>
+                        <span className="ml-2 text-sm font-medium">No Proof Uploaded</span>
                       </div>
                     )}
                     <div className="p-4 bg-red-50 border-t border-red-100">

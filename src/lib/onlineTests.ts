@@ -204,16 +204,19 @@ export async function logProctoringEvent(
   testId: string, 
   studentId: string, 
   warningType: string, 
-  imageBlob?: Blob
+  proofBlob?: Blob,
+  proofType: 'image' | 'audio' = 'image'
 ) {
   let proof_image_url = null;
 
   try {
-    if (imageBlob) {
-      const fileName = `${studentId}_${Date.now()}.jpg`;
+    if (proofBlob) {
+      const ext = proofType === 'audio' ? 'webm' : 'jpg';
+      const contentType = proofType === 'audio' ? (proofBlob.type || 'audio/webm') : 'image/jpeg';
+      const fileName = `${studentId}_${Date.now()}.${ext}`;
       const { data, error } = await supabase.storage
         .from('proctoring_proofs')
-        .upload(fileName, imageBlob, { contentType: 'image/jpeg' });
+        .upload(fileName, proofBlob, { contentType });
         
       if (!error && data) {
         const { data: publicUrlData } = supabase.storage

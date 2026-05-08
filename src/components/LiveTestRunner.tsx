@@ -353,7 +353,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
     const handleWarning = async (msg: string) => {
       const blob = await captureScreenshot();
-      logProctoringEvent(test.id, studentId, msg, blob);
+      logProctoringEvent(test.id, studentId, msg, blob, 'image');
       setFaceWarnings(prev => {
         const newCount = prev + 1;
         if (newCount >= 10) {
@@ -457,8 +457,35 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             if (average > 40) {
               noisyCount++;
               if (noisyCount > 3) {
+                const msg = `${studentName.split(' ')[0]}, test ke beech aawaz nahi aani chahiye! Silence rakhiye.`;
                 setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, shor mat karo!`);
-                handleWarning(`${studentName.split(' ')[0]}, test ke beech aawaz nahi aani chahiye! Silence rakhiye.`);
+                
+                // Audio Warning Logic
+                try {
+                  const mediaRecorder = new MediaRecorder(stream as MediaStream);
+                  const audioChunks: Blob[] = [];
+                  mediaRecorder.ondataavailable = e => { if(e.data.size > 0) audioChunks.push(e.data); };
+                  mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+                    logProctoringEvent(test.id, studentId, msg, audioBlob, 'audio');
+                  };
+                  mediaRecorder.start();
+                  setTimeout(() => { if (mediaRecorder.state !== 'inactive') mediaRecorder.stop(); }, 4000);
+                } catch(err) {
+                  logProctoringEvent(test.id, studentId, msg);
+                }
+
+                setFaceWarnings(prev => {
+                  const newCount = prev + 1;
+                  if (newCount >= 10) {
+                    showSubtleMessage(`Bahut zyada AI warnings! Test submit ho raha hai...`);
+                    setTimeout(() => finishTest(false), 2000);
+                  } else {
+                    showSubtleMessage(msg);
+                  }
+                  return newCount;
+                });
+                
                 noisyCount = 0; // reset
               }
             } else {
