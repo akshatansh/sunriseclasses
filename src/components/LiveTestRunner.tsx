@@ -787,7 +787,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
           <div className="mt-8 flex flex-col gap-4 px-4 pb-10">
             <div className="bg-blue-600/10 p-4 rounded-2xl border border-blue-400/20 text-center">
-              <p className="text-blue-300 text-sm font-bold">🎉 Social Media par share karein aur coaching ko tag karein! 📸</p>
+              <p className="text-blue-300 text-sm font-bold">🎉 Social Media par share karein aur coaching ko tag karein! Sunriseclasses81 📸</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -979,15 +979,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             {/* AI Monitoring Status (Minimal) */}
             {!result && (
               <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
-                <div className="relative h-10 w-10 rounded-lg overflow-hidden border border-white/10">
-                  <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transform scale-x-[-1] ${cameraActive ? 'opacity-100' : 'opacity-20'}`} />
-                  <div className={`absolute top-1 right-1 h-2 w-2 rounded-full ${faceDetectionStatus.includes('⚠️') ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
-                </div>
-                <div className="hidden sm:block">
-                  <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">AI Status</p>
-                  <p className={`text-[10px] font-bold ${faceDetectionStatus.includes('⚠️') ? 'text-red-400' : 'text-green-400'}`}>
-                    {faceDetectionStatus.includes('⚠️') ? 'Warning' : 'Active'}
-                  </p>
+                <div className="flex flex-col items-end">
+                  <p className="text-[9px] text-gray-400 font-black uppercase tracking-tighter leading-none mb-1">AI PROCTORING</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest">{faceDetectionStatus.includes('⚠️') ? 'ALERT' : 'ACTIVE'}</span>
+                    <div className={`h-1.5 w-1.5 rounded-full ${faceDetectionStatus.includes('⚠️') ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1133,6 +1130,53 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               {questions.map((q, i) => (
                 <button key={q.id} onClick={() => { setCurrentQuestionIdx(i); setShowPalette(false); }} className={`h-12 w-12 rounded-xl text-sm font-bold flex items-center justify-center border-2 ${currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2' : ''} ${answers[q.id] ? 'bg-blue-600 border-blue-600 text-white' : markedForReview[q.id] ? 'bg-yellow-400 border-yellow-400 text-white' : 'bg-white border-gray-200'}`}>{i + 1}</button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING SECURITY MONITOR (The "Scary" Camera) */}
+      {!result && (
+        <div className="fixed bottom-6 right-6 z-[200] group">
+          <div className="relative">
+            {/* Pulsing background effect */}
+            <div className="absolute inset-0 bg-red-600/20 rounded-2xl blur-xl animate-pulse group-hover:bg-blue-600/20"></div>
+            
+            <div className="relative bg-[#0f172a] rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl w-44 h-44 flex flex-col transition-all duration-500 hover:scale-105 hover:border-red-500/50">
+               {/* Viewport */}
+               <div className="relative flex-1 bg-black">
+                 <video 
+                   ref={videoRef} 
+                   autoPlay 
+                   playsInline 
+                   muted 
+                   className={`w-full h-full object-cover transform scale-x-[-1] transition-opacity duration-700 ${cameraActive ? 'opacity-100' : 'opacity-20'}`} 
+                 />
+                 
+                 {/* Security Overlays */}
+                 <div className="absolute inset-0 pointer-events-none border-[1px] border-white/10 m-2"></div>
+                 <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/40 px-1.5 py-0.5 rounded">
+                   <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></div>
+                   <span className="text-[8px] font-black text-white tracking-widest uppercase">LIVE</span>
+                 </div>
+                 
+                 <div className="absolute bottom-2 right-2 text-[7px] font-mono text-white/40">
+                   {new Date().toLocaleTimeString()}
+                 </div>
+
+                 {/* Warning Text when face not detected */}
+                 {faceDetectionStatus.includes('⚠️') && (
+                   <div className="absolute inset-0 flex items-center justify-center bg-red-900/60 backdrop-blur-[2px]">
+                      <p className="text-[10px] font-black text-white text-center px-2 animate-bounce uppercase tracking-tighter">FACE NOT DETECTED • WARNING</p>
+                   </div>
+                 )}
+               </div>
+
+               {/* Monitor Footer */}
+               <div className="bg-black/90 px-3 py-2 flex flex-col items-center justify-center border-t border-white/10 text-center">
+                 <p className="text-[9px] font-black text-blue-400 uppercase tracking-tighter leading-tight">S.P Sir Monitoring</p>
+                 <p className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">Your Camera</p>
+               </div>
             </div>
           </div>
         </div>
