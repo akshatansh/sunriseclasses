@@ -526,7 +526,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         canvas.height = 1700;
         // ... we would need the drawing logic here too, or reuse a hidden canvas
         // For now, let's just stick to URL/Text share but improve the fallback
-        
+
         if (navigator.share) {
           await navigator.share({
             title: 'My Sunrise Classes Result',
@@ -603,14 +603,14 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         } catch (e) {
           // Fallback if logo fails
           ctx.fillStyle = '#eab308';
-          ctx.beginPath(); ctx.arc(750, 225, 75, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.arc(750, 225, 75, 0, Math.PI * 2); ctx.fill();
         }
 
         ctx.textAlign = 'center';
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 110px serif';
         ctx.fillText('SUNRISE CLASSES', 750, 430);
-        
+
         ctx.fillStyle = '#fbbf24';
         ctx.font = 'bold 40px sans-serif';
         ctx.fillText('AN INSTITUTE OF EXCELLENCE • CHAMPANAGAR, PURNIA', 750, 500);
@@ -632,17 +632,17 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             const img = await loadImage(studentPhoto);
             ctx.save();
             ctx.beginPath();
-            ctx.arc(750, photoY, photoSize/2, 0, Math.PI * 2);
+            ctx.arc(750, photoY, photoSize / 2, 0, Math.PI * 2);
             ctx.clip();
-            ctx.drawImage(img, 750 - photoSize/2, photoY - photoSize/2, photoSize, photoSize);
+            ctx.drawImage(img, 750 - photoSize / 2, photoY - photoSize / 2, photoSize, photoSize);
             ctx.restore();
             ctx.strokeStyle = '#eab308';
             ctx.lineWidth = 12;
             ctx.stroke();
           } catch (e) {
-             // Initial placeholder if photo fails
-             ctx.fillStyle = '#f8fafc';
-             ctx.beginPath(); ctx.arc(750, photoY, photoSize/2, 0, Math.PI * 2); ctx.fill();
+            // Initial placeholder if photo fails
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath(); ctx.arc(750, photoY, photoSize / 2, 0, Math.PI * 2); ctx.fill();
           }
         }
 
@@ -673,14 +673,14 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         // 6. Verified Seal & Signature
         // Seal
         ctx.fillStyle = '#eab308';
-        ctx.beginPath(); ctx.arc(300, 1850, 100, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(300, 1850, 100, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px sans-serif';
         ctx.fillText('OFFICIAL', 300, 1840); ctx.fillText('VERIFIED', 300, 1870);
 
         // Signature
         ctx.fillStyle = '#0f172a';
         ctx.font = 'bold 40px serif';
-        ctx.fillText('Akshat Ansh', 1200, 1850);
+        ctx.fillText('Surya Parkash Jha', 1200, 1850);
         ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(1050, 1865); ctx.lineTo(1350, 1865); ctx.stroke();
         ctx.font = 'bold 25px sans-serif'; ctx.fillStyle = '#64748b';
@@ -711,16 +711,16 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           <div id="result-card" className="bg-white rounded-[3rem] overflow-hidden shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] border-[16px] border-slate-900 relative">
             {/* Artistic Inner Border */}
             <div className="absolute inset-0 border-[2px] border-yellow-500/40 m-4 rounded-[2.5rem] pointer-events-none"></div>
-            
+
             {/* Header Section */}
             <div className="bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] p-12 text-center text-white relative overflow-hidden">
               <div className="absolute -top-10 -left-10 w-40 h-40 bg-yellow-500/10 rounded-full blur-3xl"></div>
               <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
-              
+
               <div className="absolute top-8 right-8 bg-yellow-500 text-black text-[10px] font-black px-4 py-2 rounded-full rotate-12 shadow-2xl border-2 border-white flex items-center gap-1">
                 <CheckCircle className="h-3 w-3" /> VERIFIED
               </div>
-              
+
               <img src="/sunrise-logo.png" alt="Logo" className="h-24 w-24 mx-auto mb-6 bg-white rounded-3xl p-3 shadow-2xl transform hover:rotate-6 transition-transform duration-500" />
               <h2 className="text-4xl font-black tracking-tight uppercase mb-2 drop-shadow-2xl">Sunrise Classes</h2>
               <p className="text-xs text-blue-300 font-bold tracking-[0.4em] uppercase opacity-90">Champanagar, Purnia, Bihar</p>
@@ -860,7 +860,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       <style dangerouslySetInnerHTML={{
         __html: `
         /* Hide global layout elements during test */
-        header, footer, nav, .navbar, .whatsapp-float, #whatsapp-widget { display: none !important; }
+        header, footer, nav, .navbar, .whatsapp-float, #whatsapp-widget, [class*="whatsapp"], [id*="whatsapp"], .wa-float, .floating-whatsapp { display: none !important; }
         
         @media print { body { display: none !important; } }
         .no-print { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
@@ -952,27 +952,27 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         <div className="h-1 bg-white/10 w-full overflow-hidden">
           <div className="h-full bg-yellow-500 transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
         </div>
-        
+
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           <div className="flex items-center gap-6">
-             <div className="flex items-center gap-3 bg-white/5 pr-6 pl-2 py-2 rounded-full border border-white/10">
-                {studentPhoto ? (
-                  <img src={studentPhoto} alt="Student" className="h-12 w-12 rounded-full object-cover border-2 border-yellow-500/50" />
-                ) : (
-                  <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center border-2 border-white/20">
-                    <Users className="h-6 w-6 text-white" />
-                  </div>
-                )}
-                <div>
-                  <p className="text-[10px] text-blue-300 font-black uppercase tracking-widest leading-tight">Student</p>
-                  <p className="text-sm font-bold text-white">{studentName}</p>
+            <div className="flex items-center gap-3 bg-white/5 pr-6 pl-2 py-2 rounded-full border border-white/10">
+              {studentPhoto ? (
+                <img src={studentPhoto} alt="Student" className="h-12 w-12 rounded-full object-cover border-2 border-yellow-500/50" />
+              ) : (
+                <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center border-2 border-white/20">
+                  <Users className="h-6 w-6 text-white" />
                 </div>
-             </div>
+              )}
+              <div>
+                <p className="text-[10px] text-blue-300 font-black uppercase tracking-widest leading-tight">Student</p>
+                <p className="text-sm font-bold text-white">{studentName}</p>
+              </div>
+            </div>
 
-             <div className="hidden md:block">
-                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-tight">Subject</p>
-                <p className="text-sm font-bold text-white/90">{test.subject}</p>
-             </div>
+            <div className="hidden md:block">
+              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-tight">Subject</p>
+              <p className="text-sm font-bold text-white/90">{test.subject}</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-4 sm:gap-8">
@@ -999,7 +999,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 <span className={`text-xl font-black font-mono leading-none ${timeLeft < 300 ? 'text-white' : 'text-yellow-500'}`}>{formatTime(timeLeft)}</span>
               </div>
             </div>
-            
+
             <button
               onClick={() => setLanguage(l => l === 'EN' ? 'HI' : 'EN')}
               className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors text-xs font-bold"
@@ -1042,8 +1042,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                             >
                               <RefreshCw className="h-5 w-5 transform rotate-90" />
                             </button>
-                            <button 
-                              onClick={() => setMarkedForReview(prev => ({ ...prev, [q.id]: !prev[q.id] }))} 
+                            <button
+                              onClick={() => setMarkedForReview(prev => ({ ...prev, [q.id]: !prev[q.id] }))}
                               className={`text-xs font-black px-4 py-2 rounded-xl transition-all ${markedForReview[q.id] ? 'bg-yellow-400 text-white shadow-lg shadow-yellow-400/30' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
                             >
                               {markedForReview[q.id] ? 'MARKED' : 'MARK'}
@@ -1055,9 +1055,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                           {['A', 'B', 'C', 'D'].map((opt) => {
                             const isSelected = answers[q.id] === opt;
                             return (
-                              <button 
-                                key={opt} 
-                                onClick={() => handleOptionSelect(q.id, opt)} 
+                              <button
+                                key={opt}
+                                onClick={() => handleOptionSelect(q.id, opt)}
                                 className={`text-left px-6 py-5 rounded-2xl border-2 transition-all group relative overflow-hidden ${isSelected ? 'border-blue-600 bg-blue-50/50 shadow-lg shadow-blue-600/10' : 'border-gray-100 hover:border-blue-200 hover:bg-gray-50'}`}
                               >
                                 {isSelected && <div className="absolute top-0 right-0 p-2 text-blue-600"><CheckCircle className="h-5 w-5" /></div>}
@@ -1084,7 +1084,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 >
                   ← Previous
                 </button>
-                
+
                 <div className="text-gray-400 font-black tracking-widest text-sm">
                   {currentQuestionIdx + 1} / {questions.length}
                 </div>
@@ -1134,15 +1134,6 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 <button key={q.id} onClick={() => { setCurrentQuestionIdx(i); setShowPalette(false); }} className={`h-12 w-12 rounded-xl text-sm font-bold flex items-center justify-center border-2 ${currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2' : ''} ${answers[q.id] ? 'bg-blue-600 border-blue-600 text-white' : markedForReview[q.id] ? 'bg-yellow-400 border-yellow-400 text-white' : 'bg-white border-gray-200'}`}>{i + 1}</button>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {!result && (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end sm:hidden">
-          {/* Keep bottom widget for mobile only as header is small */}
-          <div className="bg-black rounded-lg overflow-hidden shadow-2xl border-2 border-white w-24 h-24">
-            <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transform scale-x-[-1] ${cameraActive ? 'opacity-100' : 'opacity-30'}`} />
           </div>
         </div>
       )}
