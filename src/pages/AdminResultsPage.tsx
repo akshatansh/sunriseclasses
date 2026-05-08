@@ -86,6 +86,7 @@ export default function AdminResultsPage() {
   const [newAdminForm, setNewAdminForm] = useState({ username: '', password: '', role: 'admin', class_access: 'all' });
   const [notificationText, setNotificationText] = useState('');
   const [isSavingNotification, setIsSavingNotification] = useState(false);
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [notices, setNotices] = useState<NoticeRecord[]>([]);
   const [newNoticeForm, setNewNoticeForm] = useState<{ title: string, content: string, type: 'exam' | 'holiday' | 'general' }>({ title: '', content: '', type: 'general' });
   const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'homework' | 'attendance' | 'settings' | 'youtube' | 'onlinetest'>('marks');
@@ -244,8 +245,9 @@ export default function AdminResultsPage() {
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!studentForm.name.trim() || !studentForm.className.trim()) return;
+    if (!studentForm.name.trim() || !studentForm.className.trim() || isAddingStudent) return;
 
+    setIsAddingStudent(true);
     try {
       await addStudentToDB({
         name: formatName(studentForm.name),
@@ -262,6 +264,8 @@ export default function AdminResultsPage() {
     } catch (err) {
       console.error(err);
       alert("Failed to add student to database.");
+    } finally {
+      setIsAddingStudent(false);
     }
   };
 
@@ -1140,10 +1144,11 @@ export default function AdminResultsPage() {
                         </div>
                         <button
                           type="submit"
-                          className="inline-flex items-center gap-2 rounded-full bg-[#0f2a5c] px-6 py-3 text-sm font-bold text-white hover:bg-[#173873]"
+                          disabled={isAddingStudent}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#0f2a5c] px-6 py-3 text-sm font-bold text-white hover:bg-[#173873] disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                           <Plus size={16} />
-                          Save Student
+                          {isAddingStudent ? 'Saving...' : 'Save Student'}
                         </button>
                       </form>
                     </div>
