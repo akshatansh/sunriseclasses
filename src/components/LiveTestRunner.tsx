@@ -160,12 +160,14 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         
         if (savedProgress) {
           const parsed = JSON.parse(savedProgress);
-          setQuestions(parsed.questions);
-          setAnswers(parsed.answers);
-          setMarkedForReview(parsed.markedForReview || {});
-          if (parsed.timeLeft < timeLeft) setTimeLeft(parsed.timeLeft);
-          setLoading(false);
-          return;
+          if (parsed.questions && Array.isArray(parsed.questions)) {
+            setQuestions(parsed.questions);
+            setAnswers(parsed.answers || {});
+            setMarkedForReview(parsed.markedForReview || {});
+            if (parsed.timeLeft < timeLeft) setTimeLeft(parsed.timeLeft);
+            setLoading(false);
+            return;
+          }
         }
 
         const data = await getTestQuestions(test.id);
