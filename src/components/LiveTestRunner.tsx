@@ -386,10 +386,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        try { await videoRef.current.play(); } catch (e) {}
+        try { 
+          await videoRef.current.play(); 
+          setCameraActive(true); // Show video immediately
+        } catch (e) {}
       }
 
-      setCameraActive(true);
       setCameraError(null);
       setShowCameraGuide(false);
       setCameraRetrying(false);
@@ -815,7 +817,22 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               <div className={`h-1.5 w-1.5 rounded-full ${faceDetectionStatus.includes('⚠️') ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
             </div>
             <div className="relative h-full w-full bg-gray-900">
-              <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transform scale-x-[-1] ${cameraActive ? 'opacity-100' : 'opacity-30'}`} />
+              <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transform scale-x-[-1] transition-opacity duration-500 ${cameraActive ? 'opacity-100' : 'opacity-0'}`} />
+              
+              {!cameraActive && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                  <RefreshCw className="h-6 w-6 text-blue-500 animate-spin" />
+                  <span className="text-[8px] text-gray-400 font-bold uppercase">Starting Camera...</span>
+                </div>
+              )}
+
+              {cameraActive && faceDetectionStatus === 'Initializing AI...' && (
+                <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-2">
+                  <RefreshCw className="h-6 w-6 text-white animate-spin" />
+                  <span className="text-[8px] text-white font-bold uppercase">AI Initializing...</span>
+                </div>
+              )}
+
               <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-[2px] py-1 px-2 text-center">
                 <p className="text-[7px] sm:text-[10px] font-bold text-white truncate">{faceDetectionStatus}</p>
               </div>
