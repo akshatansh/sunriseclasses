@@ -103,18 +103,35 @@ export default function ResultsPage() {
     };
   }, [data, selectedClass]);
 
+  // Top performers section: previous month ke results dikhane hain
+  // (May chal raha hai → April ka performance show ho)
+  const prevMonthDate = useMemo(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() - 1, 15); // previous month ki mid-date
+  }, []);
+
   const referenceDate = useMemo(() => {
-    if (classFilteredData.results.length === 0) return new Date();
-    const latestTest = classFilteredData.results.reduce((latest, current) => {
-      return new Date(current.testDate) > new Date(latest.testDate) ? current : latest;
+    if (classFilteredData.results.length === 0) return prevMonthDate;
+    // Check karo ki previous month mein koi test tha?
+    const prevYear = prevMonthDate.getFullYear();
+    const prevMonth = prevMonthDate.getMonth();
+    const prevMonthTests = classFilteredData.results.filter(r => {
+      const d = new Date(r.testDate);
+      return d.getFullYear() === prevYear && d.getMonth() === prevMonth;
     });
+    // Agar previous month mein tests hain to use karo, warna latest test ki date
+    if (prevMonthTests.length > 0) return prevMonthDate;
+    const latestTest = classFilteredData.results.reduce((latest, current) =>
+      new Date(current.testDate) > new Date(latest.testDate) ? current : latest
+    );
     return new Date(latestTest.testDate);
-  }, [classFilteredData.results]);
+  }, [classFilteredData.results, prevMonthDate]);
 
   const monthLabel = getCurrentMonthLabel(referenceDate);
   const monthlySummaries = useMemo(() => getMonthlyStudentSummaries(classFilteredData, referenceDate), [classFilteredData, referenceDate]);
   const allStudentResults = useMemo(() => getAllStudentResults(classFilteredData), [classFilteredData]);
   const topThree = monthlySummaries.slice(0, 3);
+
 
   const filteredStudents = allStudentResults.filter(({ student }) => {
     const search = query.trim().toLowerCase();
