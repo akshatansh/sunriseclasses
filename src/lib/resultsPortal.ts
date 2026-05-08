@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-const ENABLE_DUMMY_DATA = true; // Set this to false to instantly remove dummy marks
+const ENABLE_DUMMY_DATA = false; // Dummy marks disabled - only real Supabase data shown
 
 export interface StudentRecord {
   id: string;
@@ -99,42 +99,7 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
       });
     }
 
-    if (ENABLE_DUMMY_DATA) {
-      students.forEach((s, idx) => {
-        let mathMarks = Math.max(0, 42 - (idx % 10)); 
-        let sciMarks = Math.max(0, 40 - (idx % 15));  
-
-        const name = s.name.toLowerCase();
-        if (name.includes('rupam kumari')) {
-          mathMarks = 50; sciMarks = 49; 
-        } else if (name.includes('sunny kumar')) {
-          mathMarks = 49; sciMarks = 48; 
-        } else if (name.includes('shivani kumari')) {
-          mathMarks = 48; sciMarks = 47; 
-        }
-
-        results.push({
-          id: `dummy-res-${s.id}-math`,
-          studentId: s.id,
-          testName: 'Mathematics Mock Test',
-          subject: 'Mathematics',
-          testDate: new Date().toISOString(),
-          marksObtained: mathMarks,
-          totalMarks: 50,
-          createdAt: new Date().toISOString()
-        });
-        results.push({
-          id: `dummy-res-${s.id}-sci`,
-          studentId: s.id,
-          testName: 'Science Weekly Test',
-          subject: 'Science',
-          testDate: new Date().toISOString(),
-          marksObtained: sciMarks,
-          totalMarks: 50,
-          createdAt: new Date().toISOString()
-        });
-      });
-    }
+    // Dummy data disabled - only real test results from Supabase are shown
 
     return { students, results };
   } catch (error) {

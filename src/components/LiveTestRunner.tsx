@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest, logProctoringEvent } from '../lib/onlineTests';
-import { AlertTriangle, CheckCircle, Clock, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, ShieldAlert, Camera, CameraOff, RefreshCw } from 'lucide-react';
 import * as tf from '@tensorflow/tfjs';
 import * as blazeface from '@tensorflow-models/blazeface';
 
@@ -29,6 +29,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const [cameraActive, setCameraActive] = useState(false);
   const [faceDetectionStatus, setFaceDetectionStatus] = useState<string>('Initializing AI...');
   const [faceWarnings, setFaceWarnings] = useState(0);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [showCameraGuide, setShowCameraGuide] = useState(false);
+  const [cameraRetrying, setCameraRetrying] = useState(false);
+  const cameraStartRef = React.useRef<(() => void) | null>(null);
 
   const captureScreenshot = useCallback(async (): Promise<Blob | undefined> => {
     if (!videoRef.current) return undefined;
@@ -165,59 +169,16 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     };
   }, [result]);
 
-  // Anti-Cheat: AI Camera Proctoring
+  // Anti-Cheat: AI Camera Proctoring (Mobile-Fixed)
   useEffect(() => {
-    if (result || loading) return; // Don't run if test is finished or questions are still loading
-    
+    if (result || loading) return;
+
     let stream: MediaStream | null = null;
     let detectionInterval: NodeJS.Timeout;
-
-    const startCameraAndAI = async () => {
-      try {
-        // 1. Request Camera Permission
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-        setCameraActive(true);
-        setFaceDetectionStatus('Loading AI Model...');
-
-        // 2. Load TensorFlow & Blazeface
-        await tf.ready();
-        const model = await blazeface.load();
-        setFaceDetectionStatus('AI Monitoring Active');
-
-        // 3. Start Detection Loop
-        detectionInterval = setInterval(async () => {
-          if (videoRef.current && videoRef.current.readyState === 4) { // HAVE_ENOUGH_DATA
-            try {
-              const predictions = await model.estimateFaces(videoRef.current, false);
-              
-              if (predictions.length === 0) {
-                setFaceDetectionStatus('WARNING: No face detected!');
-                handleWarning('No face detected. Please look at the camera.');
-              } else if (predictions.length > 1) {
-                setFaceDetectionStatus('WARNING: Multiple faces detected!');
-                handleWarning('Multiple faces detected. Please sit alone.');
-              } else {
-                setFaceDetectionStatus('AI Monitoring Active');
-              }
-            } catch (err) {
-              console.error('Face detection error:', err);
-            }
-          }
-        }, 3000); // Check every 3 seconds
-
-      } catch (err) {
-        console.error('Camera/AI initialization error:', err);
-        alert('Camera access is strictly required for this test. Please allow camera and refresh the page.');
-      }
-    };
 
     const handleWarning = async (msg: string) => {
       const blob = await captureScreenshot();
       logProctoringEvent(test.id, studentId, msg, blob);
-
       setFaceWarnings(prev => {
         const newCount = prev + 1;
         if (newCount >= 5) {
@@ -228,12 +189,105 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       });
     };
 
+    const startCameraAndAI = async () => {
+      setCameraRetrying(true);
+      setCameraError(null);
+
+      // Step 1: Try front camera first, fallback to any camera
+      const cameraConstraints = [
+        { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+        { video: { facingMode: 'user' }, audio: false },
+        { video: true, audio: false }, // Ultimate fallback - any camera
+      ];
+
+      let gotStream = false;
+      for (const constraints of cameraConstraints) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          gotStream = true;
+          break;
+        } catch (err: any) {
+          // If permission denied, stop trying other constraints
+          if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+            setCameraError('permission_denied');
+            setShowCameraGuide(true);
+            setCameraRetrying(false);
+            logProctoringEvent(test.id, studentId, 'Camera permission denied by student', undefined);
+            return;
+          }
+          // If no camera device found at all
+          if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
+            setCameraError('no_device');
+            setCameraRetrying(false);
+            logProctoringEvent(test.id, studentId, 'No camera device found on device', undefined);
+            return;
+          }
+          // OverconstrainedError or others → try next constraint
+          console.warn('Camera constraint failed, trying fallback:', err?.name);
+        }
+      }
+
+      if (!gotStream || !stream) {
+        setCameraError('unknown');
+        setCameraRetrying(false);
+        logProctoringEvent(test.id, studentId, 'Camera failed to start (unknown reason)', undefined);
+        return;
+      }
+
+      // Step 2: Attach stream to video element
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        // iOS Safari requires explicit play() call
+        try {
+          await videoRef.current.play();
+        } catch (playErr) {
+          console.warn('Video play() failed (may be autoplay policy):', playErr);
+        }
+      }
+
+      setCameraActive(true);
+      setCameraError(null);
+      setShowCameraGuide(false);
+      setCameraRetrying(false);
+      setFaceDetectionStatus('Loading AI Model...');
+
+      // Step 3: Load TensorFlow & Blazeface
+      try {
+        await tf.ready();
+        const model = await blazeface.load();
+        setFaceDetectionStatus('AI Monitoring Active');
+
+        // Step 4: Start Detection Loop
+        detectionInterval = setInterval(async () => {
+          if (videoRef.current && videoRef.current.readyState >= 2) {
+            try {
+              const predictions = await model.estimateFaces(videoRef.current, false);
+              if (predictions.length === 0) {
+                setFaceDetectionStatus('⚠️ No face detected!');
+                handleWarning('No face detected. Please look at the camera.');
+              } else if (predictions.length > 1) {
+                setFaceDetectionStatus('⚠️ Multiple faces detected!');
+                handleWarning('Multiple faces detected. Please sit alone.');
+              } else {
+                setFaceDetectionStatus('AI Monitoring Active');
+              }
+            } catch (err) {
+              console.error('Face detection error:', err);
+            }
+          }
+        }, 3000);
+      } catch (aiErr) {
+        console.error('AI model load failed:', aiErr);
+        setFaceDetectionStatus('AI Model Failed');
+        // Camera is still active for screenshot purposes
+      }
+    };
+
+    cameraStartRef.current = startCameraAndAI;
     startCameraAndAI();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      if (stream) stream.getTracks().forEach(track => track.stop());
       clearInterval(detectionInterval);
     };
   }, [result, loading, finishTest, captureScreenshot, studentId, test.id]);
@@ -302,6 +356,42 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               className="bg-red-600 text-white py-2 px-6 rounded-md font-bold hover:bg-red-700"
             >
               I Understand, Return to Test
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Camera Permission Guide Modal */}
+      {showCameraGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full text-center shadow-2xl">
+            <CameraOff className="h-14 w-14 text-orange-500 mx-auto mb-3" />
+            <h3 className="text-xl font-bold text-gray-900 mb-1">Camera Permission Required</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Camera is needed for proctoring. Please follow these steps:
+            </p>
+            <ol className="text-left text-sm text-gray-700 space-y-2 mb-5 bg-orange-50 rounded-lg p-4">
+              <li className="flex gap-2"><span className="font-bold text-orange-600">1.</span> <span>Tap the <strong>🔒 lock icon</strong> or <strong>ℹ️ info icon</strong> in your browser address bar</span></li>
+              <li className="flex gap-2"><span className="font-bold text-orange-600">2.</span> <span>Find <strong>"Camera"</strong> permission and set it to <strong>Allow</strong></span></li>
+              <li className="flex gap-2"><span className="font-bold text-orange-600">3.</span> <span>Tap the button below to <strong>retry</strong></span></li>
+            </ol>
+            <button
+              onClick={() => {
+                setShowCameraGuide(false);
+                setCameraError(null);
+                if (cameraStartRef.current) cameraStartRef.current();
+              }}
+              disabled={cameraRetrying}
+              className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-60 transition-all"
+            >
+              <RefreshCw className={`h-4 w-4 ${cameraRetrying ? 'animate-spin' : ''}`} />
+              {cameraRetrying ? 'Starting Camera...' : 'Retry Camera'}
+            </button>
+            <button
+              onClick={() => setShowCameraGuide(false)}
+              className="mt-2 w-full text-sm text-gray-400 hover:text-gray-600 py-1"
+            >
+              Continue without camera (recorded)
             </button>
           </div>
         </div>
@@ -378,38 +468,77 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
       {/* AI Proctoring Video Widget */}
       {!result && (
-        <div className="fixed bottom-4 right-4 z-50 bg-white rounded-xl shadow-2xl p-3 border-2 border-gray-100 w-48 pointer-events-none transition-all duration-300">
+        <div className="fixed bottom-4 right-4 z-50 bg-white rounded-xl shadow-2xl p-3 border-2 border-gray-100 w-48 transition-all duration-300">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">AI Proctoring</span>
             <span className="relative flex h-3 w-3">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${faceDetectionStatus.includes('WARNING') ? 'bg-red-400' : 'bg-green-400'}`}></span>
-              <span className={`relative inline-flex rounded-full h-3 w-3 ${faceDetectionStatus.includes('WARNING') ? 'bg-red-500' : 'bg-green-500'}`}></span>
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                cameraError ? 'bg-orange-400' : faceDetectionStatus.includes('⚠️') ? 'bg-red-400' : 'bg-green-400'
+              }`}></span>
+              <span className={`relative inline-flex rounded-full h-3 w-3 ${
+                cameraError ? 'bg-orange-500' : faceDetectionStatus.includes('⚠️') ? 'bg-red-500' : 'bg-green-500'
+              }`}></span>
             </span>
           </div>
-          
+
           <div className="relative rounded-lg bg-gray-900 overflow-hidden aspect-[4/3] border border-gray-800 shadow-inner">
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              muted 
-              className="w-full h-full object-cover transform scale-x-[-1]" 
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover transform scale-x-[-1]"
             />
-            {!cameraActive && (
-              <div className="absolute inset-0 flex items-center justify-center p-2 text-center">
-                <span className="text-[10px] text-gray-400 font-medium">Starting Camera...</span>
+            {!cameraActive && !cameraError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center gap-1">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400"></div>
+                <span className="text-[9px] text-gray-400 font-medium">
+                  {cameraRetrying ? 'Starting...' : 'Starting Camera...'}
+                </span>
+              </div>
+            )}
+            {cameraError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center gap-1 bg-gray-900">
+                <CameraOff className="h-6 w-6 text-orange-400" />
+                <span className="text-[9px] text-orange-300 font-medium">
+                  {cameraError === 'permission_denied' ? 'Camera Blocked' :
+                   cameraError === 'no_device' ? 'No Camera Found' : 'Camera Error'}
+                </span>
               </div>
             )}
           </div>
-          
+
           <div className="mt-2 text-center">
-            <p className={`text-[11px] font-bold ${faceDetectionStatus.includes('WARNING') ? 'text-red-600' : 'text-green-600'}`}>
-              {faceDetectionStatus}
-            </p>
-            {faceWarnings > 0 && (
-              <p className="text-[10px] text-red-500 font-bold mt-1 bg-red-50 py-0.5 rounded">
-                Strikes: {faceWarnings} / 5
-              </p>
+            {cameraError ? (
+              <>
+                <p className="text-[10px] font-bold text-orange-600">
+                  {cameraError === 'permission_denied' ? 'Allow camera to enable AI' :
+                   cameraError === 'no_device' ? 'No camera detected' : 'Camera unavailable'}
+                </p>
+                {cameraError === 'permission_denied' && (
+                  <button
+                    onClick={() => {
+                      setShowCameraGuide(true);
+                    }}
+                    className="mt-1 text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded hover:bg-blue-200 transition-colors"
+                  >
+                    How to Allow?
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <p className={`text-[11px] font-bold ${
+                  faceDetectionStatus.includes('⚠️') ? 'text-red-600' : 'text-green-600'
+                }`}>
+                  {faceDetectionStatus}
+                </p>
+                {faceWarnings > 0 && (
+                  <p className="text-[10px] text-red-500 font-bold mt-1 bg-red-50 py-0.5 rounded">
+                    Strikes: {faceWarnings} / 5
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
