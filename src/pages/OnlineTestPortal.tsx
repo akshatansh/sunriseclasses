@@ -233,7 +233,7 @@ export default function OnlineTestPortal() {
                 </li>
                 <li className="flex items-start gap-4 text-sm text-gray-700">
                   <div className="mt-0.5 bg-yellow-100 text-yellow-600 p-2 rounded-xl shrink-0 shadow-sm"><Mic className="h-5 w-5" /></div>
-                  <p className="leading-snug"><strong>No Talking:</strong> Room must be silent. Any noise or talking will be recorded and sent to the admin.</p>
+                  <p className="leading-snug"><strong>Live Audio Monitoring:</strong> S.P Sir is listening! Kamre mein bilkul shanti honi chahiye. Aapki ek-ek aawaz aur shor seedha S.P Sir sun rahe hain.</p>
                 </li>
                 <li className="flex items-start gap-4 text-sm text-gray-700">
                   <div className="mt-0.5 bg-blue-100 text-blue-600 p-2 rounded-xl shrink-0 shadow-sm"><Globe className="h-5 w-5" /></div>
