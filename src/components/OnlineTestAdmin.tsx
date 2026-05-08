@@ -554,7 +554,7 @@ export default function OnlineTestAdmin() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Question Image</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Question Image (Optional)</label>
                     <div className="flex items-center gap-2">
                       <div className="relative flex-grow">
                         <input 
