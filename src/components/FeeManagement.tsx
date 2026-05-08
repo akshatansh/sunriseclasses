@@ -19,8 +19,22 @@ const getDefaultFee = (className?: string | null) => {
   return 500;
 };
 
+// Default: previous month ki fees collect hoti hai
+// May chal raha hai => April ka dues
+const getPreviousMonthLabel = () => {
+  const now = new Date();
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const monthName = prev.toLocaleString('en-US', { month: 'long' });
+  const year = prev.getFullYear();
+  return `${monthName} ${year}`;
+};
+
 const FeeManagement = () => {
-  const [month, setMonth] = useState('May 2026');
+  const [month, setMonth] = useState(() => {
+    const prev = getPreviousMonthLabel();
+    // Agar previous month MONTHS list mein hai to use karo, warna pehla available month
+    return MONTHS.includes(prev) ? prev : MONTHS[0];
+  });
   const [students, setStudents] = useState<StudentFeeStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
