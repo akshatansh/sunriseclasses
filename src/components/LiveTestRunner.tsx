@@ -1029,19 +1029,19 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           <div className="h-full bg-yellow-500 transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 h-16 sm:h-20 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3 bg-white/5 pr-6 pl-2 py-2 rounded-full border border-white/10">
+            <div className="flex items-center gap-2 bg-white/5 pr-3 pl-2 py-1.5 rounded-full border border-white/10">
               {studentPhoto ? (
-                <img src={studentPhoto} alt="Student" className="h-12 w-12 rounded-full object-cover border-2 border-yellow-500/50" />
+                <img src={studentPhoto} alt="Student" className="h-9 w-9 sm:h-12 sm:w-12 rounded-full object-cover border-2 border-yellow-500/50" />
               ) : (
-                <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center border-2 border-white/20">
-                  <Users className="h-6 w-6 text-white" />
+                <div className="h-9 w-9 sm:h-12 sm:w-12 rounded-full bg-blue-600 flex items-center justify-center border-2 border-white/20">
+                  <Users className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                 </div>
               )}
               <div>
                 <p className="text-[10px] text-blue-300 font-black uppercase tracking-widest leading-tight">Student</p>
-                <p className="text-sm font-bold text-white">{studentName}</p>
+                <p className="text-xs sm:text-sm font-bold text-white truncate max-w-[80px] sm:max-w-none">{studentName.split(" ")[0]}</p>
               </div>
             </div>
 
@@ -1052,9 +1052,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           </div>
 
           <div className="flex items-center gap-4 sm:gap-8">
-            {/* AI Monitoring Status (Minimal) */}
+            {/* AI Monitoring Status (Minimal) - hidden on mobile */}
             {!result && (
-              <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
+              <div className="hidden sm:flex items-center gap-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
                 <div className="flex flex-col items-end">
                   <p className="text-[9px] text-gray-400 font-black uppercase tracking-tighter leading-none mb-1">AI PROCTORING</p>
                   <div className="flex items-center gap-2">
@@ -1065,11 +1065,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               </div>
             )}
 
-            <div className={`flex flex-col items-center justify-center min-w-[100px] sm:min-w-[140px] px-4 py-2 rounded-2xl border-2 transition-all duration-500 ${timeLeft < 300 ? 'bg-red-500/20 border-red-500 animate-pulse scale-105' : 'bg-white/5 border-white/10'}`}>
+            <div className={`flex flex-col items-center justify-center min-w-[80px] sm:min-w-[120px] px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl border-2 transition-all duration-500 ${timeLeft < 300 ? 'bg-red-500/20 border-red-500 animate-pulse scale-105' : 'bg-white/5 border-white/10'}`}>
               <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">Time Remaining</p>
               <div className="flex items-center gap-2">
                 <Clock className={`h-4 w-4 ${timeLeft < 300 ? 'text-red-400' : 'text-yellow-500'}`} />
-                <span className={`text-xl font-black font-mono leading-none ${timeLeft < 300 ? 'text-white' : 'text-yellow-500'}`}>{formatTime(timeLeft)}</span>
+                <span className={`text-lg sm:text-xl font-black font-mono leading-none ${timeLeft < 300 ? 'text-white' : 'text-yellow-500'}`}>{formatTime(timeLeft)}</span>
               </div>
             </div>
 
@@ -1083,7 +1083,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 mt-4 sm:mt-6 grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8 pb-32 sm:pb-20">
         <div className="lg:col-span-3 space-y-6">
           {questions.length > 0 && (
             <div className="animate-in slide-in-from-right-4 duration-300">
@@ -1091,9 +1091,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 const q = questions[currentQuestionIdx];
                 const idx = currentQuestionIdx;
                 return (
-                  <div key={q.id} className={`bg-white rounded-2xl shadow-xl border-2 p-8 ${answers[q.id] ? 'border-blue-500/20' : 'border-gray-100'}`}>
+                  <div key={q.id} className={`bg-white rounded-2xl shadow-xl border-2 p-4 sm:p-8 ${answers[q.id] ? 'border-blue-500/20' : 'border-gray-100'}`}>
                     <div className="flex flex-col sm:flex-row gap-6">
-                      <div className={`flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black shadow-lg ${answers[q.id] ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                      <div className={`flex-shrink-0 w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-base sm:text-xl font-black shadow-lg ${answers[q.id] ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
                         {idx + 1}
                       </div>
                       <div className="flex-grow">
@@ -1105,7 +1105,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                                 <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">Diagram</div>
                               </div>
                             )}
-                            <p className="font-bold text-gray-900 leading-relaxed text-xl sm:text-2xl" style={{ fontSize: `${fontSize}px` }}>{q.question_text}</p>
+                            <p className="font-bold text-gray-900 leading-relaxed text-base sm:text-xl" style={{ fontSize: `${Math.min(fontSize, 18)}px` }}>{q.question_text}</p>
                           </div>
                           <div className="flex items-center gap-3">
                             <button
@@ -1124,14 +1124,14 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                           </div>
                         </div>
 
-                        <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                           {['A', 'B', 'C', 'D'].map((opt) => {
                             const isSelected = answers[q.id] === opt;
                             return (
                               <button
                                 key={opt}
                                 onClick={() => handleOptionSelect(q.id, opt)}
-                                className={`text-left px-6 py-5 rounded-2xl border-2 transition-all group relative overflow-hidden ${isSelected ? 'border-blue-600 bg-blue-50/50 shadow-lg shadow-blue-600/10' : 'border-gray-100 hover:border-blue-200 hover:bg-gray-50'}`}
+                                className={`text-left px-4 py-4 sm:px-6 sm:py-5 rounded-xl sm:rounded-2xl border-2 transition-all group relative overflow-hidden active:scale-95 ${isSelected ? 'border-blue-600 bg-blue-50/50 shadow-lg shadow-blue-600/10' : 'border-gray-100 hover:border-blue-200 hover:bg-gray-50'}`}
                               >
                                 {isSelected && <div className="absolute top-0 right-0 p-2 text-blue-600"><CheckCircle className="h-5 w-5" /></div>}
                                 <span className={`font-black mr-3 ${isSelected ? 'text-blue-600' : 'text-gray-300'}`}>{opt}.</span>
@@ -1153,7 +1153,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 <button
                   disabled={currentQuestionIdx === 0}
                   onClick={() => setCurrentQuestionIdx(prev => prev - 1)}
-                  className="px-8 py-4 bg-white border-2 border-gray-100 rounded-2xl font-bold text-gray-500 hover:bg-gray-50 hover:border-gray-200 transition-all disabled:opacity-30 disabled:pointer-events-none flex items-center gap-2"
+                  className="px-4 sm:px-8 py-3 sm:py-4 bg-white border-2 border-gray-100 rounded-xl sm:rounded-2xl font-bold text-gray-500 hover:bg-gray-50 hover:border-gray-200 transition-all disabled:opacity-30 disabled:pointer-events-none flex items-center gap-2 text-sm sm:text-base"
                 >
                   ← Previous
                 </button>
@@ -1165,14 +1165,14 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 {currentQuestionIdx === questions.length - 1 ? (
                   <button
                     onClick={() => setShowSubmitSummary(true)}
-                    className="px-8 py-4 bg-green-600 text-white rounded-2xl font-black shadow-lg shadow-green-600/30 hover:bg-green-700 transition-all transform hover:-translate-y-1 active:scale-95"
+                    className="px-4 sm:px-8 py-3 sm:py-4 bg-green-600 text-white rounded-xl sm:rounded-2xl font-black shadow-lg shadow-green-600/30 hover:bg-green-700 transition-all active:scale-95 text-sm sm:text-base"
                   >
                     Finish Test
                   </button>
                 ) : (
                   <button
                     onClick={() => setCurrentQuestionIdx(prev => prev + 1)}
-                    className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center gap-2"
+                    className="px-4 sm:px-10 py-3 sm:py-4 bg-blue-600 text-white rounded-xl sm:rounded-2xl font-black shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-2 text-sm sm:text-base"
                   >
                     Next Question →
                   </button>
@@ -1194,7 +1194,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         </div>
       </div>
 
-      <button onClick={() => setShowPalette(true)} className="lg:hidden fixed bottom-6 left-6 z-40 bg-gray-900 text-white p-4 rounded-full shadow-2xl flex items-center gap-2">
+      <button onClick={() => setShowPalette(true)} className="lg:hidden fixed bottom-4 left-4 z-40 bg-gray-900 text-white p-3 rounded-full shadow-2xl flex items-center gap-2 text-sm">
         <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
         Nav
       </button>
@@ -1213,12 +1213,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
       {/* FLOATING SECURITY MONITOR */}
       {!result && (
-        <div className="fixed bottom-6 right-4 z-[200] group">
+        <div className="fixed bottom-4 right-3 z-[200] group">
           <div className="relative">
             <div className="absolute inset-0 bg-red-600/20 rounded-2xl blur-xl animate-pulse group-hover:bg-blue-600/20"></div>
-            <div className="relative bg-[#0f172a] rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl w-48 flex flex-col transition-all duration-500 hover:scale-105">
+            <div className="relative bg-[#0f172a] rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl w-36 sm:w-48 flex flex-col transition-all duration-500 hover:scale-105">
               {/* Camera Viewport */}
-              <div className="relative bg-black" style={{height: '148px'}}>
+              <div className="relative bg-black" style={{height: '120px'}}>
                 <video
                   ref={videoRef}
                   autoPlay
