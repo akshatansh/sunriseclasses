@@ -657,7 +657,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         const photoSize = 280;
         if (studentPhoto) {
           try {
-            const img = await loadImage(studentPhoto);
+            // Force proxy for Supabase images to ensure canvas doesn't get tainted
+            const photoUrl = studentPhoto.includes('supabase.co') 
+              ? `https://images.weserv.nl/?url=${encodeURIComponent(studentPhoto.replace(/^https?:\/\//, ''))}&cb=${new Date().getTime()}`
+              : studentPhoto;
+              
+            const img = await loadImage(photoUrl);
             ctx.save();
             ctx.beginPath();
             ctx.arc(750, photoY, photoSize / 2, 0, Math.PI * 2);
@@ -668,6 +673,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             ctx.lineWidth = 12;
             ctx.stroke();
           } catch (e) {
+            console.error("Photo rendering failed:", e);
             // Initial placeholder if photo fails
             ctx.fillStyle = '#f8fafc';
             ctx.beginPath(); ctx.arc(750, photoY, photoSize / 2, 0, Math.PI * 2); ctx.fill();
@@ -718,12 +724,17 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         ctx.font = '18px monospace'; ctx.fillStyle = '#cbd5e1';
         ctx.fillText(`VERIFICATION ID: SC-${test.id.slice(0, 8).toUpperCase()}`, 750, 2030);
 
-        // Download
-        const link = document.createElement('a');
-        const safeName = studentName.replace(/\s+/g, '_');
-        link.download = `Certificate_${safeName}.jpg`;
-        link.href = canvas.toDataURL('image/jpeg', 0.98);
-        link.click();
+        // Download using toBlob for better mobile support
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          const safeName = studentName.replace(/\s+/g, '_');
+          link.download = `Certificate_${safeName}.jpg`;
+          link.href = url;
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }, 'image/jpeg', 0.98);
       } catch (err) {
         console.error(err);
         alert("Downloading certificate...");
