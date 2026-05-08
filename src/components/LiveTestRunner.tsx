@@ -193,11 +193,19 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       setCameraRetrying(true);
       setCameraError(null);
 
-      // Step 1: Try front camera first, fallback to any camera
+      // Guard: Browser camera API support check
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+        setCameraError('not_supported');
+        setCameraRetrying(false);
+        logProctoringEvent(test.id, studentId, 'Camera API not supported on this browser/device', undefined);
+        return;
+      }
+
+      // Step 1: Try multiple constraint profiles (front cam → any cam)
       const cameraConstraints = [
         { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
         { video: { facingMode: 'user' }, audio: false },
-        { video: true, audio: false }, // Ultimate fallback - any camera
+        { video: true, audio: false },
       ];
 
       let gotStream = false;
@@ -207,7 +215,6 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           gotStream = true;
           break;
         } catch (err: any) {
-          // If permission denied, stop trying other constraints
           if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
             setCameraError('permission_denied');
             setShowCameraGuide(true);
@@ -215,14 +222,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             logProctoringEvent(test.id, studentId, 'Camera permission denied by student', undefined);
             return;
           }
-          // If no camera device found at all
           if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
             setCameraError('no_device');
             setCameraRetrying(false);
             logProctoringEvent(test.id, studentId, 'No camera device found on device', undefined);
             return;
           }
-          // OverconstrainedError or others → try next constraint
           console.warn('Camera constraint failed, trying fallback:', err?.name);
         }
       }
@@ -230,19 +235,49 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       if (!gotStream || !stream) {
         setCameraError('unknown');
         setCameraRetrying(false);
-        logProctoringEvent(test.id, studentId, 'Camera failed to start (unknown reason)', undefined);
+        logProctoringEvent(test.id, studentId, 'Camera failed to start (all constraints failed)', undefined);
         return;
       }
 
-      // Step 2: Attach stream to video element
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        // iOS Safari requires explicit play() call
-        try {
-          await videoRef.current.play();
-        } catch (playErr) {
-          console.warn('Video play() failed (may be autoplay policy):', playErr);
-        }
+      // Step 2: Wait for videoRef to be ready in DOM (race condition fix)
+      let videoEl = videoRef.current;
+      if (!videoEl) {
+        // Wait up to 2 seconds for DOM to mount
+        await new Promise<void>(resolve => {
+          let attempts = 0;
+          const check = setInterval(() => {
+            attempts++;
+            if (videoRef.current || attempts > 20) {
+              clearInterval(check);
+              resolve();
+            }
+          }, 100);
+        });
+        videoEl = videoRef.current;
+      }
+
+      if (!videoEl) {
+        setCameraError('unknown');
+        setCameraRetrying(false);
+        stream.getTracks().forEach(t => t.stop());
+        logProctoringEvent(test.id, studentId, 'Video element not found in DOM', undefined);
+        return;
+      }
+
+      // Step 3: Attach stream — use loadedmetadata event for reliable iOS/Android play
+      videoEl.srcObject = stream;
+      await new Promise<void>((resolve) => {
+        const onReady = () => { videoEl!.removeEventListener('loadedmetadata', onReady); resolve(); };
+        videoEl!.addEventListener('loadedmetadata', onReady);
+        // Fallback timeout if event never fires
+        setTimeout(resolve, 3000);
+      });
+
+      try {
+        await videoEl.play();
+      } catch (playErr) {
+        console.warn('Video play() failed (autoplay policy):', playErr);
+        // Still continue — stream may render on iOS via playsInline
       }
 
       setCameraActive(true);
@@ -251,13 +286,14 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       setCameraRetrying(false);
       setFaceDetectionStatus('Loading AI Model...');
 
-      // Step 3: Load TensorFlow & Blazeface
+      // Step 4: Load TensorFlow & Blazeface
       try {
         await tf.ready();
         const model = await blazeface.load();
         setFaceDetectionStatus('AI Monitoring Active');
 
-        // Step 4: Start Detection Loop
+        // Step 5: Start Detection Loop
+
         detectionInterval = setInterval(async () => {
           if (videoRef.current && videoRef.current.readyState >= 2) {
             try {
@@ -366,32 +402,50 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full text-center shadow-2xl">
             <CameraOff className="h-14 w-14 text-orange-500 mx-auto mb-3" />
-            <h3 className="text-xl font-bold text-gray-900 mb-1">Camera Permission Required</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Camera is needed for proctoring. Please follow these steps:
-            </p>
-            <ol className="text-left text-sm text-gray-700 space-y-2 mb-5 bg-orange-50 rounded-lg p-4">
-              <li className="flex gap-2"><span className="font-bold text-orange-600">1.</span> <span>Tap the <strong>🔒 lock icon</strong> or <strong>ℹ️ info icon</strong> in your browser address bar</span></li>
-              <li className="flex gap-2"><span className="font-bold text-orange-600">2.</span> <span>Find <strong>"Camera"</strong> permission and set it to <strong>Allow</strong></span></li>
-              <li className="flex gap-2"><span className="font-bold text-orange-600">3.</span> <span>Tap the button below to <strong>retry</strong></span></li>
-            </ol>
-            <button
-              onClick={() => {
-                setShowCameraGuide(false);
-                setCameraError(null);
-                if (cameraStartRef.current) cameraStartRef.current();
-              }}
-              disabled={cameraRetrying}
-              className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-60 transition-all"
-            >
-              <RefreshCw className={`h-4 w-4 ${cameraRetrying ? 'animate-spin' : ''}`} />
-              {cameraRetrying ? 'Starting Camera...' : 'Retry Camera'}
-            </button>
+            <h3 className="text-xl font-bold text-gray-900 mb-1">
+              {cameraError === 'no_device' ? 'No Camera Found' :
+               cameraError === 'not_supported' ? 'Camera Not Supported' :
+               'Camera Permission Required'}
+            </h3>
+
+            {cameraError === 'no_device' ? (
+              <div className="bg-red-50 rounded-lg p-4 mb-5 text-sm text-red-700 text-left">
+                <p className="font-bold mb-1">⚠️ Is device mein camera nahi mila.</p>
+                <p>Kisi aur device (mobile ya laptop with camera) se test dijiye. Test bina camera ke bhi continue ho sakta hai.</p>
+              </div>
+            ) : cameraError === 'not_supported' ? (
+              <div className="bg-yellow-50 rounded-lg p-4 mb-5 text-sm text-yellow-800 text-left">
+                <p className="font-bold mb-1">⚠️ Yeh browser camera support nahi karta.</p>
+                <p>Kripya <strong>Chrome</strong> ya <strong>Safari</strong> browser use karein aur HTTPS link se test kholen.</p>
+              </div>
+            ) : (
+              <ol className="text-left text-sm text-gray-700 space-y-2 mb-5 bg-orange-50 rounded-lg p-4">
+                <li className="flex gap-2"><span className="font-bold text-orange-600">1.</span> <span>Tap the <strong>🔒 lock icon</strong> or <strong>ℹ️ info icon</strong> in your browser address bar</span></li>
+                <li className="flex gap-2"><span className="font-bold text-orange-600">2.</span> <span>Find <strong>"Camera"</strong> permission and set it to <strong>Allow</strong></span></li>
+                <li className="flex gap-2"><span className="font-bold text-orange-600">3.</span> <span>Tap the button below to <strong>retry</strong></span></li>
+              </ol>
+            )}
+
+            {cameraError !== 'no_device' && cameraError !== 'not_supported' && (
+              <button
+                onClick={() => {
+                  setShowCameraGuide(false);
+                  setCameraError(null);
+                  if (cameraStartRef.current) cameraStartRef.current();
+                }}
+                disabled={cameraRetrying}
+                className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-60 transition-all mb-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${cameraRetrying ? 'animate-spin' : ''}`} />
+                {cameraRetrying ? 'Starting Camera...' : 'Retry Camera'}
+              </button>
+            )}
             <button
               onClick={() => setShowCameraGuide(false)}
-              className="mt-2 w-full text-sm text-gray-400 hover:text-gray-600 py-1"
+              className="mt-1 w-full text-sm text-gray-400 hover:text-gray-600 py-1"
             >
               Continue without camera (recorded)
+
             </button>
           </div>
         </div>
