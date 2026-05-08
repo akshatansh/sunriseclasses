@@ -18,7 +18,7 @@ import OnlineTestPortal from './pages/OnlineTestPortal';
 function AppContent() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
-  const isTesting = location.hash === '#active'; // Detect active test mode
+  const isTesting = location.hash.includes('active'); // Detect active test mode
 
   return (
     <div className="min-h-screen font-sans antialiased flex flex-col">

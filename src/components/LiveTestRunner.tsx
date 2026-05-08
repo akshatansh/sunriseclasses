@@ -29,6 +29,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const [language, setLanguage] = useState<'EN' | 'HI'>('EN');
   const [showShareModal, setShowShareModal] = useState(false);
   const [studentName, setStudentName] = useState(''); // To display on result card
+  const [studentPhoto, setStudentPhoto] = useState(''); // To display on header
   
   // Anti-Cheat State
   const [cheatWarnings, setCheatWarnings] = useState(0);
@@ -183,9 +184,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         const shuffled = [...(data || [])].sort(() => Math.random() - 0.5);
         setQuestions(shuffled as OnlineTestQuestion[]);
 
-        // Also fetch student name for the certificate
-        const { data: sData } = await supabase.from('students').select('name').eq('id', studentId).single();
-        if (sData) setStudentName(sData.name);
+        // Also fetch student name and photo for the certificate/header
+        const { data: sData } = await supabase.from('students').select('name, image').eq('id', studentId).single();
+        if (sData) {
+          setStudentName(sData.name);
+          setStudentPhoto(sData.image || '');
+        }
       } catch (err) {
         console.error('Failed to load questions', err);
         alert('Could not load test questions.');
@@ -693,14 +697,34 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           <div className="h-full bg-blue-600 transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
         </div>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex flex-col">
-            <h1 className="text-base sm:text-lg font-bold text-gray-900 leading-none mb-1">{test.title}</h1>
-            <div className="flex items-center gap-2">
-              <p className="text-[10px] sm:text-xs text-gray-500 font-semibold">{test.subject} • {answeredCount}/{questions.length} {t.answered}</p>
-              <span className="h-1 w-1 bg-gray-300 rounded-full"></span>
-              <p className="text-[10px] text-green-600 font-bold flex items-center gap-1">
-                <RefreshCw className="h-2 w-2 animate-spin-slow" /> {t.autosave}
-              </p>
+          <div className="flex items-center gap-4">
+            {/* Minimal AI Widget in Header */}
+            {!result && (
+              <div className="hidden sm:flex items-center gap-2 bg-black rounded-lg p-1 border border-gray-700 h-12 w-12 sm:w-20 overflow-hidden relative group">
+                <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transform scale-x-[-1] transition-opacity duration-500 ${cameraActive ? 'opacity-100' : 'opacity-20'}`} />
+                <div className={`absolute top-0 right-0 h-2 w-2 rounded-full border border-black ${faceDetectionStatus.includes('⚠️') ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                   <p className="text-[6px] text-white font-bold text-center leading-tight">AI Active</p>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex flex-col">
+              <h1 className="text-sm sm:text-base font-bold text-gray-900 leading-none mb-1">{test.title}</h1>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  {studentPhoto ? (
+                    <img src={studentPhoto} alt="Student" className="h-4 w-4 rounded-full object-cover border border-blue-200" />
+                  ) : (
+                    <div className="h-4 w-4 rounded-full bg-blue-100 flex items-center justify-center">
+                      <Users className="h-2 w-2 text-blue-600" />
+                    </div>
+                  )}
+                  <p className="text-[9px] sm:text-xs text-blue-600 font-bold">{studentName}</p>
+                </div>
+                <span className="h-1 w-1 bg-gray-300 rounded-full"></span>
+                <p className="text-[9px] sm:text-xs text-gray-500 font-semibold">{test.subject} • {answeredCount}/{questions.length} {t.answered}</p>
+              </div>
             </div>
           </div>
           
@@ -810,36 +834,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       )}
 
       {!result && (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end">
-          <div className="bg-black rounded-lg overflow-hidden shadow-2xl border-2 border-white w-28 h-28 sm:w-44 sm:h-44">
-            <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-1.5 bg-black/40 backdrop-blur-md">
-              <span className="text-[7px] sm:text-[9px] uppercase font-bold text-white tracking-wider">{t.monitoring}</span>
-              <div className={`h-1.5 w-1.5 rounded-full ${faceDetectionStatus.includes('⚠️') ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
-            </div>
-            <div className="relative h-full w-full bg-gray-900">
-              <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transform scale-x-[-1] transition-opacity duration-500 ${cameraActive ? 'opacity-100' : 'opacity-0'}`} />
-              
-              {!cameraActive && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                  <RefreshCw className="h-6 w-6 text-blue-500 animate-spin" />
-                  <span className="text-[8px] text-gray-400 font-bold uppercase">Starting Camera...</span>
-                </div>
-              )}
-
-              {cameraActive && faceDetectionStatus === 'Initializing AI...' && (
-                <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-2">
-                  <RefreshCw className="h-6 w-6 text-white animate-spin" />
-                  <span className="text-[8px] text-white font-bold uppercase">AI Initializing...</span>
-                </div>
-              )}
-
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-[2px] py-1 px-2 text-center">
-                <p className="text-[7px] sm:text-[10px] font-bold text-white truncate">{faceDetectionStatus}</p>
-              </div>
-            </div>
-          </div>
-          <div className="mt-1 bg-white/90 px-2 py-0.5 rounded shadow-sm border border-gray-200 text-[8px] font-bold">
-            {faceWarnings > 0 ? `${t.marked}: ${faceWarnings}/10` : 'Secure Mode'}
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end sm:hidden">
+          {/* Keep bottom widget for mobile only as header is small */}
+          <div className="bg-black rounded-lg overflow-hidden shadow-2xl border-2 border-white w-24 h-24">
+            <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transform scale-x-[-1] ${cameraActive ? 'opacity-100' : 'opacity-30'}`} />
           </div>
         </div>
       )}
