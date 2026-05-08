@@ -534,206 +534,230 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     const downloadCertificate = async () => {
       setIsDownloading(true);
       try {
+        const W = 1600, H = 2260;
         const canvas = document.createElement('canvas');
-        canvas.width = 1500; // Increased resolution
-        canvas.height = 2100;
+        canvas.width = W; canvas.height = H;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        // Helper to load images safely using Blob fetch + Proxy Fallback
+        // Triple-fallback image loader: Direct Blob -> weserv proxy -> img tag
         const loadImage = async (src: string): Promise<HTMLImageElement> => {
-          const tryLoad = async (url: string) => {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error("Fetch failed");
-            const blob = await response.blob();
+          const tryBlob = async (url: string) => {
+            const r = await fetch(url, { mode: 'cors', cache: 'no-cache' });
+            if (!r.ok) throw new Error('fetch failed');
+            const blob = await r.blob();
             return new Promise<HTMLImageElement>((res, rej) => {
               const img = new Image();
-              img.onload = () => res(img);
-              img.onerror = rej;
+              img.onload = () => res(img); img.onerror = rej;
               img.src = URL.createObjectURL(blob);
             });
           };
-
-          try {
-            // 1. Try direct fetch with cache buster
-            const cacheBuster = `cb=${new Date().getTime()}`;
-            const url = src.includes('?') ? `${src}&${cacheBuster}` : `${src}?${cacheBuster}`;
-            return await tryLoad(url);
-          } catch (e) {
-            console.warn("Direct load failed, trying proxy:", e);
-            try {
-              // 2. Try via proxy (weserv.nl is great for bypassing CORS issues)
-              const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(src.replace(/^https?:\/\//, ''))}&cb=${new Date().getTime()}`;
-              return await tryLoad(proxyUrl);
-            } catch (e2) {
-              console.error("Proxy load failed too:", e2);
-              // 3. Last resort: traditional image load
-              return new Promise((res, rej) => {
-                const img = new Image();
-                img.crossOrigin = "anonymous";
-                img.src = src;
-                img.onload = () => res(img);
-                img.onerror = rej;
-              });
-            }
-          }
+          try { return await tryBlob(src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now()); } catch (e1) {}
+          try { return await tryBlob(`https://images.weserv.nl/?url=${encodeURIComponent(src.replace(/^https?:\/\//, ''))}&_t=${Date.now()}`); } catch (e2) {}
+          return new Promise((res, rej) => {
+            const img = new Image(); img.crossOrigin = 'anonymous';
+            img.onload = () => res(img); img.onerror = rej; img.src = src;
+          });
         };
 
-        // 1. Premium Background
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, 1500, 2100);
+        const cx = W / 2;
+        const B = 36;
 
-        // Subtle Pattern Background
-        ctx.strokeStyle = '#f1f5f9';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 1500; i += 40) {
-          ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 2100); ctx.stroke();
+        // 1. BACKGROUND — warm ivory with dot watermark
+        ctx.fillStyle = '#FDFAF3';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = 'rgba(15,23,42,0.035)';
+        for (let x = 48; x < W; x += 52) {
+          for (let y = 48; y < H; y += 52) {
+            ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.fill();
+          }
         }
-        for (let i = 0; i < 2100; i += 40) {
-          ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1500, i); ctx.stroke();
-        }
 
-        // 2. Heavy Borders
-        // Outer Navy
-        ctx.strokeStyle = '#0f172a';
-        ctx.lineWidth = 80;
-        ctx.strokeRect(40, 40, 1420, 2020);
+        // 2. OUTER FRAME — thick navy bars + gold inner line
+        ctx.fillStyle = '#0D1B3E';
+        ctx.fillRect(0, 0, W, B); ctx.fillRect(0, H - B, W, B);
+        ctx.fillRect(0, 0, B, H); ctx.fillRect(W - B, 0, B, H);
+        ctx.strokeStyle = '#C9A84C'; ctx.lineWidth = 6;
+        ctx.strokeRect(B + 16, B + 16, W - (B + 16) * 2, H - (B + 16) * 2);
+        ctx.strokeStyle = '#0D1B3E'; ctx.lineWidth = 2;
+        ctx.strokeRect(B + 30, B + 30, W - (B + 30) * 2, H - (B + 30) * 2);
 
-        // Inner Gold Accent
-        ctx.strokeStyle = '#eab308';
-        ctx.lineWidth = 15;
-        ctx.strokeRect(95, 95, 1310, 1910);
+        // Corner ornaments
+        const drawCorner = (ox: number, oy: number, fx: number, fy: number) => {
+          ctx.save(); ctx.translate(ox, oy); ctx.scale(fx, fy);
+          ctx.fillStyle = '#C9A84C';
+          ctx.fillRect(0, 0, 90, 6); ctx.fillRect(0, 0, 6, 90);
+          ctx.beginPath(); ctx.arc(18, 18, 12, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        };
+        drawCorner(B + 12, B + 12, 1, 1); drawCorner(W - B - 12, B + 12, -1, 1);
+        drawCorner(B + 12, H - B - 12, 1, -1); drawCorner(W - B - 12, H - B - 12, -1, -1);
 
-        // Corner Patterns
-        ctx.fillStyle = '#eab308';
-        const cs = 150;
-        ctx.fillRect(40, 40, cs, cs);
-        ctx.fillRect(1310, 40, cs, cs);
-        ctx.fillRect(40, 1910, cs, cs);
-        ctx.fillRect(1310, 1910, cs, cs);
+        // 3. HEADER — full-width navy gradient
+        const hGrad = ctx.createLinearGradient(0, B, 0, B + 545);
+        hGrad.addColorStop(0, '#0D1B3E'); hGrad.addColorStop(1, '#162C5C');
+        ctx.fillStyle = hGrad;
+        ctx.fillRect(B, B, W - B * 2, 545);
+        ctx.fillStyle = '#C9A84C'; ctx.fillRect(B, B + 545, W - B * 2, 8);
 
-        // 3. Header Section (Dark Blue Card)
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(110, 110, 1280, 500);
-
-        // Logo Rendering
+        // Logo in header with gold ring
         try {
           const logo = await loadImage('/sunrise-logo.png');
-          ctx.drawImage(logo, 675, 150, 150, 150); // Centered logo
+          ctx.save();
+          ctx.beginPath(); ctx.arc(cx, B + 148, 92, 0, Math.PI * 2); ctx.clip();
+          ctx.drawImage(logo, cx - 92, B + 56, 184, 184); ctx.restore();
+          ctx.strokeStyle = '#C9A84C'; ctx.lineWidth = 7;
+          ctx.beginPath(); ctx.arc(cx, B + 148, 98, 0, Math.PI * 2); ctx.stroke();
         } catch (e) {
-          // Fallback if logo fails
-          ctx.fillStyle = '#eab308';
-          ctx.beginPath(); ctx.arc(750, 225, 75, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#C9A84C';
+          ctx.beginPath(); ctx.arc(cx, B + 148, 80, 0, Math.PI * 2); ctx.fill();
         }
 
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 110px serif';
-        ctx.fillText('SUNRISE CLASSES', 750, 430);
+        ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 90px Georgia, serif';
+        ctx.fillText('SUNRISE CLASSES', cx, B + 330);
+        ctx.fillStyle = '#C9A84C'; ctx.font = '38px Georgia, serif';
+        ctx.fillText('AN INSTITUTE OF EXCELLENCE', cx, B + 384);
+        ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '28px sans-serif';
+        ctx.fillText('Champanagar, Purnia, Bihar  •  Est. 2012', cx, B + 430);
 
-        ctx.fillStyle = '#fbbf24';
-        ctx.font = 'bold 40px sans-serif';
-        ctx.fillText('AN INSTITUTE OF EXCELLENCE • CHAMPANAGAR, PURNIA', 750, 500);
+        // Divider
+        const divY = B + 468;
+        ctx.strokeStyle = '#C9A84C'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(cx - 300, divY); ctx.lineTo(cx - 22, divY); ctx.stroke();
+        ctx.fillStyle = '#C9A84C'; ctx.beginPath(); ctx.arc(cx, divY, 14, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(cx + 22, divY); ctx.lineTo(cx + 300, divY); ctx.stroke();
 
-        // 4. Certificate Content
-        ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 70px serif';
-        ctx.fillText('CERTIFICATE OF ACHIEVEMENT', 750, 750);
+        // 4. CERTIFICATE TITLE
+        ctx.fillStyle = '#C9A84C'; ctx.font = 'bold 72px Georgia, serif';
+        ctx.fillText('CERTIFICATE OF ACHIEVEMENT', cx, B + 655);
+        ctx.fillStyle = '#64748B'; ctx.font = 'italic 40px Georgia, serif';
+        ctx.fillText('This is to proudly certify that', cx, B + 735);
 
-        ctx.fillStyle = '#64748b';
-        ctx.font = 'italic 45px serif';
-        ctx.fillText('This is to proudly certify that', 750, 880);
+        // 5. STUDENT PHOTO with double gold ring
+        const pCx = cx, pCy = B + 1018, pR = 162;
+        ctx.shadowColor = 'rgba(0,0,0,0.22)'; ctx.shadowBlur = 36;
+        ctx.fillStyle = '#E8ECF4';
+        ctx.beginPath(); ctx.arc(pCx, pCy, pR + 18, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
 
-        // Student Photo
-        const photoY = 1080;
-        const photoSize = 280;
         if (studentPhoto) {
           try {
-            // Force proxy for Supabase images to ensure canvas doesn't get tainted
-            const photoUrl = studentPhoto.includes('supabase.co') 
-              ? `https://images.weserv.nl/?url=${encodeURIComponent(studentPhoto.replace(/^https?:\/\//, ''))}&cb=${new Date().getTime()}`
+            const pUrl = studentPhoto.includes('supabase.co')
+              ? `https://images.weserv.nl/?url=${encodeURIComponent(studentPhoto.replace(/^https?:\/\//, ''))}&w=400&h=400&fit=cover&_t=${Date.now()}`
               : studentPhoto;
-              
-            const img = await loadImage(photoUrl);
+            const pImg = await loadImage(pUrl);
             ctx.save();
-            ctx.beginPath();
-            ctx.arc(750, photoY, photoSize / 2, 0, Math.PI * 2);
-            ctx.clip();
-            ctx.drawImage(img, 750 - photoSize / 2, photoY - photoSize / 2, photoSize, photoSize);
+            ctx.beginPath(); ctx.arc(pCx, pCy, pR, 0, Math.PI * 2); ctx.clip();
+            ctx.drawImage(pImg, pCx - pR, pCy - pR, pR * 2, pR * 2);
             ctx.restore();
-            ctx.strokeStyle = '#eab308';
-            ctx.lineWidth = 12;
-            ctx.stroke();
           } catch (e) {
-            console.error("Photo rendering failed:", e);
-            // Initial placeholder if photo fails
-            ctx.fillStyle = '#f8fafc';
-            ctx.beginPath(); ctx.arc(750, photoY, photoSize / 2, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#CBD5E1';
+            ctx.beginPath(); ctx.arc(pCx, pCy, pR, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#0D1B3E'; ctx.font = 'bold 90px sans-serif';
+            ctx.fillText(studentName.charAt(0).toUpperCase(), pCx, pCy + 32);
           }
+        } else {
+          ctx.fillStyle = '#E2E8F0';
+          ctx.beginPath(); ctx.arc(pCx, pCy, pR, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#94A3B8'; ctx.font = 'bold 90px sans-serif';
+          ctx.fillText(studentName.charAt(0).toUpperCase(), pCx, pCy + 32);
         }
+        ctx.strokeStyle = '#C9A84C'; ctx.lineWidth = 11;
+        ctx.beginPath(); ctx.arc(pCx, pCy, pR + 10, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = '#F5D78E'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(pCx, pCy, pR + 22, 0, Math.PI * 2); ctx.stroke();
 
-        ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 100px sans-serif';
-        ctx.fillText(studentName.toUpperCase(), 750, 1320);
+        // 6. STUDENT NAME
+        ctx.fillStyle = '#0D1B3E'; ctx.font = 'bold 92px Georgia, serif';
+        ctx.fillText(studentName.toUpperCase(), cx, B + 1258);
+        const nW = ctx.measureText(studentName.toUpperCase()).width;
+        const ulG = ctx.createLinearGradient(cx - nW / 2, 0, cx + nW / 2, 0);
+        ulG.addColorStop(0, 'transparent'); ulG.addColorStop(0.5, '#C9A84C'); ulG.addColorStop(1, 'transparent');
+        ctx.strokeStyle = ulG; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(cx - nW / 2, B + 1276); ctx.lineTo(cx + nW / 2, B + 1276); ctx.stroke();
 
-        ctx.fillStyle = '#64748b';
-        ctx.font = 'italic 40px serif';
-        ctx.fillText('has demonstrated outstanding performance in the', 750, 1400);
+        ctx.fillStyle = '#475569'; ctx.font = 'italic 40px Georgia, serif';
+        ctx.fillText('has successfully demonstrated outstanding performance in', cx, B + 1346);
+        ctx.fillStyle = '#1E40AF'; ctx.font = 'bold 58px Georgia, serif';
+        ctx.fillText(test.title.toUpperCase(), cx, B + 1424);
+        ctx.fillStyle = '#64748B'; ctx.font = '32px sans-serif';
+        ctx.fillText('Subject: ' + test.subject + '  |  ' + (test.class_name || ''), cx, B + 1478);
 
-        ctx.fillStyle = '#2563eb';
-        ctx.font = 'black 60px sans-serif';
-        ctx.fillText(test.title.toUpperCase(), 750, 1480);
-
-        // 5. Result Box
-        const rx = 450, ry = 1580, rw = 600, rh = 200;
-        ctx.fillStyle = '#f8fafc';
-        if ((ctx as any).roundRect) (ctx as any).roundRect(rx, ry, rw, rh, 30); else ctx.rect(rx, ry, rw, rh);
+        // 7. SCORE BOX — navy gradient card
+        const pct = Math.round((result.score / result.total) * 100);
+        const grade = pct >= 90 ? 'A+' : pct >= 75 ? 'A' : pct >= 60 ? 'B' : pct >= 45 ? 'C' : 'D';
+        const sbGrad = ctx.createLinearGradient(cx - 380, 0, cx + 380, 0);
+        sbGrad.addColorStop(0, '#0D1B3E'); sbGrad.addColorStop(1, '#1E3A8A');
+        ctx.fillStyle = sbGrad;
+        const sbY = B + 1536;
+        if ((ctx as any).roundRect) (ctx as any).roundRect(cx - 380, sbY, 760, 240, 28);
+        else ctx.rect(cx - 380, sbY, 760, 240);
         ctx.fill();
-        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 3; ctx.stroke();
+        ctx.fillStyle = '#C9A84C'; ctx.fillRect(cx - 380, sbY, 760, 8);
 
-        ctx.fillStyle = '#64748b'; ctx.font = 'bold 35px sans-serif';
-        ctx.fillText('FINAL SCORE OBTAINED', 750, 1635);
-        ctx.fillStyle = '#059669'; ctx.font = 'bold 90px sans-serif';
-        ctx.fillText(`${result.score} / ${result.total}`, 750, 1730);
+        ctx.fillStyle = '#94A3B8'; ctx.font = 'bold 28px sans-serif';
+        ctx.fillText('SCORE', cx - 170, sbY + 62); ctx.fillText('PERCENTAGE', cx + 110, sbY + 62);
+        ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 100px Georgia, serif';
+        ctx.fillText(result.score + '/' + result.total, cx - 150, sbY + 178);
+        ctx.fillStyle = '#C9A84C'; ctx.font = 'bold 88px Georgia, serif';
+        ctx.fillText(pct + '%', cx + 160, sbY + 178);
+        ctx.fillStyle = 'rgba(255,255,255,0.38)'; ctx.font = '28px sans-serif';
+        ctx.fillText('Grade: ' + grade, cx, sbY + 218);
 
-        // 6. Verified Seal & Signature
-        // Seal
-        ctx.fillStyle = '#eab308';
-        ctx.beginPath(); ctx.arc(300, 1850, 100, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px sans-serif';
-        ctx.fillText('OFFICIAL', 300, 1840); ctx.fillText('VERIFIED', 300, 1870);
+        // Date
+        ctx.fillStyle = '#64748B'; ctx.font = 'italic 32px Georgia, serif';
+        const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+        ctx.fillText('Issued: ' + dateStr, cx, sbY + 300);
 
-        // Signature
-        ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 40px serif';
-        ctx.fillText('Surya Parkash Jha', 1200, 1850);
-        ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(1050, 1865); ctx.lineTo(1350, 1865); ctx.stroke();
-        ctx.font = 'bold 25px sans-serif'; ctx.fillStyle = '#64748b';
-        ctx.fillText('Director, Sunrise Classes', 1200, 1900);
+        // 8. SEAL + SIGNATURE
+        const sY = sbY + 440;
+        const sealX = cx - 390;
+        ctx.strokeStyle = '#C9A84C'; ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.arc(sealX, sY, 88, 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(sealX, sY, 68, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#C9A84C';
+        ctx.beginPath(); ctx.arc(sealX, sY, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#0D1B3E'; ctx.font = 'bold 19px sans-serif';
+        ctx.fillText('OFFICIAL', sealX, sY - 22); ctx.fillText('VERIFIED', sealX, sY + 4); ctx.fillText('SEAL', sealX, sY + 28);
 
-        // ID
-        ctx.font = '18px monospace'; ctx.fillStyle = '#cbd5e1';
-        ctx.fillText(`VERIFICATION ID: SC-${test.id.slice(0, 8).toUpperCase()}`, 750, 2030);
+        const sigX = cx + 290;
+        ctx.fillStyle = '#1E3A8A'; ctx.font = 'bold italic 54px Georgia, serif';
+        ctx.fillText('S. P. Jha', sigX, sY - 12);
+        ctx.strokeStyle = '#0D1B3E'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(sigX - 170, sY + 18); ctx.lineTo(sigX + 170, sY + 18); ctx.stroke();
+        ctx.fillStyle = '#475569'; ctx.font = 'bold 28px sans-serif';
+        ctx.fillText('Surya Parkash Jha', sigX, sY + 56);
+        ctx.font = '24px sans-serif';
+        ctx.fillText('Director, Sunrise Classes', sigX, sY + 88);
 
-        // Download using toBlob for better mobile support
+        // 9. FOOTER STRIP
+        ctx.fillStyle = '#0D1B3E';
+        ctx.fillRect(B, H - B - 108, W - B * 2, 108);
+        ctx.fillStyle = '#C9A84C'; ctx.font = 'bold 26px sans-serif';
+        ctx.fillText('sunriseclasses.co.in  \u2022  9973152070  \u2022  Champanagar, Purnia, Bihar', cx, H - B - 62);
+        ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.font = '20px monospace';
+        ctx.fillText('Certificate ID: SC-' + test.id.slice(0, 8).toUpperCase() + '-' + studentId.slice(0, 4).toUpperCase(), cx, H - B - 26);
+
+        // DOWNLOAD via Blob (works on all devices including mobile gallery)
         canvas.toBlob((blob) => {
-          if (!blob) return;
+          if (!blob) { alert('Certificate generation failed.'); return; }
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
-          const safeName = studentName.replace(/\s+/g, '_');
-          link.download = `Certificate_${safeName}.jpg`;
+          link.download = 'Sunrise_Certificate_' + studentName.replace(/\s+/g, '_') + '.jpg';
           link.href = url;
-          link.click();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }, 'image/jpeg', 0.98);
+          document.body.appendChild(link); link.click(); document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 2000);
+        }, 'image/jpeg', 0.97);
+
       } catch (err) {
-        console.error(err);
-        alert("Downloading certificate...");
+        console.error('Certificate error:', err);
+        alert('Certificate download failed. Please try again.');
       } finally {
         setIsDownloading(false);
       }
-    };
+    };;
 
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4 sm:p-8">
