@@ -9,7 +9,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        importScripts: ['https://cdn.pushalert.co/sw-89176.js']
+        importScripts: ['https://cdn.pushalert.co/sw-89176.js'],
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024 // Allow up to 10MB to fix TFJS build error
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
