@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe } from 'lucide-react';
+import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe, Mic } from 'lucide-react';
 import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, reportTestIssue, OnlineTest, StudentTestAttempt } from '../lib/onlineTests';
 
 // Lazy load the runner to prevent heavy TFJS imports from crashing the main bundle
@@ -213,34 +213,38 @@ export default function OnlineTestPortal() {
       {testToStart && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-red-50 p-6 text-center border-b border-red-100">
-              <ShieldAlert className="h-12 w-12 text-red-500 mx-auto mb-3" />
-              <h3 className="text-xl font-bold text-gray-900">Strict Anti-Cheat Active</h3>
-              <p className="text-sm text-red-600 font-medium mt-1">Please read carefully before starting</p>
+            <div className="relative bg-[#0f172a] p-8 text-center border-b border-white/10 overflow-hidden">
+              <div className="absolute inset-0 bg-red-600/10 animate-pulse"></div>
+              <ShieldAlert className="relative h-14 w-14 text-red-500 mx-auto mb-3 animate-bounce-subtle" />
+              <h3 className="relative text-2xl font-black text-white uppercase tracking-wider">Strict Anti-Cheat</h3>
+              <p className="relative text-sm text-red-400 font-bold mt-1 tracking-widest uppercase">Monitoring Active</p>
             </div>
             
-            <div className="p-6">
-              <p className="text-gray-700 font-medium mb-4">You are about to start: <strong className="text-gray-900">{testToStart.title}</strong></p>
+            <div className="p-6 bg-white">
+              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-6 text-center">
+                <p className="text-blue-900 font-bold text-sm uppercase tracking-wider">You are about to start</p>
+                <p className="text-blue-700 font-black text-lg mt-1">{testToStart.title}</p>
+              </div>
               
-              <ul className="space-y-3 mb-6">
-                <li className="flex items-start gap-3 text-sm text-gray-600">
-                  <div className="mt-0.5 bg-red-100 text-red-600 p-1.5 rounded-full shrink-0"><Camera className="h-4 w-4" /></div>
-                  <p><strong>Camera Monitoring:</strong> Your camera will be active. AI will monitor your face continuously.</p>
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-start gap-4 text-sm text-gray-700">
+                  <div className="mt-0.5 bg-red-100 text-red-600 p-2 rounded-xl shrink-0 shadow-sm"><Camera className="h-5 w-5" /></div>
+                  <p className="leading-snug"><strong>Camera & Audio:</strong> S.P Sir will continuously monitor your live camera feed and listen to your audio.</p>
                 </li>
-                <li className="flex items-start gap-3 text-sm text-gray-600">
-                  <div className="mt-0.5 bg-red-100 text-red-600 p-1.5 rounded-full shrink-0"><ShieldAlert className="h-4 w-4" /></div>
-                  <p><strong>Fullscreen Lock:</strong> Test will run in FULLSCREEN. Header, Footer, and Navigation will be hidden. Do not try to exit fullscreen.</p>
+                <li className="flex items-start gap-4 text-sm text-gray-700">
+                  <div className="mt-0.5 bg-yellow-100 text-yellow-600 p-2 rounded-xl shrink-0 shadow-sm"><Mic className="h-5 w-5" /></div>
+                  <p className="leading-snug"><strong>No Talking:</strong> Room must be silent. Any noise or talking will be recorded and sent to the admin.</p>
                 </li>
-                <li className="flex items-start gap-3 text-sm text-gray-600">
-                  <div className="mt-0.5 bg-red-100 text-red-600 p-1.5 rounded-full shrink-0"><Globe className="h-4 w-4" /></div>
-                  <p><strong>Anti-Cheat:</strong> Tab switching, Screenshots, and Right-click are BLOCKED. Doing so will auto-submit your test.</p>
+                <li className="flex items-start gap-4 text-sm text-gray-700">
+                  <div className="mt-0.5 bg-blue-100 text-blue-600 p-2 rounded-xl shrink-0 shadow-sm"><Globe className="h-5 w-5" /></div>
+                  <p className="leading-snug"><strong>Tab Switch Lock:</strong> Exiting fullscreen or switching tabs will immediately AUTO-SUBMIT your test.</p>
                 </li>
               </ul>
               
-              <div className="flex gap-3 pt-2 border-t border-gray-100">
+              <div className="flex gap-4">
                 <button 
                   onClick={() => setTestToStart(null)}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-500 rounded-2xl font-bold hover:bg-gray-50 hover:text-gray-700 transition-colors"
                 >
                   Cancel
                 </button>
