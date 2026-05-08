@@ -142,11 +142,18 @@ export default function ResultsPage() {
   const uniqueTests = useMemo(() => {
     const testsMap = new Map<string, { testName: string; testDate: string; subject: string; totalMarks: number }>();
     classFilteredData.results.forEach((r) => {
-      const key = `${r.testName}|${r.testDate}`;
+      // Normalize date to YYYY-MM-DD for grouping
+      const dateObj = new Date(r.testDate);
+      const normalizedDate = `${dateObj.getFullYear()}-${dateObj.getMonth() + 1}-${dateObj.getDate()}`;
+      // Normalize name by trimming
+      const normalizedName = r.testName.trim();
+      
+      const key = `${normalizedName}|${normalizedDate}`;
+      
       if (!testsMap.has(key)) {
         testsMap.set(key, {
-          testName: r.testName,
-          testDate: r.testDate,
+          testName: normalizedName,
+          testDate: r.testDate, // Keep original for display
           subject: r.subject,
           totalMarks: r.totalMarks,
         });
@@ -433,9 +440,12 @@ export default function ResultsPage() {
                           {summary.percentage}%
                         </td>
                         {uniqueTests.map((test, i) => {
-                          const result = summary.allTests.find(
-                            (r) => r.testName === test.testName && r.testDate === test.testDate
-                          );
+                          const result = summary.allTests.find((r) => {
+                            const d1 = new Date(r.testDate);
+                            const d2 = new Date(test.testDate);
+                            const sameDate = d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+                            return r.testName.trim() === test.testName.trim() && sameDate;
+                          });
                           return (
                             <td key={i} className="px-3 py-3 sm:px-6 sm:py-4 text-center w-[120px] min-w-[120px] max-w-[120px] sm:w-[200px] sm:min-w-[200px] sm:max-w-[200px]">
                               {result ? (
