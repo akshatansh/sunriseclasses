@@ -118,15 +118,15 @@ export default function OnlineTestPortal() {
               <ul className="space-y-3 mb-6">
                 <li className="flex items-start gap-3 text-sm text-gray-600">
                   <div className="mt-0.5 bg-red-100 text-red-600 p-1.5 rounded-full shrink-0"><Camera className="h-4 w-4" /></div>
-                  <p><strong>Camera Monitoring:</strong> Your camera will turn on. AI will monitor your face continuously.</p>
+                  <p><strong>Camera Monitoring:</strong> Your camera will be active. AI will monitor your face continuously.</p>
                 </li>
                 <li className="flex items-start gap-3 text-sm text-gray-600">
-                  <div className="mt-0.5 bg-red-100 text-red-600 p-1.5 rounded-full shrink-0"><Users className="h-4 w-4" /></div>
-                  <p><strong>Sit Alone:</strong> If multiple faces are detected, the test will auto-submit.</p>
+                  <div className="mt-0.5 bg-red-100 text-red-600 p-1.5 rounded-full shrink-0"><ShieldAlert className="h-4 w-4" /></div>
+                  <p><strong>Fullscreen Lock:</strong> Test will run in FULLSCREEN. Header, Footer, and Navigation will be hidden. Do not try to exit fullscreen.</p>
                 </li>
                 <li className="flex items-start gap-3 text-sm text-gray-600">
                   <div className="mt-0.5 bg-red-100 text-red-600 p-1.5 rounded-full shrink-0"><Globe className="h-4 w-4" /></div>
-                  <p><strong>Do Not Switch Tabs:</strong> Minimizing the app or switching tabs will auto-submit your test and record a screenshot proof.</p>
+                  <p><strong>Anti-Cheat:</strong> Tab switching, Screenshots, and Right-click are BLOCKED. Doing so will auto-submit your test.</p>
                 </li>
               </ul>
               

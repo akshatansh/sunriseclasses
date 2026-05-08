@@ -18,10 +18,11 @@ import OnlineTestPortal from './pages/OnlineTestPortal';
 function AppContent() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
+  const isTesting = location.hash === '#active'; // Detect active test mode
 
   return (
     <div className="min-h-screen font-sans antialiased flex flex-col">
-      <Navbar />
+      {!isTesting && <Navbar />}
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -37,8 +38,8 @@ function AppContent() {
           <Route path="/admin/sunriseclasses" element={<AdminResultsPage />} />
         </Routes>
       </main>
-      <Footer />
-      {!isAdmin && <FloatingWhatsApp />}
+      {!isTesting && <Footer />}
+      {!isAdmin && !isTesting && <FloatingWhatsApp />}
     </div>
   );
 }

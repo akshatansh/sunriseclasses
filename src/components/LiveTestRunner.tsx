@@ -144,7 +144,14 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Set active hash to hide Header/Footer
+    window.location.hash = 'active';
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.location.hash = ''; // Clear hash on exit
+    };
   }, [loading, result, finishTest, captureScreenshot, studentId, test.id]);
 
   // Anti-Cheat: Prevent Copy/Paste/Right-Click
@@ -152,20 +159,66 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     if (result) return;
     const preventAction = (e: Event) => e.preventDefault();
     
+    const handleKeydown = (e: KeyboardEvent) => {
+      // Block Ctrl+P or Cmd+P (Print)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
+        e.preventDefault();
+        alert("Printing/Screenshots are not allowed!");
+        return false;
+      }
+      // Block PrintScreen key
+      if (e.key === 'PrintScreen') {
+        e.preventDefault();
+        alert("Screenshots are not allowed!");
+        return false;
+      }
+      // Block Ctrl+S / Cmd+S
+      if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+      // Block Esc key (prevent exiting fullscreen)
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        alert("Escaping Fullscreen is not allowed. Please stay in the test!");
+        return false;
+      }
+    };
+
     document.addEventListener('contextmenu', preventAction);
     document.addEventListener('copy', preventAction);
+    document.addEventListener('keydown', handleKeydown);
     
-    // Request full screen on mount if possible
+    // Request and Lock full screen on mount
     const elem = document.documentElement;
-    if (elem.requestFullscreen && !document.fullscreenElement) {
-      elem.requestFullscreen().catch(() => {
-        console.warn('Fullscreen request denied');
-      });
-    }
+    const enterFullscreen = () => {
+      if (elem.requestFullscreen && !document.fullscreenElement) {
+        elem.requestFullscreen().catch(() => {
+          console.warn('Fullscreen request denied');
+        });
+      }
+    };
+
+    enterFullscreen();
+
+    // Re-enforce fullscreen if user tries to exit (for browsers that allow event cancellation)
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && !result) {
+        setCheatWarnings(prev => prev + 1);
+        setShowWarning(true);
+        // We don't force back automatically because it requires user gesture, 
+        // but we show the warning modal which will have a button.
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
 
     return () => {
       document.removeEventListener('contextmenu', preventAction);
       document.removeEventListener('copy', preventAction);
+      document.removeEventListener('keydown', handleKeydown);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, [result]);
 
@@ -376,7 +429,20 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 select-none">
+    <div className="min-h-screen bg-gray-50 pb-20 select-none no-print">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          body { display: none !important; }
+        }
+        .no-print {
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          -khtml-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+        }
+      `}} />
       {/* Warning Modal */}
       {showWarning && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
