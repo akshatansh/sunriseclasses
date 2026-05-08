@@ -51,6 +51,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const [isTestStarted, setIsTestStarted] = useState(false);
   const cameraStartRef = useRef<(() => void) | null>(null);
   const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -140,6 +141,14 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const finishTest = useCallback(async (forced: boolean = false) => {
     if (submitting || result) return;
     setSubmitting(true);
+
+    // Stop camera explicitly immediately on submit
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setCameraActive(false);
 
     try {
       const finalResult = await submitTest(
@@ -396,6 +405,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        streamRef.current = stream; // Store in ref
         try {
           await videoRef.current.play();
           setCameraActive(true); // Show video immediately
@@ -434,7 +444,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     startCameraAndAI();
 
     return () => {
-      if (stream) stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) videoRef.current.srcObject = null;
+      setCameraActive(false);
       clearInterval(detectionInterval);
     };
   }, [result, loading, finishTest, captureScreenshot, studentId, test.id]);
@@ -835,6 +850,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     <div className="min-h-screen bg-gray-50 pb-20 select-none no-print">
       <style dangerouslySetInnerHTML={{
         __html: `
+        /* Hide global layout elements during test */
+        header, footer, nav, .navbar, .whatsapp-float, #whatsapp-widget { display: none !important; }
+        
         @media print { body { display: none !important; } }
         .no-print { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
         .test-blurred { filter: blur(20px); pointer-events: none; }
@@ -920,61 +938,65 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         </div>
       )}
 
-      <div className="bg-white shadow-sm sticky top-0 z-40 border-b border-gray-200">
-        <div className="h-1 bg-gray-100 w-full overflow-hidden">
-          <div className="h-full bg-blue-600 transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
+      {/* Plain Dedicated Test Navbar */}
+      <div className="bg-slate-900 text-white sticky top-0 z-50 shadow-2xl">
+        <div className="h-1 bg-white/10 w-full overflow-hidden">
+          <div className="h-full bg-yellow-500 transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
         </div>
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {/* Minimal AI Widget in Header */}
+        
+        <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+             <div className="flex items-center gap-3 bg-white/5 pr-6 pl-2 py-2 rounded-full border border-white/10">
+                {studentPhoto ? (
+                  <img src={studentPhoto} alt="Student" className="h-12 w-12 rounded-full object-cover border-2 border-yellow-500/50" />
+                ) : (
+                  <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center border-2 border-white/20">
+                    <Users className="h-6 w-6 text-white" />
+                  </div>
+                )}
+                <div>
+                  <p className="text-[10px] text-blue-300 font-black uppercase tracking-widest leading-tight">Student</p>
+                  <p className="text-sm font-bold text-white">{studentName}</p>
+                </div>
+             </div>
+
+             <div className="hidden md:block">
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-tight">Subject</p>
+                <p className="text-sm font-bold text-white/90">{test.subject}</p>
+             </div>
+          </div>
+
+          <div className="flex items-center gap-4 sm:gap-8">
+            {/* AI Monitoring Status (Minimal) */}
             {!result && (
-              <div className="hidden sm:flex items-center gap-2 bg-black rounded-lg p-1 border border-gray-700 h-12 w-12 sm:w-20 overflow-hidden relative group">
-                <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transform scale-x-[-1] transition-opacity duration-500 ${cameraActive ? 'opacity-100' : 'opacity-20'}`} />
-                <div className={`absolute top-0 right-0 h-2 w-2 rounded-full border border-black ${faceDetectionStatus.includes('⚠️') ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <p className="text-[6px] text-white font-bold text-center leading-tight">AI Active</p>
+              <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
+                <div className="relative h-10 w-10 rounded-lg overflow-hidden border border-white/10">
+                  <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover transform scale-x-[-1] ${cameraActive ? 'opacity-100' : 'opacity-20'}`} />
+                  <div className={`absolute top-1 right-1 h-2 w-2 rounded-full ${faceDetectionStatus.includes('⚠️') ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
+                </div>
+                <div className="hidden sm:block">
+                  <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">AI Status</p>
+                  <p className={`text-[10px] font-bold ${faceDetectionStatus.includes('⚠️') ? 'text-red-400' : 'text-green-400'}`}>
+                    {faceDetectionStatus.includes('⚠️') ? 'Warning' : 'Active'}
+                  </p>
                 </div>
               </div>
             )}
 
-            <div className="flex flex-col">
-              <h1 className="text-sm sm:text-base font-bold text-gray-900 leading-none mb-1">{test.title}</h1>
+            <div className={`flex flex-col items-center justify-center min-w-[100px] sm:min-w-[140px] px-4 py-2 rounded-2xl border-2 transition-all duration-500 ${timeLeft < 300 ? 'bg-red-500/20 border-red-500 animate-pulse scale-105' : 'bg-white/5 border-white/10'}`}>
+              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">Time Remaining</p>
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5">
-                  {studentPhoto ? (
-                    <img src={studentPhoto} alt="Student" className="h-4 w-4 rounded-full object-cover border border-blue-200" />
-                  ) : (
-                    <div className="h-4 w-4 rounded-full bg-blue-100 flex items-center justify-center">
-                      <Users className="h-2 w-2 text-blue-600" />
-                    </div>
-                  )}
-                  <p className="text-[9px] sm:text-xs text-blue-600 font-bold">{studentName}</p>
-                </div>
-                <span className="h-1 w-1 bg-gray-300 rounded-full"></span>
-                <p className="text-[9px] sm:text-xs text-gray-500 font-semibold">{test.subject} • {answeredCount}/{questions.length} {t.answered}</p>
+                <Clock className={`h-4 w-4 ${timeLeft < 300 ? 'text-red-400' : 'text-yellow-500'}`} />
+                <span className={`text-xl font-black font-mono leading-none ${timeLeft < 300 ? 'text-white' : 'text-yellow-500'}`}>{formatTime(timeLeft)}</span>
               </div>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-4">
-            {/* Accessibility Controls */}
-            <div className="hidden md:flex items-center bg-gray-100 rounded-lg p-1">
-              <button onClick={() => setFontSize(prev => Math.max(14, prev - 2))} className="px-2 text-xs font-bold text-gray-500 hover:text-blue-600">A-</button>
-              <span className="w-[1px] h-3 bg-gray-300 mx-1"></span>
-              <button onClick={() => setFontSize(prev => Math.min(24, prev + 2))} className="px-2 text-xs font-bold text-gray-500 hover:text-blue-600">A+</button>
-            </div>
-
+            
             <button
               onClick={() => setLanguage(l => l === 'EN' ? 'HI' : 'EN')}
-              className="text-[10px] font-bold px-2 py-1 bg-blue-50 text-blue-600 rounded-lg border border-blue-100"
+              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors text-xs font-bold"
             >
-              {language === 'EN' ? 'हिंदी' : 'English'}
+              <RefreshCw className="h-3 w-3" /> {language === 'EN' ? 'HI' : 'EN'}
             </button>
-
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full font-bold transition-all duration-500 ${timeLeft < 300 ? 'bg-red-100 text-red-700 animate-pulse scale-105' : 'bg-blue-50 text-blue-700'}`}>
-              <Clock className="h-4 w-4" />
-              <span className="text-sm font-mono">{formatTime(timeLeft)}</span>
-            </div>
           </div>
         </div>
       </div>
