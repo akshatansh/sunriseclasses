@@ -49,6 +49,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const cameraStartRef = useRef<(() => void) | null>(null);
   const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const showSubtleMessage = useCallback((msg: string) => {
     setActiveMessage(msg);
     if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
