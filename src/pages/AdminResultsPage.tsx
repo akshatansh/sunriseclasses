@@ -2114,14 +2114,26 @@ export default function AdminResultsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-500 ml-1">Secret PIN</label>
-                <input
-                  type="text"
-                  value={editStudentForm.pin}
-                  onChange={e => setEditStudentForm(p => ({ ...p, pin: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-semibold mt-1 text-sm"
-                  placeholder="e.g. 1234"
-                />
+                <label className="text-xs font-bold text-slate-500 ml-1">Secret PIN (Online Test Login)</label>
+                <div className="flex gap-2 mt-1">
+                  <input
+                    type="text"
+                    value={editStudentForm.pin}
+                    onChange={e => setEditStudentForm(p => ({ ...p, pin: e.target.value }))}
+                    className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#0f2a5c] font-bold tracking-widest text-sm"
+                    placeholder="e.g. 1234"
+                    maxLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setEditStudentForm(p => ({ ...p, pin: generateRandomPin() }))}
+                    title="Generate new random PIN"
+                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-pink-50 border border-pink-200 text-pink-700 text-xs font-bold hover:bg-pink-100 transition-colors whitespace-nowrap"
+                  >
+                    🔀 New PIN
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1 ml-1">PIN badal dene se purana PIN turant kaam karna band kar dega.</p>
               </div>
             </div>
 
