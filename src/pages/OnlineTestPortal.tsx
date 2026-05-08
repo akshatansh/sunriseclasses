@@ -2,14 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe } from 'lucide-react';
 import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, OnlineTest, StudentTestAttempt } from '../lib/onlineTests';
 
-// EMERGENCY DEBUG: Catch any crash and alert it
-if (typeof window !== 'undefined') {
-  window.onerror = function(msg, url, lineNo, columnNo, error) {
-    alert('Error: ' + msg + '\nLine: ' + lineNo + '\nFile: ' + url);
-    return false;
-  };
-}
-
 // Lazy load the runner to prevent heavy TFJS imports from crashing the main bundle
 const LiveTestRunner = React.lazy(() => 
   import('../components/LiveTestRunner').catch(err => {
