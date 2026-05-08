@@ -48,6 +48,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showCameraGuide, setShowCameraGuide] = useState(false);
   const [cameraRetrying, setCameraRetrying] = useState(false);
+  const [antiCheatReady, setAntiCheatReady] = useState(false); // Grace period: activates 3s after test start
   const [activeMessage, setActiveMessage] = useState<string | null>(null);
   const [isTestStarted, setIsTestStarted] = useState(false);
   const cameraStartRef = useRef<(() => void) | null>(null);
@@ -236,8 +237,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   }, [loading, result, finishTest]);
 
   // Anti-Cheat: Visibility Change (Tab Switch)
+  // NOTE: We wait 3 seconds after test start before activating to prevent
+  // fullscreen transition from causing false-positive auto-submissions.
   useEffect(() => {
-    if (loading || result) return;
+    if (loading || result || !antiCheatReady) return;
 
     const handleVisibilityChange = async () => {
       if (document.hidden) {
@@ -246,11 +249,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
         setCheatWarnings(prev => {
           const newCount = prev + 1;
-          if (newCount >= 3) {
+          if (newCount >= 5) {
             showSubtleMessage('Multiple cheating attempts detected. Submitting test...');
             finishTest(true);
           } else {
-            showSubtleMessage(`Warning: Tab switch detected! (${newCount}/3)`);
+            showSubtleMessage(`Warning ${newCount}/5: Tab switch detected!`);
           }
           return newCount;
         });
@@ -259,17 +262,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    const handleBlur = () => {
-      if (!result && isTestStarted) {
-        document.body.classList.add('test-blurred');
-        showSubtleMessage("Test content hidden for security.");
-      }
-    };
-    const handleFocus = () => {
-      document.body.classList.remove('test-blurred');
-    };
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
+    // NOTE: blur/focus listeners removed - they fire too aggressively during
+    // fullscreen transitions and camera permission prompts, causing false positives.
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
@@ -280,11 +274,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-      document.body.classList.remove('test-blurred');
     };
-  }, [loading, result, finishTest, captureScreenshot, studentId, test.id, showSubtleMessage, isTestStarted]);
+  }, [loading, result, finishTest, captureScreenshot, studentId, test.id, showSubtleMessage, antiCheatReady]);
 
   // Stable Back Button Prevention (Silent)
   useEffect(() => {
@@ -869,6 +860,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           <button
             onClick={() => {
               setIsTestStarted(true);
+              // Activate anti-cheat only after a 3-second grace period.
+              // This prevents fullscreen transition + camera permission dialogs
+              // from being falsely detected as tab-switch cheating events.
+              setTimeout(() => setAntiCheatReady(true), 3000);
               const elem = document.documentElement;
               if (elem.requestFullscreen) {
                 elem.requestFullscreen().catch(() => console.warn('Fullscreen denied'));
