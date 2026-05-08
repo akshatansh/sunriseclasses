@@ -548,20 +548,39 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        // Helper to load images safely with cache-busting to bypass CORS cache issues
-        const loadImage = (src: string): Promise<HTMLImageElement> => {
-          return new Promise((res, rej) => {
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            // Add cache buster to ensure fresh fetch with CORS headers
+        // Helper to load images safely using Blob fetch (More reliable for Canvas/CORS)
+        const loadImage = async (src: string): Promise<HTMLImageElement> => {
+          try {
+            // Add cache buster
             const cacheBuster = `cb=${new Date().getTime()}`;
-            img.src = src.includes('?') ? `${src}&${cacheBuster}` : `${src}?${cacheBuster}`;
-            img.onload = () => res(img);
-            img.onerror = (err) => {
-              console.error("Image load failed:", src, err);
-              rej(err);
-            };
-          });
+            const url = src.includes('?') ? `${src}&${cacheBuster}` : `${src}?${cacheBuster}`;
+            
+            // Fetch as blob first to bypass some canvas tainting issues
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("Fetch failed");
+            const blob = await response.blob();
+            
+            return new Promise((res, rej) => {
+              const img = new Image();
+              img.onload = () => {
+                // Important: Clean up the object URL after loading
+                // URL.revokeObjectURL(img.src); // We can't do this here yet as we need it to draw
+                res(img);
+              };
+              img.onerror = rej;
+              img.src = URL.createObjectURL(blob);
+            });
+          } catch (e) {
+            console.error("loadImage failed, trying fallback:", e);
+            // Fallback to traditional image loading if fetch fails
+            return new Promise((res, rej) => {
+              const img = new Image();
+              img.crossOrigin = "anonymous";
+              img.src = src;
+              img.onload = () => res(img);
+              img.onerror = rej;
+            });
+          }
         };
 
         // 1. Premium Background
