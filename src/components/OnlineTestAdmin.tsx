@@ -613,7 +613,6 @@ export default function OnlineTestAdmin() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Marks</label>
                     <input type="number" min="1" required value={newQuestion.marks || 1} onChange={e => setNewQuestion({...newQuestion, marks: parseInt(e.target.value)})} className="w-full px-3 py-2 border rounded-md" />
                   </div>
-                </div>
                 <div className="text-right">
                   <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-medium">Add Question</button>
                 </div>
