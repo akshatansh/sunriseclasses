@@ -145,11 +145,28 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
+    // Block Back Button (Mobile focus)
+    const handlePopState = (e: PopStateEvent) => {
+      window.history.pushState(null, '', window.location.pathname + window.location.hash);
+      alert("Back button is disabled during the test. Please use the 'Submit' button to finish.");
+    };
+    window.history.pushState(null, '', window.location.pathname + window.location.hash);
+    window.addEventListener('popstate', handlePopState);
+
+    // Warn before Refresh
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     // Set active hash to hide Header/Footer
     window.location.hash = 'active';
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       window.location.hash = ''; // Clear hash on exit
     };
   }, [loading, result, finishTest, captureScreenshot, studentId, test.id]);
@@ -451,12 +468,19 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               You switched tabs or minimized the window. This is considered cheating. 
               If you do this {3 - cheatWarnings} more time(s), your test will be auto-submitted.
             </p>
-            <button 
-              onClick={() => setShowWarning(false)}
-              className="bg-red-600 text-white py-2 px-6 rounded-md font-bold hover:bg-red-700"
-            >
-              I Understand, Return to Test
-            </button>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => {
+                  setShowWarning(false);
+                  // Force fullscreen back on mobile
+                  const elem = document.documentElement;
+                  if (elem.requestFullscreen) elem.requestFullscreen().catch(e => console.warn(e));
+                }}
+                className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 shadow-lg"
+              >
+                Return to Test & Fullscreen
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -517,14 +541,14 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
       {/* Header */}
       <div className="bg-white shadow-sm sticky top-0 z-40 border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">{test.title}</h1>
-            <p className="text-sm text-gray-500">{test.subject} • Anti-Cheat Active</p>
+        <div className="max-w-4xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
+          <div className="flex flex-col">
+            <h1 className="text-base sm:text-xl font-bold text-gray-900 leading-tight">{test.title}</h1>
+            <p className="text-[10px] sm:text-sm text-gray-500 uppercase tracking-tight font-semibold">{test.subject} • Secure Mode</p>
           </div>
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold ${timeLeft < 60 ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-blue-100 text-blue-700'}`}>
-            <Clock className="h-5 w-5" />
-            {formatTime(timeLeft)}
+          <div className={`flex items-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full font-bold ${timeLeft < 60 ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-blue-100 text-blue-700'}`}>
+            <Clock className="h-4 w-4 sm:h-5 sm:h-5" />
+            <span className="text-sm sm:text-base">{formatTime(timeLeft)}</span>
           </div>
         </div>
       </div>
@@ -577,86 +601,51 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               finishTest(false);
             }}
             disabled={submitting}
-            className="bg-green-600 text-white py-3 px-12 rounded-full font-bold text-lg hover:bg-green-700 disabled:opacity-50 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"
+            className="w-full sm:w-auto bg-green-600 text-white py-3 px-12 rounded-full font-bold text-lg hover:bg-green-700 disabled:opacity-50 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"
           >
             {submitting ? 'Submitting...' : 'Submit Test'}
           </button>
         </div>
       </div>
 
-      {/* AI Proctoring Video Widget */}
+      {/* AI Proctoring Video Widget - Fixed for Mobile */}
       {!result && (
-        <div className="fixed bottom-4 right-4 z-50 bg-white rounded-xl shadow-2xl p-3 border-2 border-gray-100 w-48 transition-all duration-300">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">AI Proctoring</span>
-            <span className="relative flex h-3 w-3">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                cameraError ? 'bg-orange-400' : faceDetectionStatus.includes('⚠️') ? 'bg-red-400' : 'bg-green-400'
-              }`}></span>
-              <span className={`relative inline-flex rounded-full h-3 w-3 ${
-                cameraError ? 'bg-orange-500' : faceDetectionStatus.includes('⚠️') ? 'bg-red-500' : 'bg-green-500'
-              }`}></span>
-            </span>
-          </div>
-
-          <div className="relative rounded-lg bg-gray-900 overflow-hidden aspect-[4/3] border border-gray-800 shadow-inner">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover transform scale-x-[-1]"
-            />
-            {!cameraActive && !cameraError && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center gap-1">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400"></div>
-                <span className="text-[9px] text-gray-400 font-medium">
-                  {cameraRetrying ? 'Starting...' : 'Starting Camera...'}
-                </span>
-              </div>
-            )}
-            {cameraError && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-center gap-1 bg-gray-900">
-                <CameraOff className="h-6 w-6 text-orange-400" />
-                <span className="text-[9px] text-orange-300 font-medium">
-                  {cameraError === 'permission_denied' ? 'Camera Blocked' :
-                   cameraError === 'no_device' ? 'No Camera Found' : 'Camera Error'}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-2 text-center">
-            {cameraError ? (
-              <>
-                <p className="text-[10px] font-bold text-orange-600">
-                  {cameraError === 'permission_denied' ? 'Allow camera to enable AI' :
-                   cameraError === 'no_device' ? 'No camera detected' : 'Camera unavailable'}
-                </p>
-                {cameraError === 'permission_denied' && (
-                  <button
-                    onClick={() => {
-                      setShowCameraGuide(true);
-                    }}
-                    className="mt-1 text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded hover:bg-blue-200 transition-colors"
-                  >
-                    How to Allow?
-                  </button>
-                )}
-              </>
-            ) : (
-              <>
-                <p className={`text-[11px] font-bold ${
-                  faceDetectionStatus.includes('⚠️') ? 'text-red-600' : 'text-green-600'
-                }`}>
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end">
+          <div className="bg-black rounded-full sm:rounded-xl overflow-hidden shadow-2xl border-2 border-white w-24 h-24 sm:w-44 sm:h-auto transition-all duration-300 group">
+            <div className="hidden sm:flex items-center justify-between p-2 bg-white/10 backdrop-blur-md">
+              <span className="text-[8px] uppercase font-bold text-white tracking-widest">AI Proctoring</span>
+              <div className={`h-2 w-2 rounded-full ${faceDetectionStatus.includes('⚠️') ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
+            </div>
+            
+            <div className="relative aspect-square sm:aspect-video bg-gray-900">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`w-full h-full object-cover transform scale-x-[-1] ${cameraActive ? 'opacity-100' : 'opacity-30'}`}
+              />
+              {!cameraActive && !cameraError && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <RefreshCw className="h-5 w-5 text-white animate-spin opacity-50" />
+                </div>
+              )}
+              <div className="absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-[2px] py-1 px-2 text-center pointer-events-none">
+                <p className="text-[8px] sm:text-[10px] font-bold text-white truncate drop-shadow-md">
                   {faceDetectionStatus}
                 </p>
-                {faceWarnings > 0 && (
-                  <p className="text-[10px] text-red-500 font-bold mt-1 bg-red-50 py-0.5 rounded">
-                    Strikes: {faceWarnings} / 5
-                  </p>
-                )}
-              </>
+              </div>
+            </div>
+          </div>
+          
+          {/* Status Badge below widget for extra clarity */}
+          <div className="mt-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm border border-gray-200 hidden sm:block max-w-[176px]">
+            {cameraError ? (
+              <p className="text-[9px] text-red-600 font-bold truncate">⚠️ Camera Error: {cameraError}</p>
+            ) : (
+              <p className={`text-[9px] font-bold truncate ${faceDetectionStatus.includes('⚠️') ? 'text-red-600' : 'text-blue-600'}`}>
+                {faceWarnings > 0 ? `Warnings: ${faceWarnings}/5` : 'Monitoring Active'}
+              </p>
             )}
           </div>
         </div>
