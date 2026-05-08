@@ -348,6 +348,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
     let stream: MediaStream | null = null;
     let detectionInterval: NodeJS.Timeout;
+    let audioContext: AudioContext | null = null;
+    let audioInterval: NodeJS.Timeout;
 
     const handleWarning = async (msg: string) => {
       const blob = await captureScreenshot();
@@ -375,7 +377,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       }
 
       const cameraConstraints = [
+        { video: { facingMode: 'user' }, audio: true },
         { video: { facingMode: 'user' }, audio: false },
+        { video: true, audio: true },
         { video: true, audio: false },
       ];
 
@@ -426,6 +430,45 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       setShowCameraGuide(false);
       setCameraRetrying(false);
       setFaceDetectionStatus('Monitoring Active');
+
+      // Start Audio Proctoring
+      if (stream.getAudioTracks().length > 0) {
+        try {
+          audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const analyser = audioContext.createAnalyser();
+          const microphone = audioContext.createMediaStreamSource(stream);
+          microphone.connect(analyser);
+          analyser.fftSize = 256;
+          const bufferLength = analyser.frequencyBinCount;
+          const dataArray = new Uint8Array(bufferLength);
+          
+          let noisyCount = 0;
+          
+          audioInterval = setInterval(() => {
+            if (isOffline) return;
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for(let i = 0; i < bufferLength; i++) {
+              sum += dataArray[i];
+            }
+            const average = sum / bufferLength;
+            
+            // If noise level is above threshold (adjust 40 if needed based on real-world testing)
+            if (average > 40) {
+              noisyCount++;
+              if (noisyCount > 3) {
+                setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, shor mat karo!`);
+                handleWarning(`${studentName.split(' ')[0]}, test ke beech aawaz nahi aani chahiye! Silence rakhiye.`);
+                noisyCount = 0; // reset
+              }
+            } else {
+              noisyCount = Math.max(0, noisyCount - 1);
+            }
+          }, 1500); // Check audio every 1.5s
+        } catch(e) {
+          console.warn("Audio Context failed to start", e);
+        }
+      }
 
       try {
         await tf.ready();
@@ -483,6 +526,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       if (videoRef.current) videoRef.current.srcObject = null;
       setCameraActive(false);
       clearInterval(detectionInterval);
+      clearInterval(audioInterval);
+      if (audioContext && audioContext.state !== 'closed') {
+        audioContext.close().catch(()=>{});
+      }
     };
   }, [result, loading, finishTest, captureScreenshot, studentId, test.id]);
 
