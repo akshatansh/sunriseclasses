@@ -63,10 +63,34 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
   const showSubtleMessage = useCallback((msg: string) => {
     setActiveMessage(msg);
-    if (msg.toLowerCase().includes('warning') || msg.toLowerCase().includes('detected')) {
+    const isWarning = msg.toLowerCase().includes('warning') || msg.toLowerCase().includes('detected') || msg.includes('⚠️') || msg.toLowerCase().includes('pakda');
+    
+    if (isWarning) {
       setIsWarningFlash(true);
       setTimeout(() => setIsWarningFlash(false), 500);
+      
+      // Play Warning Beep Sound
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); // 800Hz beep
+        
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // 10% volume
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.5);
+      } catch (e) {
+        console.warn("Audio play failed", e);
+      }
     }
+    
     if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
     messageTimeoutRef.current = setTimeout(() => {
       setActiveMessage(null);
