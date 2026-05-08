@@ -398,11 +398,28 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        streamRef.current = stream; // Store in ref
-        try {
-          await videoRef.current.play();
-          setCameraActive(true); // Show video immediately
-        } catch (e) { }
+        streamRef.current = stream;
+
+        // Wait for metadata before calling play() — this fixes black screen on mobile.
+        // Calling play() immediately after setting srcObject fails silently on iOS/Android.
+        await new Promise<void>((resolve) => {
+          if (!videoRef.current) { resolve(); return; }
+          const onReady = () => {
+            videoRef.current?.play()
+              .then(() => setCameraActive(true))
+              .catch(() => setCameraActive(true)); // Still show even if autoplay fails
+            resolve();
+          };
+          videoRef.current.onloadedmetadata = onReady;
+          // iOS Safari fires 'canplay' more reliably than 'loadedmetadata'
+          videoRef.current.oncanplay = onReady;
+          // Timeout fallback — if neither event fires in 3s, force it
+          setTimeout(() => {
+            videoRef.current?.play().catch(() => {});
+            setCameraActive(true);
+            resolve();
+          }, 3000);
+        });
       }
 
       setCameraError(null);
