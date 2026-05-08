@@ -139,9 +139,9 @@ export default function OnlineTestAdmin() {
       setNewQuestion({ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: '' });
       const data = await getQuestionsAdmin(currentTest.id);
       setQuestions(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to add question');
+      alert(`Failed to add question: ${err.message || 'Unknown error'}`);
     }
   };
 

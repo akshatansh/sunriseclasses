@@ -293,9 +293,15 @@ export async function getQuestionsAdmin(testId: string) {
 }
 
 export async function createQuestionAdmin(question: Partial<OnlineTestQuestion>) {
+  // Omit empty question_image to avoid errors if column doesn't exist
+  const payload = { ...question };
+  if (!payload.question_image) {
+    delete payload.question_image;
+  }
+
   const { data, error } = await supabase
     .from('online_test_questions')
-    .insert(question)
+    .insert(payload)
     .select()
     .single();
 
