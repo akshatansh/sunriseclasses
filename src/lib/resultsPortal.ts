@@ -84,7 +84,7 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
 
     if (onlineAttemptsData) {
       onlineAttemptsData.forEach((att: any) => {
-        if (att.online_tests) {
+        if (att.online_tests && att.is_completed && att.submitted_at) {
           results.push({
             id: att.id,
             studentId: att.student_id,
