@@ -130,7 +130,24 @@ export default function ResultsPage() {
   const monthLabel = getCurrentMonthLabel(referenceDate);
   const monthlySummaries = useMemo(() => getMonthlyStudentSummaries(classFilteredData, referenceDate), [classFilteredData, referenceDate]);
   const allStudentResults = useMemo(() => getAllStudentResults(classFilteredData), [classFilteredData]);
-  const topThree = monthlySummaries.slice(0, 3);
+  // Group tied students into combined rank groups (max 3 rank slots)
+  const topThreeGroups = useMemo(() => {
+    const groups: { rank: number; summaries: typeof monthlySummaries }[] = [];
+    let rankCounter = 1;
+    let i = 0;
+    while (i < monthlySummaries.length && groups.length < 3) {
+      const currentPct = monthlySummaries[i].percentage;
+      // Collect all students with same percentage
+      const tied = [];
+      while (i < monthlySummaries.length && monthlySummaries[i].percentage === currentPct) {
+        tied.push(monthlySummaries[i]);
+        i++;
+      }
+      groups.push({ rank: rankCounter, summaries: tied });
+      rankCounter += tied.length;
+    }
+    return groups;
+  }, [monthlySummaries]);
 
 
   const filteredStudents = allStudentResults.filter(({ student }) => {
@@ -241,55 +258,104 @@ export default function ResultsPage() {
               <h2 className="text-2xl sm:text-3xl font-bold text-[#0f2a5c]">TOP Performers of {monthLabel} — Class {selectedClass}</h2>
             </div>
 
-            {topThree.length > 0 ? (
+            {topThreeGroups.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {topThree.map((summary, index) => (
-                  <div
-                    key={summary.student.id}
-                    className={`rounded-[2rem] border p-6 shadow-sm ${
-                      index === 0
-                        ? 'border-[#f5a623]/40 bg-[linear-gradient(180deg,_#fff8e8,_#ffffff)]'
-                        : 'border-slate-200 bg-white/90'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="inline-flex items-center gap-2 rounded-full bg-[#0f2a5c] px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-white">
-                        <Medal size={14} className="text-[#f5a623]" />
-                        {index === 0 ? 'TOP PERFORMER' : `Rank #${index + 1}`}
-                      </div>
-                      <span className="text-sm font-semibold text-[#9a5b00]">{summary.percentage}%</span>
-                    </div>
+                {topThreeGroups.map((group) => {
+                  const isFirst = group.rank === 1;
+                  const isTied = group.summaries.length > 1;
+                  const rankLabel = isFirst ? 'TOP PERFORMER' : `Rank #${group.rank}`;
+                  const pct = group.summaries[0].percentage;
 
-                    <div className="mt-5 flex items-center gap-4">
-                      <img
-                        src={summary.student.image || '/sunrise-logo.png'}
-                        alt={summary.student.name}
-                        className="h-20 w-20 rounded-2xl object-cover object-top border border-slate-200 bg-slate-50"
-                        onError={(e) => {
-                          e.currentTarget.src = '/sunrise-logo.png';
-                        }}
-                      />
-                      <div>
-                        <h3 className="text-xl font-bold text-[#0f2a5c]">{summary.student.name}</h3>
-                        <p className="text-sm text-slate-500">{summary.student.className}</p>
-                        <p className="mt-2 text-sm text-slate-600">
-                          {summary.totalMarksObtained}/{summary.totalMarksPossible} marks
-                        </p>
+                  return (
+                    <div
+                      key={group.rank}
+                      className={`rounded-[2rem] border p-6 shadow-sm ${
+                        isFirst
+                          ? 'border-[#f5a623]/40 bg-[linear-gradient(180deg,_#fff8e8,_#ffffff)]'
+                          : 'border-slate-200 bg-white/90'
+                      }`}
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="inline-flex items-center gap-2 rounded-full bg-[#0f2a5c] px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-white">
+                            <Medal size={14} className="text-[#f5a623]" />
+                            {rankLabel}
+                          </div>
+                          {isTied && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 border border-purple-200 px-2 py-0.5 text-[10px] font-bold text-purple-700 uppercase tracking-wider">
+                              🤝 Joint
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-sm font-semibold text-[#9a5b00]">{pct}%</span>
                       </div>
-                    </div>
 
-                    <div className="mt-5 grid grid-cols-2 gap-3">
-                      <div className="rounded-2xl bg-[#f8fbff] p-4">
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Tests</p>
-                        <p className="mt-1 text-xl font-black text-[#0f2a5c]">{summary.testCount}</p>
-                      </div>
-                      <div className="rounded-2xl bg-[#fff7e6] p-4">
-                        <p className="text-xs uppercase tracking-[0.2em] text-[#9a5b00]">Average</p>
-                        <p className="mt-1 text-xl font-black text-[#9a5b00]">{summary.percentage}%</p>
-                      </div>
+                      {/* Student(s) */}
+                      {isTied ? (
+                        // Combined card: side by side photos
+                        <div className="mt-5">
+                          <div className="flex items-center justify-center gap-2">
+                            {group.summaries.map((s, si) => (
+                              <>
+                                <div key={s.student.id} className="flex flex-col items-center gap-2 flex-1">
+                                  <img
+                                    src={s.student.image || '/sunrise-logo.png'}
+                                    alt={s.student.name}
+                                    className="h-16 w-16 rounded-2xl object-cover object-top border-2 border-[#f5a623]/40 bg-slate-50"
+                                    onError={(e) => { e.currentTarget.src = '/sunrise-logo.png'; }}
+                                  />
+                                  <div className="text-center">
+                                    <p className="text-sm font-bold text-[#0f2a5c] leading-tight">{s.student.name}</p>
+                                    <p className="text-[10px] text-slate-500 mt-0.5">{s.student.className}</p>
+                                    <p className="text-xs text-slate-600 mt-1">{s.totalMarksObtained}/{s.totalMarksPossible}</p>
+                                  </div>
+                                </div>
+                                {si < group.summaries.length - 1 && (
+                                  <div className="flex flex-col items-center justify-center shrink-0 text-2xl select-none">🤝</div>
+                                )}
+                              </>
+                            ))}
+                          </div>
+                          {/* Shared stats */}
+                          <div className="mt-4 rounded-2xl bg-[#fff7e6] p-3 text-center">
+                            <p className="text-xs uppercase tracking-[0.2em] text-[#9a5b00]">Joint Average</p>
+                            <p className="mt-1 text-xl font-black text-[#9a5b00]">{pct}%</p>
+                          </div>
+                        </div>
+                      ) : (
+                        // Single student card
+                        <div>
+                          <div className="mt-5 flex items-center gap-4">
+                            <img
+                              src={group.summaries[0].student.image || '/sunrise-logo.png'}
+                              alt={group.summaries[0].student.name}
+                              className="h-20 w-20 rounded-2xl object-cover object-top border border-slate-200 bg-slate-50"
+                              onError={(e) => { e.currentTarget.src = '/sunrise-logo.png'; }}
+                            />
+                            <div>
+                              <h3 className="text-xl font-bold text-[#0f2a5c]">{group.summaries[0].student.name}</h3>
+                              <p className="text-sm text-slate-500">{group.summaries[0].student.className}</p>
+                              <p className="mt-2 text-sm text-slate-600">
+                                {group.summaries[0].totalMarksObtained}/{group.summaries[0].totalMarksPossible} marks
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-5 grid grid-cols-2 gap-3">
+                            <div className="rounded-2xl bg-[#f8fbff] p-4">
+                              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Tests</p>
+                              <p className="mt-1 text-xl font-black text-[#0f2a5c]">{group.summaries[0].testCount}</p>
+                            </div>
+                            <div className="rounded-2xl bg-[#fff7e6] p-4">
+                              <p className="text-xs uppercase tracking-[0.2em] text-[#9a5b00]">Average</p>
+                              <p className="mt-1 text-xl font-black text-[#9a5b00]">{pct}%</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white/80 p-10 text-center text-slate-500">
