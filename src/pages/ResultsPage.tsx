@@ -5,11 +5,10 @@ import StudentProgressChart from '../components/StudentProgressChart';
 import { generateStudentRankCardPDF } from '../lib/pdfUtils';
 import {
   getAllStudentResults,
-  getCurrentMonthLabel,
-  getMonthlyStudentSummaries,
   loadResultsPortalData,
   type ResultsPortalData,
 } from '../lib/resultsPortal';
+
 import { getAvailableHomeworkMonths, getStudentsWithHomework, type StudentWithHomework } from '../lib/homeworkPortal';
 import { getMonthlyAttendanceStats } from '../lib/attendancePortal';
 
@@ -103,58 +102,67 @@ export default function ResultsPage() {
     };
   }, [data, selectedClass]);
 
-  // Top performers section: previous month ke results dikhane hain
-  // (May chal raha hai → April ka performance show ho)
-  const prevMonthDate = useMemo(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() - 1, 15); // previous month ki mid-date
-  }, []);
-
-  const referenceDate = useMemo(() => {
-    if (classFilteredData.results.length === 0) return prevMonthDate;
-    // Check karo ki previous month mein koi test tha?
-    const prevYear = prevMonthDate.getFullYear();
-    const prevMonth = prevMonthDate.getMonth();
-    const prevMonthTests = classFilteredData.results.filter(r => {
-      const d = new Date(r.testDate);
-      return d.getFullYear() === prevYear && d.getMonth() === prevMonth;
-    });
-    // Agar previous month mein tests hain to use karo, warna latest test ki date
-    if (prevMonthTests.length > 0) return prevMonthDate;
-    const latestTest = classFilteredData.results.reduce((latest, current) =>
-      new Date(current.testDate) > new Date(latest.testDate) ? current : latest
+  // ── LATEST TEST BASED TOP 3 ──────────────────────────────────────────
+  // Sabse latest test dhundho (by testDate)
+  const latestTestInfo = useMemo(() => {
+    if (classFilteredData.results.length === 0) return null;
+    // Latest date wala result
+    const latest = classFilteredData.results.reduce((a, b) =>
+      new Date(b.testDate) > new Date(a.testDate) ? b : a
     );
-    return new Date(latestTest.testDate);
-  }, [classFilteredData.results, prevMonthDate]);
+    return { testName: latest.testName.trim(), testDate: latest.testDate, subject: latest.subject };
+  }, [classFilteredData.results]);
 
-  const monthLabel = getCurrentMonthLabel(referenceDate);
-  const monthlySummaries = useMemo(() => getMonthlyStudentSummaries(classFilteredData, referenceDate), [classFilteredData, referenceDate]);
-  const allStudentResults = useMemo(() => getAllStudentResults(classFilteredData), [classFilteredData]);
-  // Group tied students into combined rank groups (max 3 rank slots)
+  // Us test ke saare students ke results
+  const latestTestSummaries = useMemo(() => {
+    if (!latestTestInfo) return [];
+    const testResults = classFilteredData.results.filter(
+      r => r.testName.trim() === latestTestInfo.testName
+    );
+    // Per student: marks in this test
+    return classFilteredData.students
+      .map(student => {
+        const res = testResults.find(r => r.studentId === student.id);
+        if (!res) return null;
+        const pct = res.totalMarks > 0
+          ? Number(((res.marksObtained / res.totalMarks) * 100).toFixed(1))
+          : 0;
+        return { student, marksObtained: res.marksObtained, totalMarks: res.totalMarks, percentage: pct };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        if (b!.percentage !== a!.percentage) return b!.percentage - a!.percentage;
+        return a!.student.name.localeCompare(b!.student.name);
+      }) as { student: typeof classFilteredData.students[0]; marksObtained: number; totalMarks: number; percentage: number }[];
+  }, [classFilteredData, latestTestInfo]);
+
+  // Tie logic: group karo same % wale students (max 3 rank slots)
   const topThreeGroups = useMemo(() => {
-    const groups: { rank: number; summaries: typeof monthlySummaries }[] = [];
+    const groups: { rank: number; summaries: typeof latestTestSummaries }[] = [];
     let rankCounter = 1;
     let i = 0;
-    while (i < monthlySummaries.length && groups.length < 3) {
-      const currentPct = monthlySummaries[i].percentage;
-      // Collect all students with same percentage
+    while (i < latestTestSummaries.length && groups.length < 3) {
+      const currentPct = latestTestSummaries[i].percentage;
       const tied = [];
-      while (i < monthlySummaries.length && monthlySummaries[i].percentage === currentPct) {
-        tied.push(monthlySummaries[i]);
+      while (i < latestTestSummaries.length && latestTestSummaries[i].percentage === currentPct) {
+        tied.push(latestTestSummaries[i]);
         i++;
       }
       groups.push({ rank: rankCounter, summaries: tied });
       rankCounter += tied.length;
     }
     return groups;
-  }, [monthlySummaries]);
+  }, [latestTestSummaries]);
 
+
+  const allStudentResults = useMemo(() => getAllStudentResults(classFilteredData), [classFilteredData]);
 
   const filteredStudents = allStudentResults.filter(({ student }) => {
     const search = query.trim().toLowerCase();
     if (!search) return true;
     return `${student.name} ${student.className}`.toLowerCase().includes(search);
   });
+
 
   const uniqueTests = useMemo(() => {
     const testsMap = new Map<string, { testName: string; testDate: string; subject: string; totalMarks: number }>();
@@ -242,20 +250,34 @@ export default function ResultsPage() {
                   </button>
                 </div>
 
-                {/* Session card */}
+                {/* Latest Test Info Card */}
                 <div className="rounded-[1.75rem] border border-[#d9e5ff] bg-[#f8fbff] px-6 py-5 text-center w-full lg:min-w-[260px]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Current Session</p>
-                  <p className="mt-2 text-2xl font-black text-[#0f2a5c]">{monthLabel}</p>
-                  <p className="mt-2 text-sm text-slate-500">{monthlySummaries.length} students ranked this month</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Latest Test</p>
+                  <p className="mt-2 text-lg font-black text-[#0f2a5c] leading-tight">
+                    {latestTestInfo ? latestTestInfo.testName : '—'}
+                  </p>
+                  {latestTestInfo && (
+                    <p className="mt-1 text-sm text-slate-500">
+                      {new Date(latestTestInfo.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                  )}
+                  <p className="mt-2 text-sm text-slate-500">{latestTestSummaries.length} students appeared</p>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="mt-10">
-            <div className="mb-6 flex items-center gap-3">
-              <Trophy className="text-[#f5a623]" size={24} />
-              <h2 className="text-2xl sm:text-3xl font-bold text-[#0f2a5c]">TOP Performers of {monthLabel} — Class {selectedClass}</h2>
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2">
+              <div className="flex items-center gap-3">
+                <Trophy className="text-[#f5a623]" size={24} />
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#0f2a5c]">TOP Performers — Class {selectedClass}</h2>
+              </div>
+              {latestTestInfo && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#f5a623]/30 bg-[#fff8e8] px-4 py-1.5 text-xs font-bold text-[#9a5b00]">
+                  📝 {latestTestInfo.testName} &nbsp;·&nbsp; {new Date(latestTestInfo.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                </span>
+              )}
             </div>
 
             {topThreeGroups.length > 0 ? (
@@ -337,17 +359,17 @@ export default function ResultsPage() {
                               <h3 className="text-xl font-bold text-[#0f2a5c]">{group.summaries[0].student.name}</h3>
                               <p className="text-sm text-slate-500">{group.summaries[0].student.className}</p>
                               <p className="mt-2 text-sm text-slate-600">
-                                {group.summaries[0].totalMarksObtained}/{group.summaries[0].totalMarksPossible} marks
+                                {group.summaries[0].marksObtained}/{group.summaries[0].totalMarks} marks
                               </p>
                             </div>
                           </div>
                           <div className="mt-5 grid grid-cols-2 gap-3">
                             <div className="rounded-2xl bg-[#f8fbff] p-4">
-                              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Tests</p>
-                              <p className="mt-1 text-xl font-black text-[#0f2a5c]">{group.summaries[0].testCount}</p>
+                              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Marks</p>
+                              <p className="mt-1 text-xl font-black text-[#0f2a5c]">{group.summaries[0].marksObtained}/{group.summaries[0].totalMarks}</p>
                             </div>
                             <div className="rounded-2xl bg-[#fff7e6] p-4">
-                              <p className="text-xs uppercase tracking-[0.2em] text-[#9a5b00]">Average</p>
+                              <p className="text-xs uppercase tracking-[0.2em] text-[#9a5b00]">Score</p>
                               <p className="mt-1 text-xl font-black text-[#9a5b00]">{pct}%</p>
                             </div>
                           </div>
@@ -359,7 +381,7 @@ export default function ResultsPage() {
               </div>
             ) : (
               <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white/80 p-10 text-center text-slate-500">
-                Abhi is month ke Class {selectedClass} test marks upload nahi hue hain. Admin panel se marks add hote hi top 3 yahan dikh jayenge.
+                Abhi koi test marks upload nahi hue hain. Admin panel se marks add hote hi yahan top 3 dikh jayenge.
               </div>
             )}
           </div>
