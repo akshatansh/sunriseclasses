@@ -34,6 +34,8 @@ export interface StudentTestAttempt {
   is_completed: boolean;
   submitted_at?: string;
   submission_type?: 'manual' | 'auto_time' | 'auto_cheat'; // How the test was submitted
+  time_taken_seconds?: number | null;  // How long student took
+  last_question_seen?: number | null;  // Highest question number they reached
 }
 
 // Student Login logic for Test Portal
@@ -112,7 +114,9 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
       total_marks,
       cheat_warnings: attempt.cheat_warnings || 0,
       is_completed: true,
-      submission_type: attempt.submission_type || 'manual'
+      submission_type: attempt.submission_type || 'manual',
+      time_taken_seconds: attempt.time_taken_seconds ?? null,
+      last_question_seen: attempt.last_question_seen ?? null,
     })
     .eq('student_id', attempt.student_id)
     .eq('test_id', attempt.test_id)
@@ -130,7 +134,9 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
         total_marks,
         cheat_warnings: attempt.cheat_warnings || 0,
         is_completed: true,
-        submission_type: attempt.submission_type || 'manual'
+        submission_type: attempt.submission_type || 'manual',
+        time_taken_seconds: attempt.time_taken_seconds ?? null,
+        last_question_seen: attempt.last_question_seen ?? null,
       })
       .select()
       .single();

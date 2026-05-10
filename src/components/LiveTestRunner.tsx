@@ -33,6 +33,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const [isWarningFlash, setIsWarningFlash] = useState(false); // For red flash effect
   const [isDownloading, setIsDownloading] = useState(false); // For JPG download state
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+  const [maxQuestionSeen, setMaxQuestionSeen] = useState(0); // Highest question index student navigated to
+  const testStartedAtRef = useRef<number | null>(null); // Timestamp when test actually started
 
   // Anti-Cheat State
   const [cheatWarnings, setCheatWarnings] = useState(0);
@@ -171,6 +173,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     if (submitting || result) return;
     setSubmitting(true);
 
+    // Calculate time taken in seconds
+    const timeTakenSeconds = testStartedAtRef.current
+      ? Math.floor((Date.now() - testStartedAtRef.current) / 1000)
+      : null;
+
     // Stop camera immediately on submit
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
@@ -181,7 +188,14 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
     try {
       const finalResult = await submitTest(
-        { student_id: studentId, test_id: test.id, cheat_warnings: cheatWarnings + faceWarnings, submission_type: submissionType },
+        {
+          student_id: studentId,
+          test_id: test.id,
+          cheat_warnings: cheatWarnings + faceWarnings,
+          submission_type: submissionType,
+          time_taken_seconds: timeTakenSeconds,
+          last_question_seen: maxQuestionSeen + 1, // 1-indexed for admin readability
+        },
         answers
       );
       localStorage.removeItem(`test_progress_${test.id}_${studentId}`);
@@ -200,7 +214,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       return; // Exit early — do NOT fall through to setSubmitting(false) again
     }
     setSubmitting(false); // Only reached on success
-  }, [answers, cheatWarnings, faceWarnings, result, studentId, submitting, test.id, showSubtleMessage]);
+  }, [answers, cheatWarnings, faceWarnings, maxQuestionSeen, result, studentId, submitting, test.id, showSubtleMessage]);
 
   // Load Questions
   useEffect(() => {
@@ -1040,6 +1054,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           <button
             onClick={() => {
               setIsTestStarted(true);
+              testStartedAtRef.current = Date.now(); // Record when test actually started
               // Activate anti-cheat only after a 3-second grace period.
               // This prevents fullscreen transition + camera permission dialogs
               // from being falsely detected as tab-switch cheating events.
@@ -1290,7 +1305,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               <div className="flex items-center justify-between mt-10">
                 <button
                   disabled={currentQuestionIdx === 0}
-                  onClick={() => setCurrentQuestionIdx(prev => prev - 1)}
+                  onClick={() => { setCurrentQuestionIdx(prev => { const next = prev - 1; return next; }); }}
                   className="px-4 sm:px-8 py-3 sm:py-4 bg-white border-2 border-gray-100 rounded-xl sm:rounded-2xl font-bold text-gray-500 hover:bg-gray-50 hover:border-gray-200 transition-all disabled:opacity-30 disabled:pointer-events-none flex items-center gap-2 text-sm sm:text-base"
                 >
                   ← Previous
@@ -1309,7 +1324,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                   </button>
                 ) : (
                   <button
-                    onClick={() => setCurrentQuestionIdx(prev => prev + 1)}
+                    onClick={() => { setCurrentQuestionIdx(prev => { const next = prev + 1; setMaxQuestionSeen(m => Math.max(m, next)); return next; }); }}
                     className="px-4 sm:px-10 py-3 sm:py-4 bg-blue-600 text-white rounded-xl sm:rounded-2xl font-black shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-2 text-sm sm:text-base"
                   >
                     Next Question →
@@ -1325,7 +1340,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             <h3 className="text-sm font-bold mb-4 uppercase tracking-wider">{t.navigator}</h3>
             <div className="palette-grid">
               {questions.map((q, i) => (
-                <button key={q.id} onClick={() => setCurrentQuestionIdx(i)} className={`h-10 w-10 rounded-lg text-xs font-bold flex items-center justify-center border-2 transition-all ${currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2' : ''} ${answers[q.id] ? 'bg-blue-600 border-blue-600 text-white shadow-md' : markedForReview[q.id] ? 'bg-yellow-400 border-yellow-400 text-white' : 'bg-white border-gray-200'}`}>{i + 1}</button>
+                <button key={q.id} onClick={() => { setCurrentQuestionIdx(i); setMaxQuestionSeen(m => Math.max(m, i)); }} className={`h-10 w-10 rounded-lg text-xs font-bold flex items-center justify-center border-2 transition-all ${currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2' : ''} ${answers[q.id] ? 'bg-blue-600 border-blue-600 text-white shadow-md' : markedForReview[q.id] ? 'bg-yellow-400 border-yellow-400 text-white' : 'bg-white border-gray-200'}`}>{i + 1}</button>
               ))}
             </div>
           </div>
@@ -1342,7 +1357,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             <div className="flex justify-between items-center mb-6"><h3 className="font-bold">{t.jump}</h3><button onClick={() => setShowPalette(false)}>✕</button></div>
             <div className="palette-grid">
               {questions.map((q, i) => (
-                <button key={q.id} onClick={() => { setCurrentQuestionIdx(i); setShowPalette(false); }} className={`h-12 w-12 rounded-xl text-sm font-bold flex items-center justify-center border-2 ${currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2' : ''} ${answers[q.id] ? 'bg-blue-600 border-blue-600 text-white' : markedForReview[q.id] ? 'bg-yellow-400 border-yellow-400 text-white' : 'bg-white border-gray-200'}`}>{i + 1}</button>
+                <button key={q.id} onClick={() => { setCurrentQuestionIdx(i); setMaxQuestionSeen(m => Math.max(m, i)); setShowPalette(false); }} className={`h-12 w-12 rounded-xl text-sm font-bold flex items-center justify-center border-2 ${currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2' : ''} ${answers[q.id] ? 'bg-blue-600 border-blue-600 text-white' : markedForReview[q.id] ? 'bg-yellow-400 border-yellow-400 text-white' : 'bg-white border-gray-200'}`}>{i + 1}</button>
               ))}
             </div>
           </div>

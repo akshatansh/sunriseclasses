@@ -761,8 +761,10 @@ export default function OnlineTestAdmin() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proctoring Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submitted At</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time Taken</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Q. Reached</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proctoring</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submission</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
                   </tr>
                 </thead>
@@ -783,6 +785,28 @@ export default function OnlineTestAdmin() {
                           </div>
                         </div>
                       </td>
+                      {/* Time Taken */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {att.time_taken_seconds ? (
+                          <div className="text-sm font-bold text-gray-700">
+                            {Math.floor(att.time_taken_seconds / 60)}m {att.time_taken_seconds % 60}s
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
+                      </td>
+                      {/* Last Question Seen */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {att.last_question_seen ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm font-bold text-purple-700">{att.last_question_seen}</span>
+                            <span className="text-xs text-gray-400">/ {att.total_marks > 0 ? att.total_marks : '?'} Q</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">—</span>
+                        )}
+                      </td>
+                      {/* Proctoring */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         {att.cheat_warnings > 0 ? (
                           <div className="flex items-center gap-1.5">
@@ -792,9 +816,10 @@ export default function OnlineTestAdmin() {
                             <AlertTriangle className="h-3 w-3 text-red-500 animate-pulse" />
                           </div>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-800 border border-green-200 uppercase tracking-tighter">Verified Clean</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-800 border border-green-200 uppercase tracking-tighter">Clean</span>
                         )}
                       </td>
+                      {/* Submission type + time */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-[11px] text-gray-500 mb-1">
                           {new Date(att.submitted_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
