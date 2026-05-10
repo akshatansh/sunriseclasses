@@ -75,12 +75,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       try {
         if ('speechSynthesis' in window) {
           window.speechSynthesis.cancel();
-          let speechText = "Kripya saamne dekhein, aapki recording ho rahi hai.";
+          let speechText = `${studentName ? studentName + ', ' : ''}Kripya saamne dekhein, aapki recording ho rahi hai.`;
           
           if (msg.toLowerCase().includes('tab switch') || msg.toLowerCase().includes('fullscreen')) {
-            speechText = "Kripya doosra app na kholein, test jama ho jayega.";
+            speechText = `${studentName ? studentName + ', ' : ''}Kripya doosra app na kholein, test jama ho jayega.`;
           } else if (msg.toLowerCase().includes('audio') || msg.toLowerCase().includes('awaz') || msg.toLowerCase().includes('noise')) {
-            speechText = "Kripya shor na karein, aawaz record ho rahi hai.";
+            speechText = `${studentName ? studentName + ', ' : ''}Kripya shor na karein, aawaz record ho rahi hai.`;
           }
 
           const utterance = new SpeechSynthesisUtterance(speechText);
@@ -120,7 +120,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     messageTimeoutRef.current = setTimeout(() => {
       setActiveMessage(null);
     }, 5000);
-  }, []);
+  }, [studentName]);
 
   // Sync state to LocalStorage
   useEffect(() => {
