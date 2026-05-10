@@ -80,10 +80,13 @@ export default function OnlineTestPortal() {
     if (!student) return;
     
     try {
-      // Check if already attempted (from local state first)
-      const attempt = attempts.find(a => a.test_id === test.id);
+      // Check if already COMPLETED (from local state first)
+      // NOTE: We check is_completed specifically because startTestAttempt creates
+      // an incomplete row. Blocking on !!attempt would prevent re-entry after
+      // a crash or network glitch before the test was even taken.
+      const attempt = attempts.find(a => a.test_id === test.id && a.is_completed === true);
       if (attempt) {
-        setAttemptedError(`You have already attempted the test "${test.title}". You scored ${attempt.score}/${attempt.total_marks}.`);
+        setAttemptedError(`You have already completed the test "${test.title}". You scored ${attempt.score}/${attempt.total_marks}.`);
         return;
       }
       
@@ -427,7 +430,7 @@ export default function OnlineTestPortal() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {(tests || []).map(test => {
-                const attempt = (attempts || []).find(a => a && a.test_id === test.id);
+                const attempt = (attempts || []).find(a => a && a.test_id === test.id && a.is_completed === true);
                 const isCompleted = !!attempt;
 
                 return (

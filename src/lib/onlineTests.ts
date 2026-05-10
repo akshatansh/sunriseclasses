@@ -32,6 +32,7 @@ export interface StudentTestAttempt {
   cheat_warnings: number;
   is_completed: boolean;
   submitted_at?: string;
+  submission_type?: 'manual' | 'auto_time' | 'auto_cheat'; // How the test was submitted
 }
 
 // Student Login logic for Test Portal
@@ -107,7 +108,8 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
       score,
       total_marks,
       cheat_warnings: attempt.cheat_warnings || 0,
-      is_completed: true
+      is_completed: true,
+      submission_type: attempt.submission_type || 'manual'
     })
     .eq('student_id', attempt.student_id)
     .eq('test_id', attempt.test_id)
@@ -124,7 +126,8 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
         score,
         total_marks,
         cheat_warnings: attempt.cheat_warnings || 0,
-        is_completed: true
+        is_completed: true,
+        submission_type: attempt.submission_type || 'manual'
       })
       .select()
       .single();

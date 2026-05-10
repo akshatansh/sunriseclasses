@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download, Camera, AlertTriangle, Clock, RotateCcw, Copy, Search, Filter, FileSpreadsheet } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download, Camera, AlertTriangle, Clock, RotateCcw, Copy, Search, Filter, FileSpreadsheet, Radio, RefreshCw } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
@@ -15,8 +15,8 @@ export default function OnlineTestAdmin() {
   const [tests, setTests] = useState<OnlineTest[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Views: 'list', 'edit-test', 'manage-questions', 'view-attempts', 'view-proctoring'
-  const [view, setView] = useState<'list' | 'edit-test' | 'manage-questions' | 'view-attempts' | 'view-proctoring'>('list');
+  // Views: 'list', 'edit-test', 'manage-questions', 'view-attempts', 'view-proctoring', 'live-monitor'
+  const [view, setView] = useState<'list' | 'edit-test' | 'manage-questions' | 'view-attempts' | 'view-proctoring' | 'live-monitor'>('list');
   const [currentTest, setCurrentTest] = useState<Partial<OnlineTest>>({});
   
   const [questions, setQuestions] = useState<OnlineTestQuestion[]>([]);
@@ -28,12 +28,49 @@ export default function OnlineTestAdmin() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterClass, setFilterClass] = useState('All');
   const [uploadingImage, setUploadingImage] = useState(false);
+  
+  // Live Monitor State
+  const [liveStudents, setLiveStudents] = useState<any[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const liveRefreshRef = useRef<NodeJS.Timeout | null>(null);
+
+  const fetchLiveStudents = async () => {
+    setLiveLoading(true);
+    try {
+      // Students with is_completed=false are currently taking a test
+      const { data, error } = await supabase
+        .from('online_test_attempts')
+        .select('*, students(name, class_name, image), online_tests(title, subject, duration_minutes)')
+        .eq('is_completed', false)
+        .order('submitted_at', { ascending: false });
+      if (!error) {
+        setLiveStudents(data || []);
+        setLastRefreshed(new Date());
+      }
+    } catch (err) {
+      console.error('Error fetching live students:', err);
+    } finally {
+      setLiveLoading(false);
+    }
+  };
 
   const classes = ['Class 8', 'Class 9', 'Class 10'];
 
   useEffect(() => {
     fetchTests();
   }, []);
+
+  // Auto-refresh live monitor every 20 seconds when that view is active
+  useEffect(() => {
+    if (view === 'live-monitor') {
+      fetchLiveStudents();
+      liveRefreshRef.current = setInterval(fetchLiveStudents, 20000);
+    }
+    return () => {
+      if (liveRefreshRef.current) clearInterval(liveRefreshRef.current);
+    };
+  }, [view]);
 
   const fetchTests = async () => {
     setLoading(true);
@@ -351,15 +388,23 @@ export default function OnlineTestAdmin() {
         </h2>
         
         {view === 'list' ? (
-          <button
-            onClick={() => {
-              setCurrentTest({ title: '', class_name: 'Class 10', subject: '', duration_minutes: 30, is_active: false });
-              setView('edit-test');
-            }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm font-medium transition-colors"
-          >
-            <PlusCircle className="h-4 w-4" /> Create Test
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setView('live-monitor')}
+              className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm font-medium transition-colors animate-pulse"
+            >
+              <Radio className="h-4 w-4" /> Live Monitor
+            </button>
+            <button
+              onClick={() => {
+                setCurrentTest({ title: '', class_name: 'Class 10', subject: '', duration_minutes: 30, is_active: false });
+                setView('edit-test');
+              }}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm font-medium transition-colors"
+            >
+              <PlusCircle className="h-4 w-4" /> Create Test
+            </button>
+          </div>
         ) : (
           <button
             onClick={() => setView('list')}
@@ -712,8 +757,23 @@ export default function OnlineTestAdmin() {
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-800 border border-green-200 uppercase tracking-tighter">Verified Clean</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-[11px] text-gray-500">
-                        {new Date(att.submitted_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-[11px] text-gray-500 mb-1">
+                          {new Date(att.submitted_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        {att.submission_type === 'auto_time' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-800 border border-yellow-200 uppercase tracking-tighter">
+                            <Clock className="h-2.5 w-2.5" /> Time Over
+                          </span>
+                        ) : att.submission_type === 'auto_cheat' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-200 uppercase tracking-tighter">
+                            <AlertTriangle className="h-2.5 w-2.5" /> Auto Submit
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-800 border border-green-200 uppercase tracking-tighter">
+                            ✓ Khud kiya
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-2">
@@ -741,6 +801,112 @@ export default function OnlineTestAdmin() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {view === 'live-monitor' && (
+          <div>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </span>
+                  Live Test Monitor
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  {lastRefreshed ? `Last updated: ${lastRefreshed.toLocaleTimeString('en-IN')} · Auto-refreshes every 20s` : 'Loading...'}
+                </p>
+              </div>
+              <button
+                onClick={fetchLiveStudents}
+                disabled={liveLoading}
+                className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${liveLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+
+            {liveLoading && liveStudents.length === 0 ? (
+              <div className="py-12 text-center text-gray-400">
+                <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-3 text-gray-300" />
+                <p>Fetching live data...</p>
+              </div>
+            ) : liveStudents.length === 0 ? (
+              <div className="py-16 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                <Users className="h-12 w-12 text-gray-200 mx-auto mb-3" />
+                <p className="font-bold text-gray-500 text-lg">Koi bhi abhi test nahi de raha</p>
+                <p className="text-sm text-gray-400 mt-1">Jab koi student test shuru karega, yahan dikhega</p>
+              </div>
+            ) : (
+              <div>
+                <div className="mb-4 inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-full text-sm font-bold">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                  </span>
+                  {liveStudents.length} Student{liveStudents.length > 1 ? 's' : ''} Currently In Exam
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {liveStudents.map((att) => {
+                    const startedAt = new Date(att.submitted_at);
+                    const minutesAgo = Math.floor((Date.now() - startedAt.getTime()) / 60000);
+                    return (
+                      <div key={att.id} className="bg-white border border-green-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-3 mb-3">
+                          {/* Student Photo */}
+                          <div className="relative shrink-0">
+                            {att.students?.image ? (
+                              <img src={att.students.image} alt={att.students?.name} className="h-11 w-11 rounded-full object-cover border-2 border-green-300" />
+                            ) : (
+                              <div className="h-11 w-11 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center border-2 border-green-300">
+                                <span className="text-white font-black text-sm">{(att.students?.name || 'U').charAt(0).toUpperCase()}</span>
+                              </div>
+                            )}
+                            {/* Live dot */}
+                            <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-green-500 border-2 border-white"></span>
+                            </span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-gray-900 text-sm truncate">{att.students?.name || 'Unknown'}</p>
+                            <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded font-bold uppercase tracking-wide">
+                              {att.students?.class_name}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Test Info */}
+                        <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
+                          <p className="text-xs font-bold text-gray-800 truncate">{att.online_tests?.title || 'Test'}</p>
+                          <p className="text-[10px] text-gray-500 font-medium">{att.online_tests?.subject}</p>
+                        </div>
+
+                        {/* Time Info */}
+                        <div className="flex items-center justify-between text-[11px] text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span>Started {minutesAgo < 1 ? 'just now' : `${minutesAgo} min ago`}</span>
+                          </div>
+                          <button
+                            onClick={() => handleResetAttempt(att.student_id, att.students?.name || 'Unknown')}
+                            className="flex items-center gap-1 text-orange-500 hover:text-orange-700 font-bold transition-colors"
+                            title="Reset attempt so student can retake"
+                          >
+                            <RotateCcw className="h-3 w-3" /> Reset
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

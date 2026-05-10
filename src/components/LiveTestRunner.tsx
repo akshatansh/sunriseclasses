@@ -164,7 +164,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     return undefined;
   }, []);
 
-  const finishTest = useCallback(async (forced: boolean = false, isRetry: boolean = false) => {
+  const finishTest = useCallback(async (
+    submissionType: 'manual' | 'auto_time' | 'auto_cheat' = 'manual',
+    isRetry: boolean = false
+  ) => {
     if (submitting || result) return;
     setSubmitting(true);
 
@@ -178,7 +181,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
     try {
       const finalResult = await submitTest(
-        { student_id: studentId, test_id: test.id, cheat_warnings: cheatWarnings + faceWarnings },
+        { student_id: studentId, test_id: test.id, cheat_warnings: cheatWarnings + faceWarnings, submission_type: submissionType },
         answers
       );
       localStorage.removeItem(`test_progress_${test.id}_${studentId}`);
@@ -190,7 +193,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       setSubmitting(false); // Must reset so retry/user can try again
       if (!isRetry) {
         showSubtleMessage('❌ Network Error! Retrying in 3 seconds...');
-        setTimeout(() => finishTest(forced, true), 3000);
+        setTimeout(() => finishTest(submissionType, true), 3000);
       } else {
         showSubtleMessage('❌ Submission failed. Please check connection and try submitting again.');
       }
@@ -251,7 +254,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timerId);
-          finishTest(true); // auto submit on timeout
+          finishTest('auto_time'); // auto submit on timeout
           return 0;
         }
         return prev - 1;
@@ -274,11 +277,13 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
         setCheatWarnings(prev => {
           const newCount = prev + 1;
-          if (newCount >= 5) {
-            showSubtleMessage('Bahut zyada cheating pakdi gayi! Test submit ho raha hai...');
-            finishTest(true);
+          // Raised from 5 → 8: Mobile notifications / system UI can falsely trigger
+          // visibilitychange. Students get more fair chances before auto-submit.
+          if (newCount >= 8) {
+            showSubtleMessage('Bahut zyada tab switch! Test submit ho raha hai...');
+            finishTest('auto_cheat'); // too many tab switches
           } else {
-            showSubtleMessage(`⚠️ Warning ${newCount}/5: Tab switch pakda gaya! Dobara mat karna.`);
+            showSubtleMessage(`⚠️ Warning ${newCount}/8: Tab switch pakda gaya! Dobara mat karna.`);
           }
           return newCount;
         });
@@ -375,14 +380,23 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     let audioContext: AudioContext | null = null;
     let audioInterval: NodeJS.Timeout;
 
+    // Track test start time — to enforce a grace period before AI can auto-submit
+    const testStartTime = Date.now();
+    const MIN_TIME_BEFORE_AUTOSUBMIT_MS = 3 * 60 * 1000; // 3 minutes minimum
+    // Raised threshold: 25 warnings needed before auto-submit (was 10)
+    // This prevents mobile background noise / camera glitches from unfairly submitting
+    const AI_AUTOSUBMIT_THRESHOLD = 25;
+
     const handleWarning = async (msg: string) => {
       const blob = await captureScreenshot();
       logProctoringEvent(test.id, studentId, msg, blob, 'image');
       setFaceWarnings(prev => {
         const newCount = prev + 1;
-        if (newCount >= 10) {
+        const timeInTest = Date.now() - testStartTime;
+        // Only auto-submit if: enough time has passed AND enough warnings accumulated
+        if (newCount >= AI_AUTOSUBMIT_THRESHOLD && timeInTest >= MIN_TIME_BEFORE_AUTOSUBMIT_MS) {
           showSubtleMessage(`Bahut zyada AI warnings! Test submit ho raha hai...`);
-          finishTest(true);
+          finishTest('auto_cheat'); // too many AI warnings
         } else {
           showSubtleMessage(msg);
         }
@@ -477,14 +491,17 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             }
             const average = sum / bufferLength;
             
-            // If noise level is above threshold (adjust 40 if needed based on real-world testing)
-            if (average > 40) {
+            // Threshold raised from 40 → 70: prevents mobile background hiss / fan noise
+            // from triggering false warnings. Only real loud sounds (voices) will trigger.
+            if (average > 70) {
               noisyCount++;
-              if (noisyCount > 3) {
+              // Raised from 3 → 10: needs 10 consecutive noisy readings (15s of noise)
+              // before a warning is logged. One-off sounds won't trigger this.
+              if (noisyCount > 10) {
                 const msg = `${studentName.split(' ')[0]}, test ke beech aawaz nahi aani chahiye! Silence rakhiye.`;
                 setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, shor mat karo!`);
                 
-                // Audio Warning Logic
+                // Audio Warning — only logs to proctoring, does NOT auto-submit
                 try {
                   const mediaRecorder = new MediaRecorder(stream as MediaStream);
                   const audioChunks: Blob[] = [];
@@ -499,18 +516,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                   logProctoringEvent(test.id, studentId, msg);
                 }
 
-                setFaceWarnings(prev => {
-                  const newCount = prev + 1;
-                  if (newCount >= 10) {
-                    showSubtleMessage(`Bahut zyada AI warnings! Test submit ho raha hai...`);
-                    setTimeout(() => finishTest(false), 2000);
-                  } else {
-                    showSubtleMessage(msg);
-                  }
-                  return newCount;
-                });
+                // Audio warnings only show message + log — never directly auto-submit
+                // Admin can review audio proofs manually later
+                showSubtleMessage(msg);
                 
-                noisyCount = 0; // reset
+                noisyCount = 0; // reset after logging
               }
             } else {
               noisyCount = Math.max(0, noisyCount - 1);
@@ -1118,7 +1128,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
             <div className="flex flex-col gap-3">
               <button
-                onClick={() => finishTest(false)}
+                onClick={() => finishTest('manual')}
                 disabled={submitting}
                 className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-green-700 shadow-lg transition-all flex items-center justify-center gap-2"
               >
