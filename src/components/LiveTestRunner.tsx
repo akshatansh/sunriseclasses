@@ -410,6 +410,24 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             console.warn('Could not restore fullscreen', e);
           }
         }
+
+        // 🔁 Camera/Mic Health Check: restart if stream died in background
+        if (timeAwayMs > 500) {
+          const tracks = streamRef.current?.getTracks() || [];
+          const anyTrackEnded = tracks.length === 0 || tracks.some(t => t.readyState === 'ended' || t.muted);
+          if (anyTrackEnded && cameraStartRef.current) {
+            // Stop old dead tracks first
+            tracks.forEach(t => t.stop());
+            if (streamRef.current) streamRef.current = null;
+            if (videoRef.current) videoRef.current.srcObject = null;
+            setCameraActive(false);
+            setFaceDetectionStatus('Restarting camera...');
+            // Restart camera after short delay
+            setTimeout(() => {
+              if (cameraStartRef.current) cameraStartRef.current();
+            }, 800);
+          }
+        }
       }
     };
 
