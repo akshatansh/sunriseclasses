@@ -347,6 +347,23 @@ export async function createQuestionAdmin(question: Partial<OnlineTestQuestion>)
   return data as OnlineTestQuestion;
 }
 
+export async function updateQuestionAdmin(id: string, question: Partial<OnlineTestQuestion>) {
+  const payload = { ...question };
+  if (!payload.question_image && payload.question_image !== '') {
+    delete payload.question_image;
+  }
+
+  const { data, error } = await supabase
+    .from('online_test_questions')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as OnlineTestQuestion;
+}
+
 export async function deleteQuestionAdmin(id: string) {
   const { error } = await supabase.from('online_test_questions').delete().eq('id', id);
   if (error) throw error;

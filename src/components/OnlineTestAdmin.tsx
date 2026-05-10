@@ -5,7 +5,7 @@ import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
 import { 
   getAllTestsAdmin, createTestAdmin, updateTestAdmin, deleteTestAdmin,
-  getQuestionsAdmin, createQuestionAdmin, deleteQuestionAdmin, getTestAttemptsAdmin, getProctoringLogsAdmin,
+  getQuestionsAdmin, createQuestionAdmin, updateQuestionAdmin, deleteQuestionAdmin, getTestAttemptsAdmin, getProctoringLogsAdmin,
   resetStudentAttempt,
   uploadQuestionImage,
   OnlineTest, OnlineTestQuestion
@@ -181,8 +181,14 @@ export default function OnlineTestAdmin() {
     e.preventDefault();
     if (!currentTest.id) return;
     try {
-      await createQuestionAdmin({ ...newQuestion, test_id: currentTest.id } as OnlineTestQuestion);
-      setNewQuestion({ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: '' });
+      if (newQuestion.id) {
+        // Update existing question
+        await updateQuestionAdmin(newQuestion.id, { ...newQuestion, test_id: currentTest.id } as OnlineTestQuestion);
+      } else {
+        // Create new question
+        await createQuestionAdmin({ ...newQuestion, test_id: currentTest.id } as OnlineTestQuestion);
+      }
+      setNewQuestion({ id: undefined, question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: '' });
       const data = await getQuestionsAdmin(currentTest.id);
       setQuestions(data);
     } catch (err: any) {
@@ -595,10 +601,20 @@ export default function OnlineTestAdmin() {
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                  <PlusCircle className="h-5 w-5 text-blue-600" /> Add New Question
+                  <PlusCircle className="h-5 w-5 text-blue-600" /> {newQuestion.id ? 'Edit Question' : 'Add New Question'}
                 </h3>
-                <button 
-                  onClick={() => {
+                <div className="flex gap-2">
+                  {newQuestion.id && (
+                    <button 
+                      type="button" 
+                      onClick={() => setNewQuestion({ id: undefined, question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: '' })}
+                      className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => {
                     const csvContent = "data:text/csv;charset=utf-8,Question,Option A,Option B,Option C,Option D,Correct Option (A/B/C/D),Marks\nType your question here,Choice 1,Choice 2,Choice 3,Choice 4,A,1";
                     const encodedUri = encodeURI(csvContent);
                     const link = document.createElement("a");
@@ -697,7 +713,9 @@ export default function OnlineTestAdmin() {
                     <input type="number" min="1" required value={newQuestion.marks || 1} onChange={e => setNewQuestion({...newQuestion, marks: parseInt(e.target.value)})} className="w-full px-3 py-2 border rounded-md" />
                   </div>
                 <div className="text-right">
-                  <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-medium">Add Question</button>
+                  <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-medium">
+                    {newQuestion.id ? 'Update Question' : 'Add Question'}
+                  </button>
                 </div>
               </form>
             </div>
@@ -706,10 +724,29 @@ export default function OnlineTestAdmin() {
               <h3 className="font-bold text-gray-900 mb-4 border-b pb-2 text-lg">Existing Questions ({questions.length})</h3>
               <div className="space-y-4">
                 {questions.map((q, idx) => (
-                  <div key={q.id} className="border border-gray-200 rounded-lg p-4 relative">
-                    <button onClick={() => handleDeleteQuestion(q.id)} className="absolute top-4 right-4 text-red-500 hover:text-red-700">
-                      <Trash2 className="h-5 w-5" />
-                    </button>
+                  <div key={q.id} className="border border-gray-200 rounded-lg p-4 relative group">
+                    <div className="absolute top-4 right-4 flex items-center gap-2">
+                      <button 
+                        onClick={() => setNewQuestion({
+                          id: q.id,
+                          question_text: q.question_text,
+                          option_a: q.option_a,
+                          option_b: q.option_b,
+                          option_c: q.option_c,
+                          option_d: q.option_d,
+                          correct_option: q.correct_option,
+                          marks: q.marks,
+                          question_image: q.question_image || ''
+                        })} 
+                        className="text-blue-500 hover:text-blue-700 bg-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Edit Question"
+                      >
+                        <Edit className="h-5 w-5" />
+                      </button>
+                      <button onClick={() => handleDeleteQuestion(q.id)} className="text-red-500 hover:text-red-700 bg-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Question">
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    </div>
                     {q.question_image && (
                       <div className="mb-3 rounded overflow-hidden border border-gray-100 w-32 bg-gray-50">
                         <img src={q.question_image} alt="Preview" className="w-full h-auto" />
