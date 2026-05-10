@@ -347,6 +347,16 @@ export async function createQuestionAdmin(question: Partial<OnlineTestQuestion>)
   return data as OnlineTestQuestion;
 }
 
+export async function createQuestionsBatchAdmin(questions: Partial<OnlineTestQuestion>[]) {
+  const { data, error } = await supabase
+    .from('online_test_questions')
+    .insert(questions)
+    .select();
+
+  if (error) throw error;
+  return data as OnlineTestQuestion[];
+}
+
 export async function updateQuestionAdmin(id: string, question: Partial<OnlineTestQuestion>) {
   const payload = { ...question };
   if (!payload.question_image && payload.question_image !== '') {

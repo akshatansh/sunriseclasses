@@ -5,7 +5,7 @@ import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
 import { 
   getAllTestsAdmin, createTestAdmin, updateTestAdmin, deleteTestAdmin,
-  getQuestionsAdmin, createQuestionAdmin, updateQuestionAdmin, deleteQuestionAdmin, getTestAttemptsAdmin, getProctoringLogsAdmin,
+  getQuestionsAdmin, createQuestionAdmin, createQuestionsBatchAdmin, updateQuestionAdmin, deleteQuestionAdmin, getTestAttemptsAdmin, getProctoringLogsAdmin,
   resetStudentAttempt,
   uploadQuestionImage,
   OnlineTest, OnlineTestQuestion
@@ -165,6 +165,78 @@ export default function OnlineTestAdmin() {
   const [newQuestion, setNewQuestion] = useState<Partial<OnlineTestQuestion>>({
     question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: ''
   });
+  
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+  const [parsingBulk, setParsingBulk] = useState(false);
+
+  const handleBulkSubmit = async () => {
+    if (!currentTest.id || !bulkText.trim()) return;
+    setParsingBulk(true);
+    
+    try {
+      const blocks = bulkText.split(/\n\s*\n/);
+      const parsedQuestions: Partial<OnlineTestQuestion>[] = [];
+      
+      for (const block of blocks) {
+        if (!block.trim()) continue;
+        const lines = block.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        
+        let ansLineIndex = lines.findIndex(l => l.toLowerCase().startsWith('ans'));
+        if (ansLineIndex === -1) {
+           const lastLine = lines[lines.length - 1];
+           if (['a', 'b', 'c', 'd'].includes(lastLine.toLowerCase())) {
+              ansLineIndex = lines.length - 1;
+           }
+        }
+        
+        if (ansLineIndex > 0) {
+           let qText = lines[0].replace(/^(Q?\d+[\.\)]\s*)/i, '');
+           
+           let optA = '', optB = '', optC = '', optD = '';
+           let correctOpt = 'A';
+           
+           for (let i = 1; i < ansLineIndex; i++) {
+             const line = lines[i];
+             if (line.match(/^[\(]?a[\.\)]?\s*/i)) optA = line.replace(/^[\(]?a[\.\)]?\s*/i, '');
+             else if (line.match(/^[\(]?b[\.\)]?\s*/i)) optB = line.replace(/^[\(]?b[\.\)]?\s*/i, '');
+             else if (line.match(/^[\(]?c[\.\)]?\s*/i)) optC = line.replace(/^[\(]?c[\.\)]?\s*/i, '');
+             else if (line.match(/^[\(]?d[\.\)]?\s*/i)) optD = line.replace(/^[\(]?d[\.\)]?\s*/i, '');
+           }
+           
+           const ansText = lines[ansLineIndex].replace(/^ans(wer)?[\:\.\-]?\s*/i, '').trim().toUpperCase();
+           if (['A', 'B', 'C', 'D'].includes(ansText)) correctOpt = ansText;
+           
+           parsedQuestions.push({
+             test_id: currentTest.id,
+             question_text: qText,
+             option_a: optA,
+             option_b: optB,
+             option_c: optC,
+             option_d: optD,
+             correct_option: correctOpt,
+             marks: 1
+           });
+        }
+      }
+      
+      if (parsedQuestions.length > 0) {
+        await createQuestionsBatchAdmin(parsedQuestions);
+        setBulkText('');
+        setIsBulkMode(false);
+        const data = await getQuestionsAdmin(currentTest.id);
+        setQuestions(data);
+        alert(`Successfully added ${parsedQuestions.length} questions!`);
+      } else {
+        alert("Could not parse any questions. Please check the format.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Bulk upload failed: ${err.message}`);
+    } finally {
+      setParsingBulk(false);
+    }
+  };
 
   const handleManageQuestions = async (test: OnlineTest) => {
     setCurrentTest(test);
@@ -599,126 +671,162 @@ export default function OnlineTestAdmin() {
         {view === 'manage-questions' && (
           <div className="space-y-8">
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                  <PlusCircle className="h-5 w-5 text-blue-600" /> {newQuestion.id ? 'Edit Question' : 'Add New Question'}
-                </h3>
-                <div className="flex gap-2">
-                  {newQuestion.id && (
-                    <button 
-                      type="button" 
-                      onClick={() => setNewQuestion({ id: undefined, question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: '' })}
-                      className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition"
-                    >
-                      Cancel Edit
-                    </button>
-                  )}
+              <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
+                <div className="flex gap-4">
                   <button 
-                    onClick={() => {
-                    const csvContent = "data:text/csv;charset=utf-8,Question,Option A,Option B,Option C,Option D,Correct Option (A/B/C/D),Marks\nType your question here,Choice 1,Choice 2,Choice 3,Choice 4,A,1";
-                    const encodedUri = encodeURI(csvContent);
-                    const link = document.createElement("a");
-                    link.setAttribute("href", encodedUri);
-                    link.setAttribute("download", "question_template.csv");
-                    document.body.appendChild(link);
-                    link.click();
-                  }}
-                  className="flex items-center gap-1 text-[10px] font-bold bg-white border border-gray-200 px-2 py-1 rounded hover:bg-gray-50 text-gray-600"
-                >
-                  <FileSpreadsheet className="h-3 w-3 text-green-600" /> Download CSV Template
-                </button>
-                </div>
-              </div>
-              <form onSubmit={handleAddQuestion} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Question Text</label>
-                  <textarea required rows={3} value={newQuestion.question_text || ''} onChange={e => setNewQuestion({...newQuestion, question_text: e.target.value})} className="w-full px-3 py-2 border rounded-md" placeholder="Type question here..."></textarea>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Option A</label>
-                    <input type="text" required value={newQuestion.option_a || ''} onChange={e => setNewQuestion({...newQuestion, option_a: e.target.value})} className="w-full px-3 py-2 border rounded-md" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Option B</label>
-                    <input type="text" required value={newQuestion.option_b || ''} onChange={e => setNewQuestion({...newQuestion, option_b: e.target.value})} className="w-full px-3 py-2 border rounded-md" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Option C</label>
-                    <input type="text" required value={newQuestion.option_c || ''} onChange={e => setNewQuestion({...newQuestion, option_c: e.target.value})} className="w-full px-3 py-2 border rounded-md" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Option D</label>
-                    <input type="text" required value={newQuestion.option_d || ''} onChange={e => setNewQuestion({...newQuestion, option_d: e.target.value})} className="w-full px-3 py-2 border rounded-md" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Question Image (Optional)</label>
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-grow">
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          onChange={handleImageUpload} 
-                          className="hidden" 
-                          id="q-image-upload" 
-                        />
-                        <label 
-                          htmlFor="q-image-upload" 
-                          className={`w-full flex items-center justify-center gap-2 px-3 py-2 border-2 border-dashed rounded-md cursor-pointer transition-colors ${
-                            newQuestion.question_image ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                          }`}
-                        >
-                          {uploadingImage ? (
-                            <>
-                              <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
-                              <span className="text-xs text-blue-600 font-bold uppercase tracking-wider">Uploading...</span>
-                            </>
-                          ) : newQuestion.question_image ? (
-                            <>
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                              <span className="text-xs text-green-600 font-bold uppercase tracking-wider">Image Ready</span>
-                            </>
-                          ) : (
-                            <>
-                              <Camera className="h-4 w-4 text-gray-400" />
-                              <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Click to Upload</span>
-                            </>
-                          )}
-                        </label>
-                      </div>
-                      {newQuestion.question_image && (
-                        <button 
-                          type="button" 
-                          onClick={() => setNewQuestion({...newQuestion, question_image: ''})}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Correct Answer</label>
-                    <select value={newQuestion.correct_option || 'A'} onChange={e => setNewQuestion({...newQuestion, correct_option: e.target.value})} className="w-full px-3 py-2 border rounded-md">
-                      <option value="A">Option A</option>
-                      <option value="B">Option B</option>
-                      <option value="C">Option C</option>
-                      <option value="D">Option D</option>
-                    </select>
-                  </div>
-                </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Marks</label>
-                    <input type="number" min="1" required value={newQuestion.marks || 1} onChange={e => setNewQuestion({...newQuestion, marks: parseInt(e.target.value)})} className="w-full px-3 py-2 border rounded-md" />
-                  </div>
-                <div className="text-right">
-                  <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-medium">
-                    {newQuestion.id ? 'Update Question' : 'Add Question'}
+                    onClick={() => setIsBulkMode(false)}
+                    className={`font-bold pb-2 border-b-2 transition-colors ${!isBulkMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Add Single Question
+                  </button>
+                  <button 
+                    onClick={() => setIsBulkMode(true)}
+                    className={`font-bold pb-2 border-b-2 transition-colors ${isBulkMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Bulk Paste Questions
                   </button>
                 </div>
-              </form>
+              </div>
+
+              {!isBulkMode ? (
+                <form onSubmit={handleAddQuestion} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Question Text</label>
+                    <textarea required rows={3} value={newQuestion.question_text || ''} onChange={e => setNewQuestion({...newQuestion, question_text: e.target.value})} className="w-full px-3 py-2 border rounded-md" placeholder="Type question here..."></textarea>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Option A</label>
+                      <input type="text" required value={newQuestion.option_a || ''} onChange={e => setNewQuestion({...newQuestion, option_a: e.target.value})} className="w-full px-3 py-2 border rounded-md" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Option B</label>
+                      <input type="text" required value={newQuestion.option_b || ''} onChange={e => setNewQuestion({...newQuestion, option_b: e.target.value})} className="w-full px-3 py-2 border rounded-md" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Option C</label>
+                      <input type="text" required value={newQuestion.option_c || ''} onChange={e => setNewQuestion({...newQuestion, option_c: e.target.value})} className="w-full px-3 py-2 border rounded-md" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Option D</label>
+                      <input type="text" required value={newQuestion.option_d || ''} onChange={e => setNewQuestion({...newQuestion, option_d: e.target.value})} className="w-full px-3 py-2 border rounded-md" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Question Image (Optional)</label>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-grow">
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleImageUpload} 
+                            className="hidden" 
+                            id="q-image-upload" 
+                          />
+                          <label 
+                            htmlFor="q-image-upload" 
+                            className={`w-full flex items-center justify-center gap-2 px-3 py-2 border-2 border-dashed rounded-md cursor-pointer transition-colors ${
+                              newQuestion.question_image ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                            }`}
+                          >
+                            {uploadingImage ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                                <span className="text-xs text-blue-600 font-bold uppercase tracking-wider">Uploading...</span>
+                              </>
+                            ) : newQuestion.question_image ? (
+                              <>
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                <span className="text-xs text-green-600 font-bold uppercase tracking-wider">Image Ready</span>
+                              </>
+                            ) : (
+                              <>
+                                <Camera className="h-4 w-4 text-gray-400" />
+                                <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Click to Upload</span>
+                              </>
+                            )}
+                          </label>
+                        </div>
+                        {newQuestion.question_image && (
+                          <button 
+                            type="button" 
+                            onClick={() => setNewQuestion({...newQuestion, question_image: ''})}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Correct Answer</label>
+                      <select value={newQuestion.correct_option || 'A'} onChange={e => setNewQuestion({...newQuestion, correct_option: e.target.value})} className="w-full px-3 py-2 border rounded-md">
+                        <option value="A">Option A</option>
+                        <option value="B">Option B</option>
+                        <option value="C">Option C</option>
+                        <option value="D">Option D</option>
+                      </select>
+                    </div>
+                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Marks</label>
+                      <input type="number" min="1" required value={newQuestion.marks || 1} onChange={e => setNewQuestion({...newQuestion, marks: parseInt(e.target.value)})} className="w-full px-3 py-2 border rounded-md" />
+                    </div>
+                  <div className="text-right flex items-center justify-end gap-3">
+                    {newQuestion.id && (
+                      <button 
+                        type="button" 
+                        onClick={() => setNewQuestion({ id: undefined, question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: '' })}
+                        className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md font-bold hover:bg-gray-300 transition"
+                      >
+                        Cancel Edit
+                      </button>
+                    )}
+                    <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-bold">
+                      {newQuestion.id ? 'Update Question' : 'Add Question'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg">
+                    <h4 className="font-bold text-blue-800 mb-2">Paste Format Example:</h4>
+                    <pre className="text-xs text-blue-700 font-mono bg-white p-3 rounded border border-blue-100">
+{`1. Bharat ki rajdhani kya hai?
+A) Mumbai
+B) New Delhi
+C) Kolkata
+D) Chennai
+Answer: B
+
+2. Surya sabse pehle kis rajya mein nikalta hai?
+A) Gujarat
+B) Arunachal Pradesh
+C) Assam
+D) Rajasthan
+Answer: B`}
+                    </pre>
+                  </div>
+                  <textarea 
+                    rows={12} 
+                    value={bulkText}
+                    onChange={(e) => setBulkText(e.target.value)}
+                    placeholder="Paste all your questions here. Make sure there is a blank line between each question."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
+                  ></textarea>
+                  <div className="text-right">
+                    <button 
+                      onClick={handleBulkSubmit}
+                      disabled={parsingBulk || !bulkText.trim()}
+                      className="bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-bold disabled:opacity-50 flex items-center gap-2 ml-auto"
+                    >
+                      {parsingBulk ? <RefreshCw className="h-5 w-5 animate-spin" /> : <FileSpreadsheet className="h-5 w-5" />}
+                      Parse & Add All Questions
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
