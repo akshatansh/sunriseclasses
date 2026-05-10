@@ -357,30 +357,44 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   useEffect(() => {
     if (loading || result || !antiCheatReady) return;
 
+    let hiddenTimestamp: number | null = null;
+
     const handleVisibilityChange = async () => {
       if (document.hidden) {
+        // Record when page went to background
+        hiddenTimestamp = Date.now();
+        
         const blob = await captureScreenshot();
         logProctoringEvent(test.id, studentId, 'Switched Tab / Minimized Browser', blob);
 
         setCheatWarnings(prev => {
           const newCount = prev + 1;
-          // Raised from 5 → 8: Mobile notifications / system UI can falsely trigger
-          // visibilitychange. Students get more fair chances before auto-submit.
           if (newCount >= 8) {
             showSubtleMessage('Bahut zyada tab switch! Test submit ho raha hai...');
-            finishTest('auto_cheat'); // too many tab switches
+            finishTest('auto_cheat');
           } else {
             showSubtleMessage(`⚠️ Warning ${newCount}/8: Tab switch pakda gaya! Dobara mat karna.`);
           }
           return newCount;
         });
+      } else {
+        // Student CAME BACK to browser
+        const timeAway = hiddenTimestamp ? Date.now() - hiddenTimestamp : 0;
+        hiddenTimestamp = null;
+        
+        // Auto-restore fullscreen if they left for more than 500ms (actual switch, not a system notification)
+        if (timeAway > 500 && !document.fullscreenElement && !result) {
+          try {
+            await document.documentElement.requestFullscreen();
+          } catch (e) {
+            // Fullscreen request may fail on mobile — that's ok
+            console.warn('Could not restore fullscreen', e);
+          }
+        }
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // NOTE: blur/focus listeners removed - they fire too aggressively during
-    // fullscreen transitions and camera permission prompts, causing false positives.
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
@@ -443,9 +457,13 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     document.addEventListener('keydown', handleKeydown);
 
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement && !result && isTestStarted) {
-        setCheatWarnings(prev => prev + 1);
-        showSubtleMessage("⚠️ Fullscreen exited! Please stay in fullscreen mode.");
+      if (!document.fullscreenElement && !result && isTestStarted && !document.hidden) {
+        // Try to auto-restore fullscreen first
+        document.documentElement.requestFullscreen().catch(() => {
+          // If auto-restore fails (e.g. user explicitly exited), show a warning
+          setCheatWarnings(prev => prev + 1);
+          showSubtleMessage("⚠️ Fullscreen band ho gayi! Wapas lao.");
+        });
       }
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -570,7 +588,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           let noisyCount = 0;
           
           audioInterval = setInterval(() => {
-            if (isOffline) return;
+            if (isOffline || document.hidden) return; // ⛔ Don't check audio when browser is in background
             analyser.getByteFrequencyData(dataArray);
             let sum = 0;
             for(let i = 0; i < bufferLength; i++) {
@@ -625,6 +643,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           throw new Error('AI Model failed to initialize correctly.');
         }
         detectionInterval = setInterval(async () => {
+          // ⛔ Skip face detection when browser is in background — prevents false warnings
+          if (document.hidden) return;
           if (videoRef.current && videoRef.current.readyState >= 2 && !isOffline) {
             const predictions = await model.estimateFaces(videoRef.current, false);
             if (predictions.length === 0) {
