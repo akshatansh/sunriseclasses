@@ -1370,8 +1370,37 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 const q = questions[currentQuestionIdx];
                 const idx = currentQuestionIdx;
                 return (
-                  <div key={q.id} className={`bg-white rounded-2xl shadow-xl border-2 p-4 sm:p-8 ${answers[q.id] ? 'border-blue-500/20' : 'border-gray-100'}`}>
-                    <div className="flex flex-col sm:flex-row gap-6">
+                  <div key={q.id} className={`bg-white rounded-2xl shadow-xl border-2 p-4 sm:p-8 ${answers[q.id] ? 'border-blue-500/20' : 'border-gray-100'} relative overflow-hidden`}>
+                    {/* 🔒 Screenshot Watermark — visible if student takes screenshot */}
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        position: 'absolute', inset: 0, zIndex: 1,
+                        pointerEvents: 'none', userSelect: 'none',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {Array.from({ length: 8 }).map((_, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            position: 'absolute',
+                            top: `${(i % 4) * 28 - 5}%`,
+                            left: `${Math.floor(i / 4) * 50 - 10}%`,
+                            transform: 'rotate(-30deg)',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: 'rgba(0,0,0,0.06)',
+                            whiteSpace: 'nowrap',
+                            letterSpacing: '1px',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {studentName} • {studentId.split('-')[0].toUpperCase()} • SUNRISE CLASSES
+                        </div>
+                      ))}
+                    </div>
+                    <div className="relative z-10 flex flex-col sm:flex-row gap-6">
                       <div className={`flex-shrink-0 w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-base sm:text-xl font-black shadow-lg ${answers[q.id] ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
                         {idx + 1}
                       </div>
