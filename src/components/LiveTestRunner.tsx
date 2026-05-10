@@ -248,7 +248,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
         const data = await getTestQuestions(test.id);
         const shuffled = [...(data || [])].sort(() => Math.random() - 0.5);
-        setQuestions(shuffled as OnlineTestQuestion[]);
+        // Shuffle options for each question
+        const withShuffledOptions = shuffled.map(q => {
+          const opts = ['A', 'B', 'C', 'D'].sort(() => Math.random() - 0.5);
+          return { ...q, _shuffledOpts: opts };
+        });
+        setQuestions(withShuffledOptions as any[]);
 
         // Also fetch student name and photo for the certificate/header
         const { data: sData } = await supabase.from('students').select('name, image').eq('id', studentId).single();
@@ -1285,8 +1290,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                         </div>
 
                         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
-                          {['A', 'B', 'C', 'D'].map((opt) => {
+                          {((q as any)._shuffledOpts || ['A', 'B', 'C', 'D']).map((opt: string, optIndex: number) => {
                             const isSelected = answers[q.id] === opt;
+                            const visualLabel = ['A', 'B', 'C', 'D'][optIndex]; // Display as A,B,C,D regardless of actual option ID
                             return (
                               <button
                                 key={opt}
@@ -1294,7 +1300,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                                 className={`text-left px-4 py-4 sm:px-6 sm:py-5 rounded-xl sm:rounded-2xl border-2 transition-all group relative overflow-hidden active:scale-95 ${isSelected ? 'border-blue-600 bg-blue-50/50 shadow-lg shadow-blue-600/10' : 'border-gray-100 hover:border-blue-200 hover:bg-gray-50'}`}
                               >
                                 {isSelected && <div className="absolute top-0 right-0 p-2 text-blue-600"><CheckCircle className="h-5 w-5" /></div>}
-                                <span className={`font-black mr-3 ${isSelected ? 'text-blue-600' : 'text-gray-300'}`}>{opt}.</span>
+                                <span className={`font-black mr-3 ${isSelected ? 'text-blue-600' : 'text-gray-300'}`}>{visualLabel}.</span>
                                 <span className={`font-semibold ${isSelected ? 'text-gray-900' : 'text-gray-700'}`} style={{ fontSize: `${fontSize - 2}px` }}>
                                   {q[`option_${opt.toLowerCase()}` as keyof OnlineTestQuestion] as string}
                                 </span>
