@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Warning Test</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); text-align: center; max-width: 400px;}
+        button { background-color: #ef4444; color: white; border: none; padding: 1rem; margin: 0.5rem 0; border-radius: 0.5rem; font-size: 1rem; font-weight: bold; cursor: pointer; width: 100%; transition: background-color 0.2s; }
+        button:hover { background-color: #dc2626; }
+        h2 { color: #111827; margin-top: 0; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🔊 Voice Warning Test</h2>
+        <p style="color: #6b7280; margin-bottom: 1.5rem; font-size: 0.875rem;">Neeche list se sabse acchi aawaz choose karein:</p>
+        
+        <select id="voiceList" style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; border-radius: 0.5rem; border: 1px solid #ddd;"></select>
+
+        <button onclick="playWarning('Ravi, Kripya saamne dekhein, aapki recording ho rahi hai.')">
+            📷 Camera Warning Suniye
+        </button>
+        
+        <button onclick="playWarning('Ravi, Kripya doosra app na kholein, test jama ho jayega.')" style="background-color: #f59e0b;">
+            📱 App Switch Warning Suniye
+        </button>
+        
+        <button onclick="playWarning('Ravi, Kripya shor na karein, aawaz record ho rahi hai.')" style="background-color: #3b82f6;">
+            🎤 Shor (Noise) Warning Suniye
+        </button>
+    </div>
+
+    <script>
+        const voiceList = document.querySelector('#voiceList');
+        
+        function populateVoices() {
+            const voices = window.speechSynthesis.getVoices();
+            voiceList.innerHTML = '';
+            voices.forEach((voice, i) => {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                if (voice.name.includes('Google') || voice.name.includes('Lekha') || voice.name.includes('Swara')) {
+                    option.selected = true;
+                }
+                voiceList.appendChild(option);
+            });
+        }
+
+        populateVoices();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoices;
+        }
+
+        function playWarning(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                
+                // Play Beep First
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.5);
+
+                // Play Voice after 500ms
+                setTimeout(() => {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'hi-IN';
+                    
+                    const voices = window.speechSynthesis.getVoices();
+                    const googleVoice = voices.find(v => v.name.toLowerCase().includes('google') && v.lang.toLowerCase().includes('hi')) ||
+                                       voices.find(v => v.lang.includes('hi'));
+                    
+                    if (googleVoice) {
+                        utterance.voice = googleVoice;
+                    }
+                    
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1.0;
+                    utterance.volume = 1;
+                    
+                    window.speechSynthesis.speak(utterance);
+                }, 600);
+            } else {
+                alert("Aapka browser voice support nahi karta.");
+            }
+        }
+    </script>
+</body>
+</html>

@@ -84,9 +84,22 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           }
 
           const utterance = new SpeechSynthesisUtterance(speechText);
-          utterance.lang = 'hi-IN'; // Hindi
-          utterance.rate = 1.0;
-          utterance.pitch = 1.0;
+          utterance.lang = 'hi-IN';
+          
+          const voices = window.speechSynthesis.getVoices();
+          // Priority: Google Hindi (Highly natural), then other Indian female voices
+          const selectedVoice = voices.find(v => v.name.toLowerCase().includes('google') && v.lang.toLowerCase().includes('hi')) ||
+                               voices.find(v => v.name.toLowerCase().includes('swara')) ||
+                               voices.find(v => v.name.toLowerCase().includes('lekha')) ||
+                               voices.find(v => v.lang.includes('hi')) ||
+                               voices.find(v => v.lang.includes('en-IN'));
+          
+          if (selectedVoice) {
+            utterance.voice = selectedVoice;
+          }
+
+          utterance.rate = 0.9; // Optimal natural speed
+          utterance.pitch = 1.0; // Natural pitch
           utterance.volume = 1.0;
           window.speechSynthesis.speak(utterance);
         }
