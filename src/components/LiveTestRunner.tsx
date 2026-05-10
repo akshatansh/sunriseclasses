@@ -71,6 +71,29 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       setIsWarningFlash(true);
       setTimeout(() => setIsWarningFlash(false), 500);
       
+      // Hindi Voice Warning
+      try {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          let speechText = "Kripya saamne dekhein, aapki recording ho rahi hai.";
+          
+          if (msg.toLowerCase().includes('tab switch') || msg.toLowerCase().includes('fullscreen')) {
+            speechText = "Kripya doosra app na kholein, test jama ho jayega.";
+          } else if (msg.toLowerCase().includes('audio') || msg.toLowerCase().includes('awaz') || msg.toLowerCase().includes('noise')) {
+            speechText = "Kripya shor na karein, aawaz record ho rahi hai.";
+          }
+
+          const utterance = new SpeechSynthesisUtterance(speechText);
+          utterance.lang = 'hi-IN'; // Hindi
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          utterance.volume = 1.0;
+          window.speechSynthesis.speak(utterance);
+        }
+      } catch (e) {
+        console.warn("Speech synthesis failed", e);
+      }
+      
       // Play Warning Beep Sound
       try {
         const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -1126,30 +1149,26 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         </div>
       )}
 
-      {/* Submission Summary Modal */}
+      {/* Submission Summary Modal (OMR Style in Hindi) */}
       {showSubmitSummary && (
         <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl transform animate-in fade-in zoom-in duration-300">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl transform animate-in fade-in zoom-in duration-300">
             <div className="text-center mb-6">
-              <div className="h-20 w-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="h-10 w-10" />
+              <div className="h-16 w-16 sm:h-20 sm:w-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900">Finish Test?</h3>
-              <p className="text-gray-500">Review your attempt before final submission.</p>
+              <h3 className="text-xl sm:text-2xl font-black text-gray-900 mb-2">Kya test jama karein?</h3>
+              <p className="text-gray-600 text-sm sm:text-base font-medium">Aapne <strong className="text-gray-900">{questions.length}</strong> mein se <strong className="text-blue-600">{answeredCount}</strong> sawaal banaye hain. <strong className="text-red-600">{unansweredCount}</strong> sawaal chhut gaye hain.</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-8">
-              <div className="bg-blue-50 p-4 rounded-2xl text-center">
-                <p className="text-2xl font-bold text-blue-600">{answeredCount}</p>
-                <p className="text-[10px] font-bold text-blue-400 uppercase">Solved</p>
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="bg-blue-50 border-2 border-blue-100 p-4 rounded-2xl text-center">
+                <p className="text-3xl font-black text-blue-600">{answeredCount}</p>
+                <p className="text-xs font-black text-blue-500 uppercase tracking-wide mt-1">Ban gaye</p>
               </div>
-              <div className="bg-yellow-50 p-4 rounded-2xl text-center">
-                <p className="text-2xl font-bold text-yellow-600">{markedCount}</p>
-                <p className="text-[10px] font-bold text-yellow-400 uppercase">Marked</p>
-              </div>
-              <div className="bg-red-50 p-4 rounded-2xl text-center">
-                <p className="text-2xl font-bold text-red-600">{unansweredCount}</p>
-                <p className="text-[10px] font-bold text-red-400 uppercase">Left</p>
+              <div className="bg-red-50 border-2 border-red-100 p-4 rounded-2xl text-center">
+                <p className="text-3xl font-black text-red-600">{unansweredCount}</p>
+                <p className="text-xs font-black text-red-500 uppercase tracking-wide mt-1">Chhut gaye</p>
               </div>
             </div>
 
@@ -1157,20 +1176,20 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               <button
                 onClick={() => finishTest('manual')}
                 disabled={submitting}
-                className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-green-700 shadow-lg transition-all flex items-center justify-center gap-2"
+                className="w-full bg-green-600 text-white py-4 rounded-xl font-black text-lg hover:bg-green-700 shadow-lg shadow-green-600/30 transition-all flex items-center justify-center gap-2 active:scale-95"
               >
                 {submitting ? (
                   <>
                     <RefreshCw className="h-5 w-5 animate-spin" />
-                    Submitting...
+                    Jama ho raha hai...
                   </>
-                ) : 'Yes, Submit Now'}
+                ) : 'Haan, Jama karein (Submit)'}
               </button>
               <button
                 onClick={() => setShowSubmitSummary(false)}
-                className="w-full bg-gray-100 text-gray-600 py-4 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                className="w-full bg-white border-2 border-gray-200 text-gray-600 py-3.5 rounded-xl font-bold hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95"
               >
-                Go Back to Questions
+                Wapas sawaal par jayein
               </button>
             </div>
           </div>
