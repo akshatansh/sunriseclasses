@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest, logProctoringEvent, updateTestProgress } from '../lib/onlineTests';
+import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest, logProctoringEvent, updateTestProgress, checkIfTestExpired } from '../lib/onlineTests';
 import { AlertTriangle, CheckCircle, Clock, ShieldAlert, Camera, CameraOff, RefreshCw, Share2, Award, Download, Smartphone, Users, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import * as tf from '@tensorflow/tfjs';
@@ -35,6 +35,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [maxQuestionSeen, setMaxQuestionSeen] = useState(0); // Highest question index student navigated to
   const testStartedAtRef = useRef<number | null>(null); // Timestamp when test actually started
+  const serverStartedAtRef = useRef<string | null>(null); // Server-side started_at for resume
 
   // Anti-Cheat State
   const [cheatWarnings, setCheatWarnings] = useState(0);
@@ -263,17 +264,41 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   useEffect(() => {
     const loadQuestions = async () => {
       try {
+        // 🔑 KEY: Check server-side timer on every load (handles phone-off/browser-close case)
+        const expiry = await checkIfTestExpired(studentId, test.id, test.duration_minutes);
+        
+        if (expiry.expired) {
+          // Time is up on server — auto-submit with whatever answers we have (empty = 0 score)
+          // This handles the case where student reopens after time expired
+          await submitTest(
+            { student_id: studentId, test_id: test.id, cheat_warnings: 0, submission_type: 'auto_time', time_taken_seconds: test.duration_minutes * 60 },
+            {} // No answers — they abandoned the test
+          );
+          setResult({ score: 0, total: 0 }); // Will be recalculated from DB
+          setLoading(false);
+          return;
+        }
+
+        // Sync remaining time from server (accurate even after phone restart)
+        if (expiry.secondsLeft < test.duration_minutes * 60) {
+          setTimeLeft(expiry.secondsLeft);
+        }
+        if (expiry.startedAt) {
+          serverStartedAtRef.current = expiry.startedAt;
+        }
+
         const storageKey = `test_progress_${test.id}_${studentId}`;
         const savedProgress = localStorage.getItem(storageKey);
 
         if (savedProgress) {
           const parsed = JSON.parse(savedProgress);
           // Only use cached progress if questions exist AND time is still valid
-          if (parsed.questions && Array.isArray(parsed.questions) && parsed.questions.length > 0 && parsed.timeLeft > 0) {
+          if (parsed.questions && Array.isArray(parsed.questions) && parsed.questions.length > 0 && expiry.secondsLeft > 0) {
             setQuestions(parsed.questions);
             setAnswers(parsed.answers || {});
             setMarkedForReview(parsed.markedForReview || {});
-            if (parsed.timeLeft < timeLeft) setTimeLeft(parsed.timeLeft);
+            // Use server time — not local cache (server is authoritative)
+            setTimeLeft(expiry.secondsLeft);
             setLoading(false);
             return;
           } else {
@@ -306,7 +331,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       }
     };
     loadQuestions();
-  }, [test.id, onComplete]);
+  }, [test.id, test.duration_minutes, onComplete, studentId]);
 
   // Timer — only runs when test is loaded and actively running
   useEffect(() => {

@@ -154,7 +154,7 @@ export async function startTestAttempt(studentId: string, testId: string) {
   // Check if already exists
   const { data: existing } = await supabase
     .from('online_test_attempts')
-    .select('id')
+    .select('id, started_at, is_completed')
     .eq('student_id', studentId)
     .eq('test_id', testId)
     .maybeSingle();
@@ -170,13 +170,47 @@ export async function startTestAttempt(studentId: string, testId: string) {
       total_marks: 0,
       cheat_warnings: 0,
       is_completed: false,
-      current_question_index: 0
+      current_question_index: 0,
+      started_at: new Date().toISOString() // Track when test actually started
     })
     .select()
     .single();
     
   if (error) throw error;
   return data;
+}
+
+// Check if the student's test time has already expired on rejoin
+export async function checkIfTestExpired(
+  studentId: string,
+  testId: string,
+  durationMinutes: number
+): Promise<{ expired: boolean; secondsLeft: number; startedAt: string | null }> {
+  const { data } = await supabase
+    .from('online_test_attempts')
+    .select('started_at, is_completed')
+    .eq('student_id', studentId)
+    .eq('test_id', testId)
+    .maybeSingle();
+
+  if (!data || !data.started_at) {
+    return { expired: false, secondsLeft: durationMinutes * 60, startedAt: null };
+  }
+
+  if (data.is_completed) {
+    return { expired: true, secondsLeft: 0, startedAt: data.started_at };
+  }
+
+  const startedAt = new Date(data.started_at).getTime();
+  const expiresAt = startedAt + durationMinutes * 60 * 1000;
+  const now = Date.now();
+  const secondsLeft = Math.floor((expiresAt - now) / 1000);
+
+  return {
+    expired: secondsLeft <= 0,
+    secondsLeft: Math.max(0, secondsLeft),
+    startedAt: data.started_at,
+  };
 }
 
 export async function updateTestProgress(studentId: string, testId: string, currentIdx: number) {
