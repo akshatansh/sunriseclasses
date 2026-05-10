@@ -351,9 +351,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     return () => clearInterval(timerId);
   }, [loading, result, isTestStarted, finishTest]);
 
-  // Anti-Cheat: Visibility Change (Tab Switch)
-  // NOTE: We wait 3 seconds after test start before activating to prevent
-  // fullscreen transition from causing false-positive auto-submissions.
+  // Anti-Cheat: Visibility Change (Tab Switch) — Duration Based
+  // Short absence (system notification) = 0 warnings
+  // Long absence (looking up answers) = multiple warnings scaled by time
   useEffect(() => {
     if (loading || result || !antiCheatReady) return;
 
@@ -363,31 +363,50 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       if (document.hidden) {
         // Record when page went to background
         hiddenTimestamp = Date.now();
-        
+
         const blob = await captureScreenshot();
         logProctoringEvent(test.id, studentId, 'Switched Tab / Minimized Browser', blob);
 
-        setCheatWarnings(prev => {
-          const newCount = prev + 1;
-          if (newCount >= 8) {
-            showSubtleMessage('Bahut zyada tab switch! Test submit ho raha hai...');
-            finishTest('auto_cheat');
-          } else {
-            showSubtleMessage(`⚠️ Warning ${newCount}/8: Tab switch pakda gaya! Dobara mat karna.`);
-          }
-          return newCount;
-        });
       } else {
         // Student CAME BACK to browser
-        const timeAway = hiddenTimestamp ? Date.now() - hiddenTimestamp : 0;
+        const timeAwayMs = hiddenTimestamp ? Date.now() - hiddenTimestamp : 0;
         hiddenTimestamp = null;
-        
-        // Auto-restore fullscreen if they left for more than 500ms (actual switch, not a system notification)
-        if (timeAway > 500 && !document.fullscreenElement && !result) {
+
+        // Calculate warnings based on time away
+        let warningsToAdd = 0;
+        if (timeAwayMs < 5000) {
+          warningsToAdd = 0; // System notification — ignore
+        } else if (timeAwayMs < 30000) {
+          warningsToAdd = 1; // Short switch (5-30 seconds)
+        } else if (timeAwayMs < 60000) {
+          warningsToAdd = 3; // Medium switch (30-60 seconds)
+        } else if (timeAwayMs < 120000) {
+          warningsToAdd = 5; // Long switch (1-2 minutes) — serious
+        } else {
+          warningsToAdd = 8; // 2+ minutes away — auto-submit immediately
+        }
+
+        if (warningsToAdd > 0) {
+          setCheatWarnings(prev => {
+            const newCount = prev + warningsToAdd;
+            if (newCount >= 8) {
+              showSubtleMessage('Bahut zyada tab switch! Test submit ho raha hai...');
+              finishTest('auto_cheat');
+            } else {
+              const timeAwayStr = timeAwayMs > 60000
+                ? `${Math.floor(timeAwayMs / 60000)} min`
+                : `${Math.floor(timeAwayMs / 1000)} sec`;
+              showSubtleMessage(`⚠️ Warning ${newCount}/8: Aap ${timeAwayStr} bahar the! Dobara mat karna.`);
+            }
+            return newCount;
+          });
+        }
+
+        // Auto-restore fullscreen if they actually switched (>500ms)
+        if (timeAwayMs > 500 && !document.fullscreenElement && !result) {
           try {
             await document.documentElement.requestFullscreen();
           } catch (e) {
-            // Fullscreen request may fail on mobile — that's ok
             console.warn('Could not restore fullscreen', e);
           }
         }
