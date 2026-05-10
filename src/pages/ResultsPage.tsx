@@ -5,6 +5,7 @@ import StudentProgressChart from '../components/StudentProgressChart';
 import { generateStudentRankCardPDF } from '../lib/pdfUtils';
 import {
   getAllStudentResults,
+  getMonthlyStudentSummaries,
   loadResultsPortalData,
   type ResultsPortalData,
 } from '../lib/resultsPortal';
@@ -157,6 +158,36 @@ export default function ResultsPage() {
 
   const allStudentResults = useMemo(() => getAllStudentResults(classFilteredData), [classFilteredData]);
 
+  // ── MONTHLY TOP 3 — PREVIOUS MONTH ───────────────────────────────────
+  // Agar June chal raha hai → May ka top 3 dikhao
+  const monthlyTop3 = useMemo(() => {
+    const now = new Date();
+    // Previous month ki mid-date
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 15);
+    const summaries = getMonthlyStudentSummaries(classFilteredData, prevMonth);
+    // Group tied students same as latest test
+    const groups: { rank: number; names: string[]; obtained: number; possible: number; pct: number }[] = [];
+    let rankCounter = 1;
+    let i = 0;
+    while (i < summaries.length && groups.length < 3) {
+      const currentPct = summaries[i].percentage;
+      const tied: typeof summaries = [];
+      while (i < summaries.length && summaries[i].percentage === currentPct) {
+        tied.push(summaries[i]);
+        i++;
+      }
+      groups.push({
+        rank: rankCounter,
+        names: tied.map(s => s.student.name),
+        obtained: tied.reduce((sum, s) => sum + s.totalMarksObtained, 0),
+        possible: tied.reduce((sum, s) => sum + s.totalMarksPossible, 0),
+        pct: currentPct,
+      });
+      rankCounter += tied.length;
+    }
+    return { groups, monthLabel: prevMonth.toLocaleString('en-IN', { month: 'long', year: 'numeric' }) };
+  }, [classFilteredData]);
+
   const filteredStudents = allStudentResults.filter(({ student }) => {
     const search = query.trim().toLowerCase();
     if (!search) return true;
@@ -266,6 +297,37 @@ export default function ResultsPage() {
               </div>
             </div>
           </div>
+
+          {/* ── MONTHLY TOPPER BANNER ─────────────────────────────────── */}
+          {monthlyTop3.groups.length > 0 && (
+            <div className="mt-6 rounded-[1.5rem] border border-[#f5a623]/25 bg-[linear-gradient(90deg,_#fff8e8,_#fffdf5)] px-5 py-4 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-2 shrink-0">
+                  <Trophy size={18} className="text-[#f5a623]" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-[#9a5b00]">
+                    Monthly Topper — {monthlyTop3.monthLabel}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {monthlyTop3.groups.map((g) => {
+                    const medal = g.rank === 1 ? '🥇' : g.rank === 2 ? '🥈' : '🥉';
+                    return (
+                      <div key={g.rank} className="flex items-center gap-2 rounded-full border border-[#f5a623]/30 bg-white px-4 py-1.5">
+                        <span className="text-base">{medal}</span>
+                        <span className="text-sm font-bold text-[#0f2a5c]">
+                          {g.names.join(' & ')}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {g.obtained}/{g.possible} marks
+                        </span>
+                        <span className="text-xs font-bold text-[#9a5b00]">{g.pct}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="mt-10">
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-2">
