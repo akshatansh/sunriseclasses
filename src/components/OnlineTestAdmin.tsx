@@ -28,6 +28,15 @@ export default function OnlineTestAdmin() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterClass, setFilterClass] = useState('All');
   const [uploadingImage, setUploadingImage] = useState(false);
+  // Lightbox for proctoring image zoom
+  const [lightboxLog, setLightboxLog] = useState<any>(null);
+
+  // Close lightbox on Escape key
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightboxLog(null); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
   
   // Live Monitor State
   const [liveStudents, setLiveStudents] = useState<any[]>([]);
@@ -379,7 +388,7 @@ export default function OnlineTestAdmin() {
 
   if (loading) return <div className="p-8 text-center">Loading tests...</div>;
 
-  return (
+  return (<>
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
         <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -470,15 +479,44 @@ export default function OnlineTestAdmin() {
                       <div className="text-xs font-medium text-gray-400">{test.subject}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button 
-                        onClick={() => handleToggleActive(test)}
-                        className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-all ${
-                          test.is_active ? 'bg-green-50 text-green-700 border-green-200 shadow-sm' : 'bg-gray-50 text-gray-400 border-gray-200'
-                        }`}
-                      >
-                        <div className={`h-1.5 w-1.5 rounded-full ${test.is_active ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
-                        {test.is_active ? 'Live' : 'Hidden'}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        {/* Hidden */}
+                        <button
+                          onClick={() => updateTestAdmin(test.id, { is_active: false, is_stopped: false }).then(fetchTests)}
+                          className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full border transition-all ${
+                            !test.is_active && !test.is_stopped
+                              ? 'bg-gray-200 text-gray-700 border-gray-300 shadow-sm'
+                              : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
+                          }`}
+                          title="Hidden - not visible to students"
+                        >Hidden</button>
+                        {/* Live */}
+                        <button
+                          onClick={() => updateTestAdmin(test.id, { is_active: true, is_stopped: false }).then(fetchTests)}
+                          className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full border transition-all ${
+                            test.is_active
+                              ? 'bg-green-50 text-green-700 border-green-200 shadow-sm'
+                              : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-green-50 hover:text-green-600'
+                          }`}
+                          title="Live - students can take this test"
+                        >
+                          <div className={`h-1.5 w-1.5 rounded-full ${test.is_active ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
+                          Live
+                        </button>
+                        {/* Stopped */}
+                        <button
+                          onClick={() => updateTestAdmin(test.id, { is_active: false, is_stopped: true }).then(fetchTests)}
+                          className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full border transition-all ${
+                            test.is_stopped
+                              ? 'bg-red-50 text-red-700 border-red-200 shadow-sm'
+                              : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-red-50 hover:text-red-600'
+                          }`}
+                          title="Stop - test ends; students see Completed/Pending"
+                        >
+                          <div className={`h-1.5 w-1.5 rounded-full ${test.is_stopped ? 'bg-red-500' : 'bg-gray-300'}`}></div>
+                          Stopped
+                        </button>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
@@ -930,12 +968,20 @@ export default function OnlineTestAdmin() {
                           <audio controls src={log.proof_image_url} className="w-full" />
                         </div>
                       ) : (
-                        <div className="relative aspect-video bg-gray-900 group">
+                        <div
+                          className="relative aspect-video bg-gray-900 group cursor-zoom-in"
+                          onClick={() => setLightboxLog(log)}
+                          title="Click to enlarge"
+                        >
                           <img 
                             src={log.proof_image_url} 
                             alt="Proctoring Proof" 
                             className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
                           />
+                          {/* Zoom hint overlay */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                            <span className="text-white text-xs font-bold bg-black/50 px-3 py-1.5 rounded-full">🔍 Click to Enlarge</span>
+                          </div>
                           <div className="absolute inset-0 ring-1 ring-inset ring-black/10"></div>
                         </div>
                       )
@@ -968,5 +1014,43 @@ export default function OnlineTestAdmin() {
         )}
       </div>
     </div>
-  );
+
+    {/* ── Lightbox Modal ── */}
+    {lightboxLog && (
+      <div
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+        onClick={() => setLightboxLog(null)}
+      >
+        <div
+          className="relative max-w-4xl w-full bg-black rounded-2xl overflow-hidden shadow-2xl"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-3 bg-red-900/80">
+            <div>
+              <p className="font-bold text-white text-sm">{lightboxLog.students?.name || 'Unknown'} · {lightboxLog.students?.class_name}</p>
+              <p className="text-red-300 text-xs flex items-center gap-1 mt-0.5">
+                <AlertTriangle className="h-3 w-3" /> {lightboxLog.warning_type}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <p className="text-red-300 text-xs">{new Date(lightboxLog.created_at).toLocaleString()}</p>
+              <button
+                onClick={() => setLightboxLog(null)}
+                className="text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-1.5 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+          {/* Full Image */}
+          <img
+            src={lightboxLog.proof_image_url}
+            alt="Proctoring Proof Full"
+            className="w-full max-h-[80vh] object-contain bg-black"
+          />
+        </div>
+      </div>
+    )}
+  </>);
 }

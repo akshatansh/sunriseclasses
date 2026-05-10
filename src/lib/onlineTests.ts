@@ -7,6 +7,7 @@ export interface OnlineTest {
   subject: string;
   duration_minutes: number;
   is_active: boolean;
+  is_stopped: boolean; // true = test stopped, students see result/pending but can't start
   created_at: string;
 }
 
@@ -53,11 +54,13 @@ export async function loginStudentForTest(name: string, className: string, pin: 
 }
 
 export async function getActiveTests(className: string) {
+  // Fetch both live (is_active=true) AND stopped (is_stopped=true) tests
+  // so students can see their Completed/Pending status even after test is stopped
   const { data, error } = await supabase
     .from('online_tests')
     .select('*')
-    .eq('is_active', true)
     .eq('class_name', className)
+    .or('is_active.eq.true,is_stopped.eq.true')
     .order('created_at', { ascending: false });
 
   if (error) throw error;

@@ -80,10 +80,13 @@ export default function OnlineTestPortal() {
     if (!student) return;
     
     try {
+      // Block starting a stopped test
+      if (test.is_stopped && !test.is_active) {
+        setAttemptedError('Yeh test band kar diya gaya hai. Dobara attempt nahi kar sakte.');
+        return;
+      }
+
       // Check if already COMPLETED (from local state first)
-      // NOTE: We check is_completed specifically because startTestAttempt creates
-      // an incomplete row. Blocking on !!attempt would prevent re-entry after
-      // a crash or network glitch before the test was even taken.
       const attempt = attempts.find(a => a.test_id === test.id && a.is_completed === true);
       if (attempt) {
         setAttemptedError(`You have already completed the test "${test.title}". You scored ${attempt.score}/${attempt.total_marks}.`);
@@ -432,14 +435,23 @@ export default function OnlineTestPortal() {
               {(tests || []).map(test => {
                 const attempt = (attempts || []).find(a => a && a.test_id === test.id && a.is_completed === true);
                 const isCompleted = !!attempt;
+                const isStopped = test.is_stopped && !test.is_active;
 
                 return (
-                  <div key={test.id} className={`border rounded-lg p-5 transition-shadow ${isCompleted ? 'bg-green-50/50 border-green-200' : 'bg-blue-50/30 border-gray-200 hover:shadow-md'}`}>
+                  <div key={test.id} className={`border rounded-lg p-5 transition-shadow ${
+                    isCompleted ? 'bg-green-50/50 border-green-200' 
+                    : isStopped ? 'bg-red-50/30 border-red-200'
+                    : 'bg-blue-50/30 border-gray-200 hover:shadow-md'
+                  }`}>
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-bold text-lg text-gray-900">{test.title}</h4>
                       {isCompleted ? (
                         <span className="flex items-center gap-1 bg-green-100 text-green-700 text-xs font-bold px-2.5 py-1 rounded-full">
                           <CheckCircle className="h-3.5 w-3.5" /> Completed
+                        </span>
+                      ) : isStopped ? (
+                        <span className="flex items-center gap-1 bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                          <Timer className="h-3.5 w-3.5" /> Pending
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 bg-yellow-100 text-yellow-700 text-xs font-bold px-2.5 py-1 rounded-full">
@@ -452,17 +464,13 @@ export default function OnlineTestPortal() {
                     
                     {isCompleted ? (
                       <div className="bg-white rounded-md border border-green-100 p-3 text-center">
-                        {attempt.is_completed ? (
-                          <>
-                            <p className="text-xs text-gray-500 font-semibold mb-1">YOUR SCORE</p>
-                            <p className="text-2xl font-bold text-green-600">{attempt.score} <span className="text-sm text-green-400">/ {attempt.total_marks}</span></p>
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-xs text-red-500 font-bold mb-1">TEST ABANDONED</p>
-                            <p className="text-sm text-gray-600">You left this test midway.</p>
-                          </>
-                        )}
+                        <p className="text-xs text-gray-500 font-semibold mb-1">YOUR SCORE</p>
+                        <p className="text-2xl font-bold text-green-600">{attempt.score} <span className="text-sm text-green-400">/ {attempt.total_marks}</span></p>
+                      </div>
+                    ) : isStopped ? (
+                      <div className="bg-red-50 rounded-md border border-red-100 p-3 text-center">
+                        <p className="text-xs text-red-500 font-bold mb-1">⛔ TEST STOPPED</p>
+                        <p className="text-sm text-gray-600">Yeh test band kar diya gaya hai. Apne teacher se mile.</p>
                       </div>
                     ) : (
                       <button
