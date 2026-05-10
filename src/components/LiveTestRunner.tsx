@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest, logProctoringEvent } from '../lib/onlineTests';
+import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest, logProctoringEvent, updateTestProgress } from '../lib/onlineTests';
 import { AlertTriangle, CheckCircle, Clock, ShieldAlert, Camera, CameraOff, RefreshCw, Share2, Award, Download, Smartphone, Users, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import * as tf from '@tensorflow/tfjs';
@@ -215,6 +215,13 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     }
     setSubmitting(false); // Only reached on success
   }, [answers, cheatWarnings, faceWarnings, maxQuestionSeen, result, studentId, submitting, test.id, showSubtleMessage]);
+
+  // Sync current question to database for Live Monitor
+  useEffect(() => {
+    if (isTestStarted && !result) {
+      updateTestProgress(studentId, test.id, currentQuestionIdx + 1); // 1-indexed for admin
+    }
+  }, [currentQuestionIdx, isTestStarted, result, studentId, test.id]);
 
   // Load Questions
   useEffect(() => {

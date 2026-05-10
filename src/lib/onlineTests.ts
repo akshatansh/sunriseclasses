@@ -36,6 +36,7 @@ export interface StudentTestAttempt {
   submission_type?: 'manual' | 'auto_time' | 'auto_cheat'; // How the test was submitted
   time_taken_seconds?: number | null;  // How long student took
   last_question_seen?: number | null;  // Highest question number they reached
+  current_question_index?: number | null; // Question they are currently viewing (real-time)
 }
 
 // Student Login logic for Test Portal
@@ -168,13 +169,25 @@ export async function startTestAttempt(studentId: string, testId: string) {
       score: 0,
       total_marks: 0,
       cheat_warnings: 0,
-      is_completed: false
+      is_completed: false,
+      current_question_index: 0
     })
     .select()
     .single();
     
   if (error) throw error;
   return data;
+}
+
+export async function updateTestProgress(studentId: string, testId: string, currentIdx: number) {
+  // Fire and forget update
+  supabase
+    .from('online_test_attempts')
+    .update({ current_question_index: currentIdx })
+    .eq('student_id', studentId)
+    .eq('test_id', testId)
+    .then(() => {})
+    .catch(console.error);
 }
 
 // Check if student already attempted a specific test

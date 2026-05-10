@@ -947,7 +947,12 @@ export default function OnlineTestAdmin() {
                         {/* Test Info */}
                         <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
                           <p className="text-xs font-bold text-gray-800 truncate">{att.online_tests?.title || 'Test'}</p>
-                          <p className="text-[10px] text-gray-500 font-medium">{att.online_tests?.subject}</p>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-[10px] text-gray-500 font-medium">{att.online_tests?.subject}</p>
+                            <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full animate-pulse">
+                              Solving Q.{att.current_question_index || 1}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Time Info */}
