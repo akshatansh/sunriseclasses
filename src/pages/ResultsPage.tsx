@@ -241,6 +241,22 @@ export default function ResultsPage() {
                   Yahan aap current month ke top students, har student ke test marks, aur performance summary
                   direct dekh sakte hain. Student login ki zarurat nahi hai.
                 </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                   <button 
+                     onClick={() => window.print()}
+                     className="inline-flex items-center gap-2 rounded-full bg-[#0f2a5c] px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-900/20 hover:bg-[#1a3a7a] transition-all"
+                   >
+                     <Download size={16} />
+                     Download Results Report
+                   </button>
+                   <a 
+                     href="/online-test" 
+                     className="inline-flex items-center gap-2 rounded-full bg-white border border-slate-200 px-6 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all"
+                   >
+                     <BookOpen size={16} className="text-[#f5a623]" />
+                     Student Login for Review
+                   </a>
+                </div>
               </div>
 
               <div className="flex flex-col items-center gap-4">

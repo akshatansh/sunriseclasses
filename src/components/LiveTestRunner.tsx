@@ -43,6 +43,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   // Results State
   const [result, setResult] = useState<{ score: number, total: number } | null>(null);
 
+  // Detailed Review State (screen-only, never in PDF)
+  type ReviewItem = { question: OnlineTestQuestion; studentAnswer: string; correctAnswer: string; isCorrect: boolean; };
+  const [detailedReview, setDetailedReview] = useState<ReviewItem[]>([]);
+  const [showReview, setShowReview] = useState(false);
+
   // AI Proctoring State
   const videoRef = useRef<HTMLVideoElement>(null);
   const [cameraActive, setCameraActive] = useState(false);
@@ -239,6 +244,32 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       setResult({ score: finalResult.score, total: finalResult.total_marks });
       if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
       setShowSubmitSummary(false);
+
+      // Build detailed review: fetch correct answers for review section
+      try {
+        const { data: correctQs } = await supabase
+          .from('online_test_questions')
+          .select('id, test_id, question_text, option_a, option_b, option_c, option_d, correct_option, marks, question_image')
+          .eq('test_id', test.id);
+        if (correctQs && correctQs.length > 0) {
+          // Map back using the shuffled order so question numbers match
+          const reviewItems: ReviewItem[] = questions.map(q => {
+            const withAnswer = correctQs.find(cq => cq.id === q.id);
+            if (!withAnswer) return null;
+            const studentAns = answers[q.id] || '';
+            const correctAns = withAnswer.correct_option || '';
+            return {
+              question: withAnswer as OnlineTestQuestion,
+              studentAnswer: studentAns,
+              correctAnswer: correctAns,
+              isCorrect: studentAns === correctAns,
+            };
+          }).filter(Boolean) as ReviewItem[];
+          setDetailedReview(reviewItems);
+        }
+      } catch (reviewErr) {
+        console.warn('Could not load review data', reviewErr);
+      }
     } catch (err) {
       console.error('Error submitting test:', err);
       setSubmitting(false); // Must reset so retry/user can try again
@@ -905,8 +936,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         }
 
         ctx.textAlign = 'center';
-        ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 90px Georgia, serif';
-        ctx.fillText('SUNRISE CLASSES', cx, B + 330);
+        ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 80px Georgia, serif';
+        ctx.fillText('SUNRISE CLASSES & ACADEMY', cx, B + 320);
         ctx.fillStyle = '#C9A84C'; ctx.font = '38px Georgia, serif';
         ctx.fillText('AN INSTITUTE OF EXCELLENCE', cx, B + 384);
         ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '28px sans-serif';
@@ -1160,6 +1191,17 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               </button>
             </div>
 
+            {/* Answer Review Toggle Button */}
+            {detailedReview.length > 0 && (
+              <button
+                onClick={() => setShowReview(r => !r)}
+                className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-indigo-700 shadow-2xl transition-all active:scale-95"
+              >
+                <BookOpen className="h-5 w-5" />
+                {showReview ? 'Answer Review Band Karein ▲' : 'Answer Review Dekhein ▼'}
+              </button>
+            )}
+
             <button
               onClick={onComplete}
               className="w-full bg-white/5 text-white/60 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-white/10 transition-all text-xs"
@@ -1167,6 +1209,99 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               Back to Portal
             </button>
           </div>
+
+          {/* ===== ANSWER REVIEW SECTION (Screen Only — NOT in PDF) ===== */}
+          {showReview && detailedReview.length > 0 && (
+            <div className="mt-2 px-4 pb-16">
+              <div className="bg-[#0f172a] rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-indigo-700 to-blue-700 px-6 py-5 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-white font-black text-xl tracking-tight">📋 Answer Review</h3>
+                    <p className="text-indigo-200 text-xs mt-0.5">Sirf aapko dikh raha hai — share karne par questions nahi jaayenge</p>
+                  </div>
+                  <div className="flex gap-3 text-sm font-bold">
+                    <span className="bg-green-500/20 text-green-300 px-3 py-1 rounded-full border border-green-500/30">
+                      ✓ {detailedReview.filter(r => r.isCorrect).length} Sahi
+                    </span>
+                    <span className="bg-red-500/20 text-red-300 px-3 py-1 rounded-full border border-red-500/30">
+                      ✗ {detailedReview.filter(r => !r.isCorrect).length} Galat
+                    </span>
+                  </div>
+                </div>
+
+                {/* Questions List */}
+                <div className="divide-y divide-white/5">
+                  {detailedReview.map((item, idx) => (
+                    <div key={item.question.id} className={`p-5 sm:p-6 ${
+                      item.isCorrect ? 'bg-green-950/40' : item.studentAnswer ? 'bg-red-950/40' : 'bg-yellow-950/30'
+                    }`}>
+                      {/* Question Header */}
+                      <div className="flex items-start gap-4 mb-4">
+                        <div className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black ${
+                          item.isCorrect ? 'bg-green-500 text-white' : item.studentAnswer ? 'bg-red-500 text-white' : 'bg-yellow-500 text-black'
+                        }`}>
+                          {idx + 1}
+                        </div>
+                        <p className="text-white/90 font-semibold leading-snug text-sm sm:text-base flex-grow">
+                          {item.question.question_text}
+                        </p>
+                        <span className={`flex-shrink-0 text-xs font-black px-2.5 py-1 rounded-full ${
+                          item.isCorrect ? 'bg-green-500/20 text-green-300' :
+                          item.studentAnswer ? 'bg-red-500/20 text-red-300' :
+                          'bg-yellow-500/20 text-yellow-300'
+                        }`}>
+                          {item.isCorrect ? '✓ Sahi' : item.studentAnswer ? '✗ Galat' : '— Chhoda'}
+                        </span>
+                      </div>
+
+                      {/* Options Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-13 pl-0">
+                        {(['a', 'b', 'c', 'd'] as const).map((opt) => {
+                          const optKey = `option_${opt}` as keyof OnlineTestQuestion;
+                          const optVal = opt.toUpperCase();
+                          const optText = item.question[optKey] as string;
+                          const isCorrect = item.correctAnswer === optVal;
+                          const isStudentPick = item.studentAnswer === optVal;
+                          let bg = 'bg-white/5 border-white/10 text-white/50';
+                          if (isCorrect && isStudentPick) bg = 'bg-green-500/25 border-green-400 text-green-200 font-bold';
+                          else if (isCorrect) bg = 'bg-green-500/15 border-green-500/50 text-green-300';
+                          else if (isStudentPick) bg = 'bg-red-500/20 border-red-400 text-red-300 line-through';
+                          return (
+                            <div key={opt} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm transition-all ${bg}`}>
+                              <span className="font-black text-xs w-5 flex-shrink-0">{optVal}.</span>
+                              <span className="flex-grow">{optText}</span>
+                              {isCorrect && <CheckCircle className="h-4 w-4 text-green-400 flex-shrink-0" />}
+                              {isStudentPick && !isCorrect && <span className="text-red-400 text-xs flex-shrink-0">Aapka</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Correct Answer Row (if wrong or skipped) */}
+                      {!item.isCorrect && (
+                        <div className="mt-3 ml-0 flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-2.5">
+                          <CheckCircle className="h-4 w-4 text-green-400 flex-shrink-0" />
+                          <span className="text-green-300 text-xs font-bold">Sahi Jawab: Option {item.correctAnswer}</span>
+                          {item.studentAnswer ? (
+                            <span className="ml-auto text-red-400 text-xs">Aapne {item.studentAnswer} diya tha</span>
+                          ) : (
+                            <span className="ml-auto text-yellow-400 text-xs">Aapne chhod diya tha</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Footer Note */}
+                <div className="bg-black/30 px-6 py-4 text-center">
+                  <p className="text-white/30 text-xs">Yeh review sirf is session mein dikh raha hai. Screenshot ya share se questions share nahi honge.</p>
+                  <p className="text-indigo-400 text-xs font-bold mt-1">Sunrise Classes & Academy — sunriseclasses.co.in</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

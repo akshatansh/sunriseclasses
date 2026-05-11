@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download, Camera, AlertTriangle, Clock, RotateCcw, Copy, Search, Filter, FileSpreadsheet, Radio, RefreshCw } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download, Camera, AlertTriangle, Clock, RotateCcw, Copy, Search, Filter, FileSpreadsheet, Radio, RefreshCw, Eye, EyeOff, CheckCircle, Wand2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
@@ -163,9 +163,8 @@ export default function OnlineTestAdmin() {
 
   // Questions Management
   const [newQuestion, setNewQuestion] = useState<Partial<OnlineTestQuestion>>({
-    question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: ''
+    question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: '', explanation: ''
   });
-  
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [parsingBulk, setParsingBulk] = useState(false);
@@ -182,30 +181,70 @@ export default function OnlineTestAdmin() {
         if (!block.trim()) continue;
         const lines = block.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
         
-        let ansLineIndex = lines.findIndex(l => l.toLowerCase().startsWith('ans'));
+        let ansLineIndex = lines.findIndex(l => {
+          const lower = l.toLowerCase();
+          return lower.startsWith('ans') || lower.startsWith('उत्तर');
+        });
+        
         if (ansLineIndex === -1) {
            const lastLine = lines[lines.length - 1];
-           if (['a', 'b', 'c', 'd'].includes(lastLine.toLowerCase())) {
+           if (['a', 'b', 'c', 'd'].includes(lastLine.toLowerCase().trim())) {
               ansLineIndex = lines.length - 1;
            }
         }
         
-        if (ansLineIndex > 0) {
-           let qText = lines[0].replace(/^(Q?\d+[\.\)]\s*)/i, '');
+        let optAIndex = lines.findIndex(l => l.match(/^[\(]?a[\.\)]?\s*/i));
+        
+        if (ansLineIndex > 0 && optAIndex > 0) {
+           let qTextLines = lines.slice(0, optAIndex);
+           qTextLines[0] = qTextLines[0].replace(/^(Q?\d+[\.\)]\s*)/i, '');
+           let qText = qTextLines.join('\n').trim();
            
            let optA = '', optB = '', optC = '', optD = '';
            let correctOpt = 'A';
            
-           for (let i = 1; i < ansLineIndex; i++) {
-             const line = lines[i];
-             if (line.match(/^[\(]?a[\.\)]?\s*/i)) optA = line.replace(/^[\(]?a[\.\)]?\s*/i, '');
-             else if (line.match(/^[\(]?b[\.\)]?\s*/i)) optB = line.replace(/^[\(]?b[\.\)]?\s*/i, '');
-             else if (line.match(/^[\(]?c[\.\)]?\s*/i)) optC = line.replace(/^[\(]?c[\.\)]?\s*/i, '');
-             else if (line.match(/^[\(]?d[\.\)]?\s*/i)) optD = line.replace(/^[\(]?d[\.\)]?\s*/i, '');
+           let optBIndex = lines.findIndex(l => l.match(/^[\(]?b[\.\)]?\s*/i));
+           let optCIndex = lines.findIndex(l => l.match(/^[\(]?c[\.\)]?\s*/i));
+           let optDIndex = lines.findIndex(l => l.match(/^[\(]?d[\.\)]?\s*/i));
+           
+           if (optAIndex !== -1 && optBIndex !== -1) {
+             optA = lines.slice(optAIndex, optBIndex).join('\n').replace(/^[\(]?a[\.\)]?\s*/i, '').trim();
+           }
+           if (optBIndex !== -1 && optCIndex !== -1) {
+             optB = lines.slice(optBIndex, optCIndex).join('\n').replace(/^[\(]?b[\.\)]?\s*/i, '').trim();
+           }
+           if (optCIndex !== -1 && optDIndex !== -1) {
+             optC = lines.slice(optCIndex, optDIndex).join('\n').replace(/^[\(]?c[\.\)]?\s*/i, '').trim();
+           }
+           if (optDIndex !== -1 && ansLineIndex !== -1) {
+             optD = lines.slice(optDIndex, ansLineIndex).join('\n').replace(/^[\(]?d[\.\)]?\s*/i, '').trim();
            }
            
-           const ansText = lines[ansLineIndex].replace(/^ans(wer)?[\:\.\-]?\s*/i, '').trim().toUpperCase();
-           if (['A', 'B', 'C', 'D'].includes(ansText)) correctOpt = ansText;
+           const ansRaw = lines[ansLineIndex].replace(/^(ans(wer)?|उत्तर)[\:\.\-]?\s*/i, '').trim();
+           const match = ansRaw.match(/^[\[\(]?([A-D])[\]\)]?/i);
+           if (match && ['A', 'B', 'C', 'D'].includes(match[1].toUpperCase())) {
+             correctOpt = match[1].toUpperCase();
+           }
+           
+           let explanationText = '';
+           const extraTextMatch = ansRaw.match(/^[\[\(]?[A-D][\]\)]?[\s\:\-\.]*(.*)/i);
+           if (extraTextMatch && extraTextMatch[1] && extraTextMatch[1].trim().length > 3) {
+             explanationText = extraTextMatch[1].trim();
+             if (explanationText.startsWith('(') && explanationText.endsWith(')')) {
+               explanationText = explanationText.substring(1, explanationText.length - 1);
+             }
+           }
+           
+           if (ansLineIndex < lines.length - 1) {
+             const expLines = lines.slice(ansLineIndex + 1);
+             const expStr = expLines.join('\n').trim();
+             if (expStr.toLowerCase().startsWith('exp') || expStr.toLowerCase().startsWith('sol') || expStr.startsWith('व्याख्या') || expStr.startsWith('हल')) {
+               let cleanExp = expStr.replace(/^(exp(lanation)?|sol(ution)?|व्याख्या|हल)[\:\.\-]?\s*/i, '').trim();
+               explanationText = explanationText ? explanationText + '\n' + cleanExp : cleanExp;
+             } else {
+               explanationText = explanationText ? explanationText + '\n' + expStr : expStr;
+             }
+           }
            
            parsedQuestions.push({
              test_id: currentTest.id,
@@ -215,7 +254,8 @@ export default function OnlineTestAdmin() {
              option_c: optC,
              option_d: optD,
              correct_option: correctOpt,
-             marks: 1
+             marks: 1,
+             explanation: explanationText || undefined
            });
         }
       }
@@ -260,7 +300,7 @@ export default function OnlineTestAdmin() {
         // Create new question
         await createQuestionAdmin({ ...newQuestion, test_id: currentTest.id } as OnlineTestQuestion);
       }
-      setNewQuestion({ id: undefined, question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: '' });
+      setNewQuestion({ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: '', explanation: '' });
       const data = await getQuestionsAdmin(currentTest.id);
       setQuestions(data);
     } catch (err: any) {
@@ -594,6 +634,21 @@ export default function OnlineTestAdmin() {
                           <div className={`h-1.5 w-1.5 rounded-full ${test.is_stopped ? 'bg-red-500' : 'bg-gray-300'}`}></div>
                           Stopped
                         </button>
+                        {/* Allow Review */}
+                        <button
+                          onClick={() => updateTestAdmin(test.id, { allow_review: !test.allow_review }).then(fetchTests)}
+                          className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full border transition-all ${
+                            test.allow_review
+                              ? 'bg-purple-50 text-purple-700 border-purple-200 shadow-sm'
+                              : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-purple-50 hover:text-purple-600'
+                          }`}
+                          title="Allow Review - students can see Q&A review and download PDF"
+                        >
+                          {test.allow_review
+                            ? <Eye className="h-3 w-3" />
+                            : <EyeOff className="h-3 w-3" />}
+                          {test.allow_review ? 'Review ON' : 'Review OFF'}
+                        </button>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -769,15 +824,27 @@ export default function OnlineTestAdmin() {
                       </select>
                     </div>
                   </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Marks</label>
-                      <input type="number" min="1" required value={newQuestion.marks || 1} onChange={e => setNewQuestion({...newQuestion, marks: parseInt(e.target.value)})} className="w-full px-3 py-2 border rounded-md" />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Marks</label>
+                    <input type="number" min="1" required value={newQuestion.marks || 1} onChange={e => setNewQuestion({...newQuestion, marks: parseInt(e.target.value)})} className="w-full px-3 py-2 border rounded-md" />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-gray-700">Detailed Solution / Explanation (Optional)</label>
                     </div>
+                    <textarea 
+                      rows={4} 
+                      value={newQuestion.explanation || ''} 
+                      onChange={e => setNewQuestion({...newQuestion, explanation: e.target.value})} 
+                      className="w-full px-3 py-2 border rounded-md focus:border-purple-400 focus:ring focus:ring-purple-200 outline-none transition-all" 
+                      placeholder="Step-by-step solution ya explanation yahan likhein..."
+                    ></textarea>
+                  </div>
                   <div className="text-right flex items-center justify-end gap-3">
                     {newQuestion.id && (
                       <button 
                         type="button" 
-                        onClick={() => setNewQuestion({ id: undefined, question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: '' })}
+                        onClick={() => setNewQuestion({ id: undefined, question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: '', explanation: '' })}
                         className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md font-bold hover:bg-gray-300 transition"
                       >
                         Cancel Edit
@@ -799,13 +866,16 @@ B) New Delhi
 C) Kolkata
 D) Chennai
 Answer: B
+Explanation: New Delhi is the capital of India.
 
 2. Surya sabse pehle kis rajya mein nikalta hai?
 A) Gujarat
 B) Arunachal Pradesh
 C) Assam
 D) Rajasthan
-Answer: B`}
+Answer: B
+Explanation: Arunachal Pradesh is the easternmost state.
+`}
                     </pre>
                   </div>
                   <textarea 
@@ -815,14 +885,14 @@ Answer: B`}
                     placeholder="Paste all your questions here. Make sure there is a blank line between each question."
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
                   ></textarea>
-                  <div className="text-right">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
                     <button 
                       onClick={handleBulkSubmit}
                       disabled={parsingBulk || !bulkText.trim()}
-                      className="bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-bold disabled:opacity-50 flex items-center gap-2 ml-auto"
+                      className="bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-bold disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {parsingBulk ? <RefreshCw className="h-5 w-5 animate-spin" /> : <FileSpreadsheet className="h-5 w-5" />}
-                      Parse & Add All Questions
+                      {parsingBulk ? 'Parsing...' : 'Parse & Add All'}
                     </button>
                   </div>
                 </div>

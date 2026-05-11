@@ -8,6 +8,7 @@ export interface OnlineTest {
   duration_minutes: number;
   is_active: boolean;
   is_stopped: boolean; // true = test stopped, students see result/pending but can't start
+  allow_review: boolean; // true = students can see question-answer review + download PDF
   created_at: string;
 }
 
@@ -22,6 +23,7 @@ export interface OnlineTestQuestion {
   correct_option: string;
   marks: number;
   question_image?: string;
+  explanation?: string;
 }
 
 export interface StudentTestAttempt {
@@ -37,6 +39,7 @@ export interface StudentTestAttempt {
   time_taken_seconds?: number | null;  // How long student took
   last_question_seen?: number | null;  // Highest question number they reached
   current_question_index?: number | null; // Question they are currently viewing (real-time)
+  answers?: Record<string, string>; // Store chosen options for each question ID
 }
 
 // Student Login logic for Test Portal
@@ -54,6 +57,20 @@ export async function loginStudentForTest(name: string, className: string, pin: 
   }
 
   return data;
+}
+
+export async function verifyStudentPin(studentId: string, pin: string) {
+  const { data, error } = await supabase
+    .from('students')
+    .select('id')
+    .eq('id', studentId)
+    .eq('pin', pin)
+    .maybeSingle();
+
+  if (error || !data) {
+    return false;
+  }
+  return true;
 }
 
 export async function getActiveTests(className: string) {
@@ -79,6 +96,18 @@ export async function getTestQuestions(testId: string) {
 
   if (error) throw error;
   return data;
+}
+
+// Fetch questions WITH correct answers — only called after test is done & admin allows review
+export async function getTestQuestionsWithAnswers(testId: string) {
+  const { data, error } = await supabase
+    .from('online_test_questions')
+    .select('*')
+    .eq('test_id', testId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data as OnlineTestQuestion[];
 }
 
 export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: Record<string, string>) {
@@ -118,6 +147,7 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
       submission_type: attempt.submission_type || 'manual',
       time_taken_seconds: attempt.time_taken_seconds ?? null,
       last_question_seen: attempt.last_question_seen ?? null,
+      answers: answers || {},
     })
     .eq('student_id', attempt.student_id)
     .eq('test_id', attempt.test_id)
@@ -138,6 +168,7 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
         submission_type: attempt.submission_type || 'manual',
         time_taken_seconds: attempt.time_taken_seconds ?? null,
         last_question_seen: attempt.last_question_seen ?? null,
+        answers: answers || {},
       })
       .select()
       .single();

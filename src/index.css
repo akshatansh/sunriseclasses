@@ -14,3 +14,31 @@
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #review-modal, #review-modal * {
+    visibility: visible;
+  }
+  #review-modal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-height: none !important;
+    overflow: visible !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .question-card {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 20px;
+    border: 1px solid #e5e7eb !important;
+  }
+}

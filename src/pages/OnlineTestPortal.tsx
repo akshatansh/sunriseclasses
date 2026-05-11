@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe, Mic } from 'lucide-react';
-import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, reportTestIssue, OnlineTest, StudentTestAttempt } from '../lib/onlineTests';
+import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe, Mic, Eye, Lock, Unlock, FileText, AlertTriangle } from 'lucide-react';
+import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, reportTestIssue, OnlineTest, StudentTestAttempt, verifyStudentPin, getTestQuestionsWithAnswers, OnlineTestQuestion } from '../lib/onlineTests';
+import jsPDF from 'jspdf';
 
 // Lazy load the runner to prevent heavy TFJS imports from crashing the main bundle
 const LiveTestRunner = React.lazy(() => 
@@ -34,6 +35,15 @@ export default function OnlineTestPortal() {
   const [testToStart, setTestToStart] = useState<OnlineTest | null>(null);
   const [attempts, setAttempts] = useState<StudentTestAttempt[]>([]);
   const [attemptedError, setAttemptedError] = useState('');
+
+  // Review State
+  const [reviewTest, setReviewTest] = useState<{ test: OnlineTest; attempt: StudentTestAttempt } | null>(null);
+  const [reviewPin, setReviewPin] = useState('');
+  const [reviewPinError, setReviewPinError] = useState('');
+  const [isPinVerified, setIsPinVerified] = useState(false);
+  const [reviewQuestions, setReviewQuestions] = useState<OnlineTestQuestion[]>([]);
+  const [loadingReview, setLoadingReview] = useState(false);
+
 
   const classes = ['Class 8', 'Class 9', 'Class 10'];
 
@@ -138,6 +148,43 @@ export default function OnlineTestPortal() {
     }
   };
 
+  const handleOpenReview = (test: OnlineTest, attempt: StudentTestAttempt) => {
+    setReviewTest({ test, attempt });
+    setReviewPin('');
+    setReviewPinError('');
+    setIsPinVerified(false);
+    setReviewQuestions([]);
+  };
+
+  const handleVerifyPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewTest || !student) return;
+    
+    setReviewPinError('');
+    const isValid = await verifyStudentPin(student.id, reviewPin);
+    if (isValid) {
+      setIsPinVerified(true);
+      fetchReviewQuestions(reviewTest.test.id);
+    } else {
+      setReviewPinError('Incorrect PIN. Please try again.');
+    }
+  };
+
+  const fetchReviewQuestions = async (testId: string) => {
+    setLoadingReview(true);
+    try {
+      const data = await getTestQuestionsWithAnswers(testId);
+      setReviewQuestions(data);
+    } catch (err) {
+      console.error('Error fetching review questions:', err);
+    } finally {
+      setLoadingReview(false);
+    }
+  };
+
+
+
+
   // If a test is active, show the runner — early return AFTER all hooks
   if (activeTest && student) {
     return (
@@ -160,6 +207,231 @@ export default function OnlineTestPortal() {
 
   return (
     <div className="min-h-screen bg-[#f8fbff] pt-[116px] pb-12">
+      {/* Answer Review Modal */}
+      {reviewTest && (
+        <div id="review-modal" className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md px-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col print:max-h-none print:shadow-none print:rounded-none">
+            <div className="bg-[#0f2a5c] p-6 text-white flex justify-between items-center shrink-0">
+              <div>
+                <h3 className="text-xl font-bold">{reviewTest.test.title} - Answer Review</h3>
+                <p className="text-blue-200 text-sm">Subject: {reviewTest.test.subject} | Score: {reviewTest.attempt.score}/{reviewTest.attempt.total_marks}</p>
+              </div>
+              <button 
+                onClick={() => setReviewTest(null)}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {!isPinVerified ? (
+              <div className="p-12 flex flex-col items-center justify-center text-center">
+                <div className="h-20 w-20 bg-blue-50 rounded-full flex items-center justify-center mb-6">
+                  <Lock className="h-10 w-10 text-blue-600" />
+                </div>
+                <h4 className="text-2xl font-bold text-gray-900 mb-2">Secure Answer Review</h4>
+                <p className="text-gray-600 mb-8 max-w-sm">Please enter your secret PIN to unlock the detailed answer key and explanations.</p>
+                
+                <form onSubmit={handleVerifyPin} className="w-full max-w-xs space-y-4">
+                  <input 
+                    type="password"
+                    required
+                    value={reviewPin}
+                    onChange={(e) => setReviewPin(e.target.value)}
+                    placeholder="Enter 4-digit PIN"
+                    className="w-full px-4 py-3 text-center text-2xl tracking-[0.5em] font-black border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none transition-all"
+                    maxLength={4}
+                    autoFocus
+                  />
+                  {reviewPinError && <p className="text-red-500 text-sm font-bold">{reviewPinError}</p>}
+                  <button 
+                    type="submit"
+                    className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
+                  >
+                    <Unlock size={20} />
+                    Unlock Review
+                  </button>
+                </form>
+                <p className="mt-8 text-xs text-gray-400 uppercase tracking-widest">Only you can see your answers</p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50">
+                {loadingReview ? (
+                  <div className="py-20 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-500 font-medium">Loading answers securely...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-center mb-6">
+                       <h4 className="text-lg font-bold text-gray-800">Performance Summary</h4>
+                       <button 
+                         onClick={() => window.print()}
+                         className="flex items-center gap-2 bg-[#0f2a5c] text-[#f5a623] px-4 py-2 rounded-xl font-bold text-sm hover:bg-[#1a3a7a] transition-all no-print"
+                       >
+                         <FileText size={16} />
+                         Print / Save PDF
+                       </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm text-center">
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Score</p>
+                          <p className="text-2xl font-black text-blue-600">{reviewTest.attempt.score} / {reviewTest.attempt.total_marks}</p>
+                       </div>
+                       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm text-center">
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Percentage</p>
+                          <p className="text-2xl font-black text-orange-500">{reviewTest.attempt.total_marks > 0 ? Math.round((reviewTest.attempt.score / reviewTest.attempt.total_marks) * 100) : 0}%</p>
+                       </div>
+                       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm text-center">
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Time Taken</p>
+                          <p className="text-2xl font-black text-green-600">
+                            {reviewTest.attempt.time_taken_seconds 
+                              ? `${Math.floor(reviewTest.attempt.time_taken_seconds / 60)}m ${reviewTest.attempt.time_taken_seconds % 60}s`
+                              : 'N/A'}
+                          </p>
+                       </div>
+                    </div>
+
+                    {/* Show notice if answers data is missing (test taken before migration) */}
+                    {(!reviewTest.attempt.answers || Object.keys(reviewTest.attempt.answers).length === 0) && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4 flex items-start gap-3">
+                        <AlertTriangle size={20} className="text-yellow-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-bold text-yellow-800">Aapke answers ka data available nahi hai</p>
+                          <p className="text-xs text-yellow-700 mt-1">Yeh test purane version mein diya gaya tha jab answers save nahi hote the. Sirf sahi jawab (✅ Sahi Jawab) dikhaye jayenge. Naye tests mein aapka chuna hua option bhi dikhega.</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-6">
+                      {reviewQuestions.map((q, idx) => {
+                        const studentAns = reviewTest.attempt.answers?.[q.id];
+                        const isCorrect = studentAns === q.correct_option;
+                        const hasAnswerData = !!reviewTest.attempt.answers && Object.keys(reviewTest.attempt.answers).length > 0;
+                        
+                        return (
+                          <div key={q.id} className={`question-card bg-white rounded-2xl border-2 overflow-hidden ${isCorrect ? 'border-green-200' : studentAns ? 'border-red-200' : 'border-gray-100'}`}>
+                            <div className="p-5">
+                              <div className="flex justify-between items-start mb-4">
+                                <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-lg text-xs font-black">Q{idx + 1}</span>
+                                {hasAnswerData ? (
+                                  studentAns ? (
+                                    isCorrect ? (
+                                      <span className="text-green-600 font-bold text-xs flex items-center gap-1 bg-green-50 px-2 py-1 rounded-full border border-green-100">
+                                        <CheckCircle size={14} /> Correct (+{q.marks})
+                                      </span>
+                                    ) : (
+                                      <span className="text-red-600 font-bold text-xs flex items-center gap-1 bg-red-50 px-2 py-1 rounded-full border border-red-100">
+                                        <ShieldAlert size={14} /> Incorrect (0/{q.marks})
+                                      </span>
+                                    )
+                                  ) : (
+                                    <span className="text-gray-500 font-bold text-xs flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
+                                      <Timer size={14} /> Not Attempted
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="text-gray-400 font-bold text-xs flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
+                                    Answer Key
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <p className="text-gray-900 font-bold text-lg mb-4">{q.question_text}</p>
+                              
+                              {q.question_image && (
+                                <img src={q.question_image} className="max-h-64 rounded-xl mb-4 border border-gray-100" alt="Question" />
+                              )}
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {[
+                                  { key: 'A', text: q.option_a },
+                                  { key: 'B', text: q.option_b },
+                                  { key: 'C', text: q.option_c },
+                                  { key: 'D', text: q.option_d }
+                                ].map((opt) => {
+                                  const isSelected = studentAns === opt.key;
+                                  const isCorrectOpt = q.correct_option === opt.key;
+                                  
+                                  // Determine background styling
+                                  let bgClass = 'bg-gray-50 border-gray-100 text-gray-700';
+                                  if (isSelected && isCorrectOpt) bgClass = 'bg-green-100 border-green-500 text-green-900 font-bold ring-2 ring-green-300';
+                                  else if (isCorrectOpt) bgClass = 'bg-green-50 border-green-400 text-green-900 font-bold';
+                                  else if (isSelected && !isCorrectOpt) bgClass = 'bg-red-100 border-red-500 text-red-900 font-bold ring-2 ring-red-300';
+
+                                  return (
+                                    <div key={opt.key} className={`p-4 rounded-xl border-2 flex items-center gap-3 ${bgClass}`}>
+                                      <span className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 font-bold ${isCorrectOpt ? 'bg-green-600 text-white' : isSelected ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                                        {opt.key}
+                                      </span>
+                                      <div className="flex-1 min-w-0">
+                                        <span className="text-sm">{opt.text}</span>
+                                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                          {isSelected && (
+                                            <span className={`text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full font-black ${isCorrectOpt ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                                              ← Aapka Jawab
+                                            </span>
+                                          )}
+                                          {isCorrectOpt && (
+                                            <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full font-black bg-green-600 text-white">
+                                              ✅ Sahi Jawab
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {isCorrectOpt && <CheckCircle size={18} className="ml-auto text-green-600 shrink-0" />}
+                                      {isSelected && !isCorrectOpt && <ShieldAlert size={18} className="ml-auto text-red-600 shrink-0" />}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            
+                            {hasAnswerData && !isCorrect && studentAns && (
+                              <div className="bg-orange-50 p-4 border-t border-orange-100 flex items-start gap-3">
+                                <div className="p-2 bg-orange-100 rounded-lg text-orange-600"><AlertTriangle size={18} /></div>
+                                <div>
+                                  <p className="text-sm font-bold text-orange-900">Galat Jawab!</p>
+                                  <p className="text-xs text-orange-800 mt-1">Aapne <span className="font-bold">Option {studentAns}</span> chuna tha, jabki sahi jawab <span className="font-bold">Option {q.correct_option}</span> hai.</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {q.explanation && (
+                              <div className="bg-blue-50/80 px-4 py-3 sm:px-5 sm:py-4 border-t border-blue-100">
+                                <div className="flex items-start gap-2">
+                                  <div className="bg-blue-100 p-1.5 rounded-lg text-blue-600 mt-0.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2v1"/><path d="M12 7v1"/><path d="M12 12v1"/><path d="m19.07 4.93-.71.71"/><path d="m16.95 7.05-.71.71"/><path d="m14.83 9.17-.71.71"/><path d="m4.93 4.93.71.71"/><path d="m7.05 7.05.71.71"/><path d="m9.17 9.17.71.71"/><path d="M2 12h1"/><path d="M7 12h1"/><path d="M21 12h1"/><path d="M16 12h1"/></svg>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-bold text-blue-900 mb-1">Detailed Solution</p>
+                                    <p className="text-sm text-blue-800 leading-relaxed whitespace-pre-wrap">{q.explanation}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="p-4 bg-white border-t flex justify-center shrink-0 no-print">
+               <button 
+                 onClick={() => setReviewTest(null)}
+                 className="px-8 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+               >
+                 Close Review
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Report Issue Modal */}
       {showReportForm && (
         <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
@@ -463,9 +735,29 @@ export default function OnlineTestPortal() {
                     <p className="text-sm text-gray-600 mb-4">Subject: {test.subject} • Time: {test.duration_minutes} mins</p>
                     
                     {isCompleted ? (
-                      <div className="bg-white rounded-md border border-green-100 p-3 text-center">
-                        <p className="text-xs text-gray-500 font-semibold mb-1">YOUR SCORE</p>
-                        <p className="text-2xl font-bold text-green-600">{attempt.score} <span className="text-sm text-green-400">/ {attempt.total_marks}</span></p>
+                      <div className="space-y-3">
+                        <div className="bg-white rounded-md border border-green-100 p-3 text-center">
+                          <p className="text-xs text-gray-500 font-semibold mb-1">YOUR SCORE</p>
+                          <p className="text-2xl font-bold text-green-600">{attempt.score} <span className="text-sm text-green-400">/ {attempt.total_marks}</span></p>
+                        </div>
+                        
+                           <button 
+                             onClick={() => handleOpenReview(test, attempt)}
+                             disabled={!test.allow_review}
+                             className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all w-full ${
+                               test.allow_review 
+                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700' 
+                                 : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                             }`}
+                             title={test.allow_review ? 'Detailed Answer Review' : 'Review is disabled by Admin'}
+                           >
+                             <Eye size={14} />
+                             {test.allow_review ? 'Review Answers' : 'Review Locked'}
+                           </button>
+                        
+                        {!test.allow_review && (
+                          <p className="text-[10px] text-gray-400 text-center italic">Review will be enabled after results are verified.</p>
+                        )}
                       </div>
                     ) : isStopped ? (
                       <div className="bg-red-50 rounded-md border border-red-100 p-3 text-center">

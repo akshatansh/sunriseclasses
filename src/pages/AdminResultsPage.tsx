@@ -1243,6 +1243,7 @@ export default function AdminResultsPage() {
                           <label className="mb-1 block text-xs font-semibold text-slate-600">Total Marks</label>
                           <input
                             type="number"
+                            step="any"
                             min="1"
                             value={testDetails.totalMarks}
                             onChange={(e) => setTestDetails((prev) => ({ ...prev, totalMarks: e.target.value }))}
@@ -1287,6 +1288,7 @@ export default function AdminResultsPage() {
                                     <td className="py-2 px-4">
                                       <input
                                         type="number"
+                                        step="any"
                                         min="0"
                                         max={testDetails.totalMarks || undefined}
                                         value={studentScores[student.id] || ''}
