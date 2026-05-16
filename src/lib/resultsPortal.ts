@@ -65,7 +65,6 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
       const { data, error: resultsError } = await supabase
         .from('test_results')
         .select('*')
-        .order('id')
         .range(from, from + limit - 1);
 
       if (resultsError) {
@@ -84,6 +83,11 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
       }
     }
 
+    console.log('[loadResultsPortalData] resultsData length:', resultsData.length);
+    if (resultsData.length > 0) {
+        console.log('[loadResultsPortalData] sample test_result:', JSON.stringify(resultsData[0]));
+    }
+
     // Fetch online_test_attempts with pagination
     let onlineAttemptsData: any[] = [];
     let onlineFrom = 0;
@@ -93,7 +97,6 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
       const { data, error: onlineError } = await supabase
         .from('online_test_attempts')
         .select('*, online_tests(*)')
-        .order('id')
         .range(onlineFrom, onlineFrom + limit - 1);
 
       if (onlineError) {
