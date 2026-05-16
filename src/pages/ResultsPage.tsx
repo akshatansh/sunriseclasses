@@ -32,7 +32,15 @@ export default function ResultsPage() {
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [attendanceViewMode, setAttendanceViewMode] = useState<'monthly' | 'daily'>('monthly');
-  const [selectedAttendanceDate, setSelectedAttendanceDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  
+  // Get today's date in local timezone
+  const getLocalISODate = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split('T')[0];
+  };
+  
+  const [selectedAttendanceDate, setSelectedAttendanceDate] = useState<string>(getLocalISODate());
   const [attendanceStats, setAttendanceStats] = useState<Record<string, { percentage: number, history: { date: string, status: string }[] }>>({});
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
@@ -64,8 +72,12 @@ export default function ResultsPage() {
   // Fetch attendance stats for selected month
   useEffect(() => {
     if (!selectedMonth) return;
-    const d = new Date("1 " + selectedMonth);
-    getMonthlyAttendanceStats((d.getMonth() + 1).toString(), d.getFullYear())
+    // selectedMonth format: "May 2026" — parse reliably without timezone shift
+    const parts = selectedMonth.split(' ');
+    const monthName = parts[0];
+    const yearNum = parseInt(parts[parts.length - 1], 10);
+    const monthNum = new Date(`${monthName} 1, ${yearNum}`).getMonth() + 1;
+    getMonthlyAttendanceStats(monthNum.toString(), yearNum)
       .then(setAttendanceStats)
       .catch(console.error);
   }, [selectedMonth]);
@@ -844,7 +856,7 @@ export default function ResultsPage() {
                                   {attendanceViewMode === 'monthly' ? (
                                     <div className="flex flex-wrap gap-1 mt-2">
                                       {stat.history.map((record, i) => {
-                                        const day = new Date(record.date).getDate();
+                                        const day = parseInt(record.date.split('-')[2], 10);
                                         return (
                                           <div key={i} className={`flex flex-col items-center justify-center w-[22px] h-[24px] rounded shrink-0 transition-all ${record.status === 'present' ? 'bg-green-50 border border-green-100 hover:bg-green-100'
                                               : record.status === 'holiday' ? 'bg-yellow-50 border border-yellow-200 hover:bg-yellow-100'

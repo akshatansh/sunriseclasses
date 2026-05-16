@@ -75,11 +75,13 @@ export const upsertAttendanceRecords = async (records: Omit<AttendanceRecord, 'i
   }
 };
 
-export const getMonthlyAttendanceStats = async (month: string, year: number): Promise<Record<string, { percentage: number, history: {date: string, status: string}[] }>> => {
+export const getMonthlyAttendanceStats = async (month: string, year: number | string): Promise<Record<string, { percentage: number, history: {date: string, status: string}[] }>> => {
   try {
-    const startDate = `${year}-${month.padStart(2, '0')}-01`;
-    // Last day of the month
-    const endDate = new Date(year, parseInt(month), 0).toISOString().split('T')[0];
+    const yearNum = typeof year === 'string' ? parseInt(year, 10) : year;
+    const startDate = `${yearNum}-${month.padStart(2, '0')}-01`;
+    // Last day of the month without timezone shift
+    const daysInMonth = new Date(yearNum, parseInt(month), 0).getDate();
+    const endDate = `${yearNum}-${month.padStart(2, '0')}-${daysInMonth.toString().padStart(2, '0')}`;
     
     const { data, error } = await supabase
       .from('attendance_records')

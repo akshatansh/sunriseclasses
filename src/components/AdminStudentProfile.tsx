@@ -43,8 +43,12 @@ export default function AdminStudentProfile({ student, allResults, onClose }: Ad
     if (!selectedMonth) return;
 
     // Fetch Attendance
-    const d = new Date("1 " + selectedMonth);
-    getMonthlyAttendanceStats((d.getMonth() + 1).toString(), d.getFullYear())
+    // selectedMonth format: "May 2026" — parse reliably without timezone shift
+    const parts = selectedMonth.split(' ');
+    const monthName = parts[0];
+    const yearNum = parseInt(parts[parts.length - 1], 10);
+    const monthNum = new Date(`${monthName} 1, ${yearNum}`).getMonth() + 1;
+    getMonthlyAttendanceStats(monthNum.toString(), yearNum)
       .then(stats => {
         if (stats[student.id]) {
           setAttendanceData(stats[student.id]);
@@ -214,7 +218,7 @@ export default function AdminStudentProfile({ student, allResults, onClose }: Ad
                     {attendanceData.history.map((record, i) => (
                       <div 
                         key={i}
-                        title={`${new Date(record.date).getDate()}: ${record.status}`}
+                        title={`${parseInt(record.date.split('-')[2], 10)}: ${record.status}`}
                         className={`h-4 w-4 rounded-sm ${
                           record.status === 'present' ? 'bg-teal-500' :
                           record.status === 'absent' ? 'bg-red-500' : 'bg-yellow-400'

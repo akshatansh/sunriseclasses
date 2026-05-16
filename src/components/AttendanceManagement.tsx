@@ -21,7 +21,14 @@ function normalizeClass(className?: string | null): '8th' | '9th' | '10th' | 'ot
 }
 
 export default function AttendanceManagement({ students }: AttendanceManagementProps) {
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  // Get today's date in local timezone
+  const getLocalISODate = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split('T')[0];
+  };
+
+  const [selectedDate, setSelectedDate] = useState<string>(getLocalISODate());
   const [selectedClass, setSelectedClass] = useState<'8th' | '9th' | '10th'>('10th');
   const [attendanceState, setAttendanceState] = useState<Record<string, 'present' | 'absent' | 'holiday'>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -30,6 +37,10 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
   const [message, setMessage] = useState('');
 
   // Fetch attendance for the selected date
+  // IMPORTANT: We use a stable studentIds string as dependency (not the students array object)
+  // to prevent attendance state from resetting on every parent re-render
+  const studentIds = students.map(s => s.id).join(',');
+
   useEffect(() => {
     const fetchAttendance = async () => {
       const records = await getAttendanceByDate(selectedDate);
@@ -54,7 +65,8 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
     };
     
     fetchAttendance();
-  }, [selectedDate, selectedClass, students]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, selectedClass, studentIds]);
 
 
   const filteredStudents = students.filter(s => normalizeClass(s.className) === selectedClass)
@@ -101,25 +113,25 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
   const handleDownloadOfflineRecord = async () => {
     setIsDownloading(true);
     try {
-      const d = new Date(selectedDate);
-      const monthStr = (d.getMonth() + 1).toString();
-      const yearStr = d.getFullYear();
-      const daysInMonth = new Date(yearStr, d.getMonth() + 1, 0).getDate();
-      
-      const stats = await getMonthlyAttendanceStats(monthStr, yearStr.toString());
+      // Parse selectedDate string directly to avoid timezone issues (YYYY-MM-DD)
+      const [year, month] = selectedDate.split('-').map(Number);
+      const monthStr = month.toString();
+      const monthName = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' });
+      const yearStr = year.toString();
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const stats = await getMonthlyAttendanceStats(monthStr, year);
       
       const holidayDays = new Set<number>();
       Object.values(stats).forEach(s => {
         s.history.forEach(h => {
           if (h.status === 'holiday') {
-            const dateNum = new Date(h.date).getDate();
+            const dateNum = parseInt(h.date.split('-')[2], 10);
             holidayDays.add(dateNum);
           }
         });
       });
 
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const monthName = d.toLocaleString('default', { month: 'long' });
       
       const { drawPDFHeader, drawPDFFooter } = await import('../lib/pdfUtils');
       const startY = await drawPDFHeader(
@@ -135,7 +147,7 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
         
         const dayStatusMap: Record<number, string> = {};
         studentStat.history.forEach(h => {
-           const dayNum = new Date(h.date).getDate();
+           const dayNum = parseInt(h.date.split('-')[2], 10);
            dayStatusMap[dayNum] = h.status;
         });
 
@@ -204,13 +216,14 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
   const handleMonthlyClassReport = async () => {
     setIsReporting(true);
     try {
-      const d = new Date(selectedDate);
-      const monthStr = (d.getMonth() + 1).toString();
-      const yearStr = d.getFullYear().toString();
-      const monthLabel = d.toLocaleString('default', { month: 'long' }) + ' ' + yearStr;
+      // Parse selectedDate directly to avoid timezone shift (YYYY-MM-DD)
+      const [year, month] = selectedDate.split('-').map(Number);
+      const monthStr = month.toString();
+      const yearStr = year.toString();
+      const monthLabel = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' }) + ' ' + yearStr;
 
       // 1. Attendance stats for all students this month
-      const attStats = await getMonthlyAttendanceStats(monthStr, yearStr);
+      const attStats = await getMonthlyAttendanceStats(monthStr, year);
 
       // 2. Test results for marks calculation
       const portalData = await loadResultsPortalData();
@@ -276,7 +289,7 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
             type="date" 
             value={selectedDate}
             onChange={e => setSelectedDate(e.target.value)}
-            max={new Date().toISOString().split('T')[0]}
+            max={getLocalISODate()}
             className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-[#0f2a5c] font-semibold outline-none focus:border-[#0f2a5c]"
           />
           <button
