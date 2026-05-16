@@ -65,6 +65,7 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
       const { data, error: resultsError } = await supabase
         .from('test_results')
         .select('*')
+        .order('id')
         .range(from, from + limit - 1);
 
       if (resultsError) {
@@ -92,6 +93,7 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
       const { data, error: onlineError } = await supabase
         .from('online_test_attempts')
         .select('*, online_tests(*)')
+        .order('id')
         .range(onlineFrom, onlineFrom + limit - 1);
 
       if (onlineError) {
@@ -108,6 +110,11 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
       } else {
         keepFetchingOnline = false;
       }
+    }
+
+    console.log('[loadResultsPortalData] onlineAttemptsData length:', onlineAttemptsData.length);
+    if (onlineAttemptsData.length > 0) {
+        console.log('[loadResultsPortalData] sample attempt:', JSON.stringify(onlineAttemptsData[0]));
     }
 
     if (studentError) console.error("Supabase student fetch error:", studentError);
