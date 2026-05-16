@@ -51,76 +51,14 @@ export const generateRandomPin = () => Math.floor(1000 + Math.random() * 9000).t
 
 export async function loadResultsPortalData(): Promise<ResultsPortalData> {
   try {
-    const [{ data: studentsData, error: studentError }] = await Promise.all([
-      supabase.from('students').select('*')
+    const [{ data: studentsData, error: studentError }, { data: resultsData, error: resultsError }, { data: onlineAttemptsData }] = await Promise.all([
+      supabase.from('students').select('*'),
+      supabase.from('test_results').select('*'),
+      supabase.from('online_test_attempts').select('*, online_tests(*)')
     ]);
 
-    // Fetch test_results with pagination to bypass 1000-row limit
-    let resultsData: any[] = [];
-    let from = 0;
-    const limit = 1000;
-    let keepFetching = true;
-
-    while (keepFetching) {
-      const { data, error: resultsError } = await supabase
-        .from('test_results')
-        .select('*')
-        .range(from, from + limit - 1);
-
-      if (resultsError) {
-        console.error("Supabase results fetch error:", resultsError);
-        break;
-      }
-      
-      if (data && data.length > 0) {
-        resultsData = [...resultsData, ...data];
-        from += limit;
-        if (data.length < limit) {
-          keepFetching = false;
-        }
-      } else {
-        keepFetching = false;
-      }
-    }
-
-    console.log('[loadResultsPortalData] resultsData length:', resultsData.length);
-    if (resultsData.length > 0) {
-        console.log('[loadResultsPortalData] sample test_result:', JSON.stringify(resultsData[0]));
-    }
-
-    // Fetch online_test_attempts with pagination
-    let onlineAttemptsData: any[] = [];
-    let onlineFrom = 0;
-    let keepFetchingOnline = true;
-
-    while (keepFetchingOnline) {
-      const { data, error: onlineError } = await supabase
-        .from('online_test_attempts')
-        .select('*, online_tests(*)')
-        .range(onlineFrom, onlineFrom + limit - 1);
-
-      if (onlineError) {
-        console.error("Supabase online attempts fetch error:", onlineError);
-        break;
-      }
-
-      if (data && data.length > 0) {
-        onlineAttemptsData = [...onlineAttemptsData, ...data];
-        onlineFrom += limit;
-        if (data.length < limit) {
-          keepFetchingOnline = false;
-        }
-      } else {
-        keepFetchingOnline = false;
-      }
-    }
-
-    console.log('[loadResultsPortalData] onlineAttemptsData length:', onlineAttemptsData.length);
-    if (onlineAttemptsData.length > 0) {
-        console.log('[loadResultsPortalData] sample attempt:', JSON.stringify(onlineAttemptsData[0]));
-    }
-
     if (studentError) console.error("Supabase student fetch error:", studentError);
+    if (resultsError) console.error("Supabase results fetch error:", resultsError);
 
     const students: StudentRecord[] = (studentsData || []).map((s: any) => ({
       id: s.id,
