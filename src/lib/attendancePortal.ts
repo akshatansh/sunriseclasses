@@ -95,18 +95,36 @@ export const getMonthlyAttendanceStats = async (month: string, year: number | st
     const daysInMonth = new Date(yearNum, parseInt(month), 0).getDate();
     const endDate = `${yearNum}-${month.padStart(2, '0')}-${daysInMonth.toString().padStart(2, '0')}`;
     
-    const { data, error } = await supabase
-      .from('attendance_records')
-      .select('*')
-      .gte('date', startDate)
-      .lte('date', endDate)
-      .order('date', { ascending: true });
+    let allData: any[] = [];
+    let from = 0;
+    const limit = 1000;
+    let keepFetching = true;
 
-    if (error) throw error;
+    while (keepFetching) {
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select('*')
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: true })
+        .range(from, from + limit - 1);
+
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        allData = [...allData, ...data];
+        from += limit;
+        if (data.length < limit) {
+          keepFetching = false;
+        }
+      } else {
+        keepFetching = false;
+      }
+    }
 
     const stats: Record<string, { total: number, present: number, history: {date: string, status: string}[] }> = {};
     
-    (data || []).forEach(row => {
+    (allData || []).forEach(row => {
       if (!stats[row.student_id]) {
         stats[row.student_id] = { total: 0, present: 0, history: [] };
       }
