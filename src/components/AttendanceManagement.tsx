@@ -35,6 +35,7 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
   const [isDownloading, setIsDownloading] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
   // Fetch attendance for the selected date
   // IMPORTANT: We use a stable studentIds string as dependency (not the students array object)
@@ -99,14 +100,28 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
       status: attendanceState[s.id] || 'present'
     }));
 
-    const success = await upsertAttendanceRecords(recordsToSave);
+    // Count what we're saving
+    const presentCount = recordsToSave.filter(r => r.status === 'present').length;
+    const absentCount = recordsToSave.filter(r => r.status === 'absent').length;
+    const holidayCount = recordsToSave.filter(r => r.status === 'holiday').length;
+
+    console.log('[Attendance Save] Sending records:', JSON.stringify(recordsToSave, null, 2));
+
+    const result = await upsertAttendanceRecords(recordsToSave);
     setIsSaving(false);
 
-    if (success) {
-      setMessage(`Attendance saved for ${selectedDate}`);
-      setTimeout(() => setMessage(''), 3000);
+    if (result.success) {
+      setMessageType('success');
+      setMessage(
+        `✅ Saved for ${selectedDate} — ` +
+        `Present: ${presentCount} | Absent: ${absentCount}` +
+        (holidayCount > 0 ? ` | Holiday: ${holidayCount}` : '') +
+        ` (Total: ${recordsToSave.length} students)`
+      );
+      setTimeout(() => setMessage(''), 6000);
     } else {
-      alert('Failed to save attendance. Please try again.');
+      setMessageType('error');
+      setMessage(`❌ Save FAILED! Error: ${result.error || 'Unknown error'}. Please retry.`);
     }
   };
 
@@ -356,8 +371,13 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
       })()}
 
       {message && (
-        <div className="mb-6 rounded-xl bg-green-50 border border-green-200 p-4 text-green-700 text-sm font-semibold flex items-center justify-between">
-          <span>✅ {message}</span>
+        <div className={`mb-6 rounded-xl border p-4 text-sm font-semibold flex items-center justify-between ${
+          messageType === 'error'
+            ? 'bg-red-50 border-red-200 text-red-700'
+            : 'bg-green-50 border-green-200 text-green-700'
+        }`}>
+          <span>{message}</span>
+          <button onClick={() => setMessage('')} className="ml-4 text-xs opacity-60 hover:opacity-100">✕</button>
         </div>
       )}
 

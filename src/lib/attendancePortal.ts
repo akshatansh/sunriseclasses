@@ -41,11 +41,13 @@ export const getAttendanceByDate = async (date: string): Promise<Record<string, 
   }
 };
 
-export const upsertAttendanceRecords = async (records: Omit<AttendanceRecord, 'id' | 'createdAt'>[]): Promise<boolean> => {
-  if (records.length === 0) return true;
+export const upsertAttendanceRecords = async (records: Omit<AttendanceRecord, 'id' | 'createdAt'>[]): Promise<{ success: boolean, error?: string }> => {
+  if (records.length === 0) return { success: true };
   try {
     const date = records[0].date;
     const studentIds = records.map(r => r.studentId);
+
+    console.log('[upsertAttendanceRecords] Deleting old records for date:', date, 'studentIds count:', studentIds.length);
 
     // Step 1: Delete existing records for these students on this date
     const { error: deleteError } = await supabase
@@ -54,7 +56,10 @@ export const upsertAttendanceRecords = async (records: Omit<AttendanceRecord, 'i
       .eq('date', date)
       .in('student_id', studentIds);
 
-    if (deleteError) throw deleteError;
+    if (deleteError) {
+      console.error('[upsertAttendanceRecords] DELETE error:', deleteError);
+      throw deleteError;
+    }
 
     // Step 2: Insert fresh records
     const insertData = records.map(r => ({
@@ -63,15 +68,22 @@ export const upsertAttendanceRecords = async (records: Omit<AttendanceRecord, 'i
       status: r.status
     }));
 
+    console.log('[upsertAttendanceRecords] Inserting', insertData.length, 'records:', insertData);
+
     const { error: insertError } = await supabase
       .from('attendance_records')
       .insert(insertData);
 
-    if (insertError) throw insertError;
-    return true;
-  } catch (error) {
+    if (insertError) {
+      console.error('[upsertAttendanceRecords] INSERT error:', insertError);
+      throw insertError;
+    }
+
+    console.log('[upsertAttendanceRecords] Success!');
+    return { success: true };
+  } catch (error: any) {
     console.error('Error saving attendance records:', error);
-    return false;
+    return { success: false, error: error?.message || JSON.stringify(error) };
   }
 };
 
