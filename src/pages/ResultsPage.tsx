@@ -27,13 +27,13 @@ export default function ResultsPage() {
   const [data, setData] = useState<ResultsPortalData>({ students: [], results: [] });
   const [query, setQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState<'8th' | '9th' | '10th'>('10th');
-  const [selectedStudentForChart, setSelectedStudentForChart] = useState<{name: string, data: any[]} | null>(null);
+  const [selectedStudentForChart, setSelectedStudentForChart] = useState<{ name: string, data: any[] } | null>(null);
   const [homeworkData, setHomeworkData] = useState<StudentWithHomework[]>([]);
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [attendanceViewMode, setAttendanceViewMode] = useState<'monthly' | 'daily'>('monthly');
   const [selectedAttendanceDate, setSelectedAttendanceDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [attendanceStats, setAttendanceStats] = useState<Record<string, { percentage: number, history: {date: string, status: string}[] }>>({});
+  const [attendanceStats, setAttendanceStats] = useState<Record<string, { percentage: number, history: { date: string, status: string }[] }>>({});
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,16 +42,16 @@ export default function ResultsPage() {
       getAvailableHomeworkMonths()
     ]).then(([portalData, hwMonths]) => {
       setData(portalData);
-      
+
       const monthsSet = new Set(hwMonths);
       portalData.results.forEach(r => {
         const d = new Date(r.testDate);
         monthsSet.add(d.toLocaleString('default', { month: 'long' }) + ' ' + d.getFullYear());
       });
-      
+
       const combinedMonths = Array.from(monthsSet).sort((a, b) => new Date("1 " + a).getTime() - new Date("1 " + b).getTime());
       setAvailableMonths(combinedMonths);
-      
+
       if (combinedMonths.length > 0) {
         setSelectedMonth(combinedMonths[combinedMonths.length - 1]);
       } else {
@@ -201,7 +201,7 @@ export default function ResultsPage() {
       // Normalize name by trimming for grouping - ignore date for grouping as per user request
       const normalizedName = r.testName.trim();
       const key = normalizedName;
-      
+
       if (!testsMap.has(key)) {
         testsMap.set(key, {
           testName: normalizedName,
@@ -241,22 +241,6 @@ export default function ResultsPage() {
                   Yahan aap current month ke top students, har student ke test marks, aur performance summary
                   direct dekh sakte hain. Student login ki zarurat nahi hai.
                 </p>
-                <div className="mt-6 flex flex-wrap gap-3">
-                   <button 
-                     onClick={() => window.print()}
-                     className="inline-flex items-center gap-2 rounded-full bg-[#0f2a5c] px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-900/20 hover:bg-[#1a3a7a] transition-all"
-                   >
-                     <Download size={16} />
-                     Download Results Report
-                   </button>
-                   <a 
-                     href="/online-test" 
-                     className="inline-flex items-center gap-2 rounded-full bg-white border border-slate-200 px-6 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all"
-                   >
-                     <BookOpen size={16} className="text-[#f5a623]" />
-                     Student Login for Review
-                   </a>
-                </div>
               </div>
 
               <div className="flex flex-col items-center gap-4">
@@ -265,33 +249,30 @@ export default function ResultsPage() {
                   <button
                     id="class-8-toggle"
                     onClick={() => { setSelectedClass('8th'); setQuery(''); }}
-                    className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${
-                      selectedClass === '8th'
+                    className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${selectedClass === '8th'
                         ? 'bg-[#0f2a5c] text-white shadow'
                         : 'text-slate-500 hover:text-slate-700'
-                    }`}
+                      }`}
                   >
                     Class 8
                   </button>
                   <button
                     id="class-9-toggle"
                     onClick={() => { setSelectedClass('9th'); setQuery(''); }}
-                    className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${
-                      selectedClass === '9th'
+                    className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${selectedClass === '9th'
                         ? 'bg-[#0f2a5c] text-white shadow'
                         : 'text-slate-500 hover:text-slate-700'
-                    }`}
+                      }`}
                   >
                     Class 9
                   </button>
                   <button
                     id="class-10-toggle"
                     onClick={() => { setSelectedClass('10th'); setQuery(''); }}
-                    className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${
-                      selectedClass === '10th'
+                    className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${selectedClass === '10th'
                         ? 'bg-[#0f2a5c] text-white shadow'
                         : 'text-slate-500 hover:text-slate-700'
-                    }`}
+                      }`}
                   >
                     Class 10
                   </button>
@@ -369,11 +350,10 @@ export default function ResultsPage() {
                   return (
                     <div
                       key={group.rank}
-                      className={`rounded-[2rem] border p-6 shadow-sm ${
-                        isFirst
+                      className={`rounded-[2rem] border p-6 shadow-sm ${isFirst
                           ? 'border-[#f5a623]/40 bg-[linear-gradient(180deg,_#fff8e8,_#ffffff)]'
                           : 'border-slate-200 bg-white/90'
-                      }`}
+                        }`}
                     >
                       {/* Header */}
                       <div className="flex items-center justify-between">
@@ -494,9 +474,9 @@ export default function ResultsPage() {
                 </p>
               </div>
             ) : filteredStudents.length === 0 ? (
-               <div className="rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
-                  Koi matching student nahi mila.
-               </div>
+              <div className="rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
+                Koi matching student nahi mila.
+              </div>
             ) : (
               <div ref={tableContainerRef} className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm relative scroll-smooth">
                 <table className="w-full text-left text-sm whitespace-nowrap">
@@ -536,57 +516,148 @@ export default function ResultsPage() {
                               <p className="font-bold text-[#0f2a5c] truncate text-xs sm:text-sm">{summary.student.name}</p>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-500">{summary.student.className}</p>
-                                  <button
-                                    onClick={() => {
-                                      const chartData = summary.allTests
-                                        .sort((a, b) => new Date(a.testDate).getTime() - new Date(b.testDate).getTime())
-                                        .map((t, idx) => ({
-                                          testNumber: idx + 1,
-                                          date: new Date(t.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-                                          percentage: Math.round((t.marksObtained / t.totalMarks) * 100)
-                                        }));
-                                      setSelectedStudentForChart({ name: summary.student.name, data: chartData });
-                                    }}
-                                    className="text-[#f5a623] hover:text-[#e09010] bg-[#fff8e8] hover:bg-[#ffe2ae] p-1 rounded transition-colors"
-                                    title="View Progress Chart"
-                                  >
-                                    <TrendingUp size={12} />
-                                  </button>
-                                  <button
-                                    onClick={async () => {
-                                      const hwRecord = homeworkData.find(h => h.id === summary.student.id)?.homework;
-                                      const attStat = attendanceStats[summary.student.id];
-                                      
-                                      const currentMonth = selectedMonth || monthLabel;
-                                      
-                                      const pdfTestResults = summary.allTests
-                                        .filter(t => {
-                                          const d = new Date(t.testDate);
-                                          const rMonth = d.toLocaleString('default', { month: 'long' }) + ' ' + d.getFullYear();
-                                          return rMonth === currentMonth;
-                                        })
-                                        .map(t => ({
-                                          testDate: t.testDate,
-                                          subject: t.testName,
-                                          totalMarks: t.totalMarks,
-                                          obtainedMarks: t.marksObtained,
-                                          rank: summary.rank // Global rank for month
-                                        }));
-                                      
-                                      await generateStudentRankCardPDF(
-                                        summary.student.name,
-                                        summary.student.className,
-                                        currentMonth,
-                                        pdfTestResults,
-                                        attStat || null,
-                                        hwRecord ? { completedPages: hwRecord.completedPages, targetPages: hwRecord.targetPages } : null
-                                      );
-                                    }}
-                                    className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1 rounded transition-colors ml-1"
-                                    title={`Download ${selectedMonth || monthLabel} Rank Card`}
-                                  >
-                                    <Download size={12} />
-                                  </button>
+                                <button
+                                  onClick={() => {
+                                    const chartData = summary.allTests
+                                      .sort((a, b) => new Date(a.testDate).getTime() - new Date(b.testDate).getTime())
+                                      .map((t, idx) => ({
+                                        testNumber: idx + 1,
+                                        date: new Date(t.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+                                        percentage: Math.round((t.marksObtained / t.totalMarks) * 100)
+                                      }));
+                                    setSelectedStudentForChart({ name: summary.student.name, data: chartData });
+                                  }}
+                                  className="text-[#f5a623] hover:text-[#e09010] bg-[#fff8e8] hover:bg-[#ffe2ae] p-1 rounded transition-colors"
+                                  title="View Progress Chart"
+                                >
+                                  <TrendingUp size={12} />
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    const hwRecord = homeworkData.find(h => h.id === summary.student.id)?.homework;
+                                    const attStat = attendanceStats[summary.student.id];
+
+                                    const currentMonth = selectedMonth || monthLabel;
+
+                                    const pdfTestResults = summary.allTests
+                                      .filter(t => {
+                                        const d = new Date(t.testDate);
+                                        const rMonth = d.toLocaleString('default', { month: 'long' }) + ' ' + d.getFullYear();
+                                        return rMonth === currentMonth;
+                                      })
+                                      .map(t => ({
+                                        testDate: t.testDate,
+                                        subject: t.testName,
+                                        totalMarks: t.totalMarks,
+                                        obtainedMarks: t.marksObtained,
+                                        rank: summary.rank // Global rank for month
+                                      }));
+
+                                    await generateStudentRankCardPDF(
+                                      summary.student.name,
+                                      summary.student.className,
+                                      currentMonth,
+                                      pdfTestResults,
+                                      attStat || null,
+                                      hwRecord ? { completedPages: hwRecord.completedPages, targetPages: hwRecord.targetPages } : null
+                                    );
+                                  }}
+                                  className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1 rounded transition-colors ml-1"
+                                  title={`Download ${selectedMonth || monthLabel} Rank Card`}
+                                >
+                                  <Download size={12} />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    // Individual JPG certificate logic for public results
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = 1200;
+                                    canvas.height = 800;
+                                    const ctx = canvas.getContext('2d');
+                                    if (!ctx) return;
+
+                                    // Background gradient
+                                    const gradient = ctx.createLinearGradient(0, 0, 1200, 800);
+                                    gradient.addColorStop(0, '#f0f7ff');
+                                    gradient.addColorStop(1, '#ffffff');
+                                    ctx.fillStyle = gradient;
+                                    ctx.fillRect(0, 0, 1200, 800);
+
+                                    // Elegant Border
+                                    ctx.strokeStyle = '#0f2a5c';
+                                    ctx.lineWidth = 15;
+                                    ctx.strokeRect(30, 30, 1140, 740);
+                                    ctx.strokeStyle = '#f5a623';
+                                    ctx.lineWidth = 4;
+                                    ctx.strokeRect(45, 45, 1110, 710);
+
+                                    // Header
+                                    ctx.fillStyle = '#0f2a5c';
+                                    ctx.font = 'bold 55px "Inter", Arial';
+                                    ctx.textAlign = 'center';
+                                    ctx.fillText('SUNRISE CLASSES & ACADEMY', 600, 140);
+
+                                    ctx.fillStyle = '#f5a623';
+                                    ctx.font = 'bold 28px Arial';
+                                    ctx.fillText('OFFICIAL PERFORMANCE CERTIFICATE', 600, 190);
+
+                                    // Main Text
+                                    ctx.fillStyle = '#444';
+                                    ctx.font = '30px Arial';
+                                    ctx.fillText('This is to recognize the achievement of', 600, 280);
+
+                                    ctx.fillStyle = '#0f2a5c';
+                                    ctx.font = 'bold 60px "Georgia", serif';
+                                    ctx.fillText(summary.student.name.toUpperCase(), 600, 360);
+
+                                    ctx.fillStyle = '#666';
+                                    ctx.font = '24px Arial';
+                                    ctx.fillText(`Student of ${summary.student.className}`, 600, 410);
+
+                                    ctx.fillStyle = '#444';
+                                    ctx.font = '24px Arial';
+                                    ctx.fillText(`For outstanding performance in ${selectedMonth || 'Monthly'} Tests`, 600, 480);
+
+                                    // Stats Box
+                                    ctx.fillStyle = '#f8fbff';
+                                    ctx.strokeStyle = '#d9e5ff';
+                                    ctx.lineWidth = 1;
+                                    ctx.beginPath();
+                                    ctx.roundRect(300, 520, 600, 120, 20);
+                                    ctx.fill();
+                                    ctx.stroke();
+
+                                    ctx.fillStyle = '#0f2a5c';
+                                    ctx.font = 'bold 50px Arial';
+                                    ctx.fillText(`${summary.percentage}%`, 600, 580);
+                                    ctx.fillStyle = '#9a5b00';
+                                    ctx.font = 'bold 18px Arial';
+                                    ctx.fillText('AGGREGATE PERFORMANCE SCORE', 600, 610);
+
+                                    // Footer
+                                    ctx.fillStyle = '#333';
+                                    ctx.font = 'italic 22px Arial';
+                                    ctx.fillText('S.P. Sir', 950, 700);
+                                    ctx.font = '14px Arial';
+                                    ctx.fillText('Director, Sunrise Classes', 950, 720);
+                                    ctx.fillText('Champanagar, Purnia', 950, 740);
+
+                                    // QR Placeholder or Logo
+                                    ctx.fillStyle = '#0f2a5c';
+                                    ctx.font = 'bold 20px Arial';
+                                    ctx.textAlign = 'left';
+                                    ctx.fillText('Verified Result', 100, 720);
+
+                                    const link = document.createElement('a');
+                                    link.download = `${summary.student.name}_Certificate.jpg`;
+                                    link.href = canvas.toDataURL('image/jpeg', 0.9);
+                                    link.click();
+                                  }}
+                                  className="text-orange-500 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 p-1 rounded transition-colors ml-1"
+                                  title="Download Performance Certificate (JPG)"
+                                >
+                                  <Sparkles size={12} />
+                                </button>
                                 {attendanceStats[summary.student.id] && attendanceStats[summary.student.id].history.length > 0 && (
                                   <div className="flex gap-[2px] ml-1" title={`Monthly Attendance: ${attendanceStats[summary.student.id].percentage}%`}>
                                     {attendanceStats[summary.student.id].history.slice(-7).map((record, i) => (
@@ -633,7 +704,7 @@ export default function ResultsPage() {
             const firstHw = homeworkData.find(s => s.homework)?.homework;
             const target = firstHw?.targetPages ?? 0;
             const month = selectedMonth;
-            
+
             return (
               <div className="mt-14 rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-5 sm:p-7 shadow-sm">
                 {/* Month Tabs */}
@@ -646,18 +717,17 @@ export default function ResultsPage() {
                           setSelectedMonth(m);
                           setAttendanceViewMode('monthly');
                         }}
-                        className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${
-                          selectedMonth === m
+                        className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${selectedMonth === m
                             ? 'bg-[#0f2a5c] text-white shadow-md transform scale-105'
                             : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 hover:text-slate-700'
-                        }`}
+                          }`}
                       >
                         {m}
                       </button>
                     ))}
                   </div>
                 )}
-                
+
                 <div className="flex flex-col lg:flex-row gap-8">
                   {/* Homework Section */}
                   <div className="flex-1">
@@ -678,7 +748,7 @@ export default function ResultsPage() {
                         </div>
                       )}
                     </div>
-                    
+
                     {homeworkData.length === 0 ? (
                       <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
                         Is mahine ka koi homework record nahi hai.
@@ -732,17 +802,17 @@ export default function ResultsPage() {
                           <p className="text-xs text-slate-500">{month}</p>
                         </div>
                       </div>
-                      
+
                       {Object.keys(attendanceStats).length > 0 && (
                         <div className="flex items-center gap-2">
-                          <button 
+                          <button
                             onClick={() => setAttendanceViewMode('monthly')}
                             className={`px-3 py-1.5 text-[10px] sm:text-xs font-bold rounded-full transition-all ${attendanceViewMode === 'monthly' ? 'bg-[#0f2a5c] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                           >
                             Monthly
                           </button>
-                          <input 
-                            type="date" 
+                          <input
+                            type="date"
                             value={selectedAttendanceDate}
                             onChange={(e) => {
                               setSelectedAttendanceDate(e.target.value);
@@ -754,7 +824,7 @@ export default function ResultsPage() {
                         </div>
                       )}
                     </div>
-                    
+
                     {Object.keys(attendanceStats).length === 0 ? (
                       <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
                         Is mahine ki koi attendance record nahi hai.
@@ -776,21 +846,18 @@ export default function ResultsPage() {
                                       {stat.history.map((record, i) => {
                                         const day = new Date(record.date).getDate();
                                         return (
-                                          <div key={i} className={`flex flex-col items-center justify-center w-[22px] h-[24px] rounded shrink-0 transition-all ${
-                                            record.status === 'present' ? 'bg-green-50 border border-green-100 hover:bg-green-100' 
-                                            : record.status === 'holiday' ? 'bg-yellow-50 border border-yellow-200 hover:bg-yellow-100'
-                                            : 'bg-red-50 border border-red-100 hover:bg-red-100'
-                                          }`} title={`${record.date}: ${record.status}`}>
-                                            <span className={`text-[8px] font-bold ${
-                                              record.status === 'present' ? 'text-green-600' 
-                                              : record.status === 'holiday' ? 'text-yellow-600'
-                                              : 'text-red-600'
-                                            }`}>{day}</span>
-                                            <span className={`h-1 w-1 mt-[1px] rounded-full ${
-                                              record.status === 'present' ? 'bg-green-500' 
-                                              : record.status === 'holiday' ? 'bg-yellow-400'
-                                              : 'bg-red-500'
-                                            }`} />
+                                          <div key={i} className={`flex flex-col items-center justify-center w-[22px] h-[24px] rounded shrink-0 transition-all ${record.status === 'present' ? 'bg-green-50 border border-green-100 hover:bg-green-100'
+                                              : record.status === 'holiday' ? 'bg-yellow-50 border border-yellow-200 hover:bg-yellow-100'
+                                                : 'bg-red-50 border border-red-100 hover:bg-red-100'
+                                            }`} title={`${record.date}: ${record.status}`}>
+                                            <span className={`text-[8px] font-bold ${record.status === 'present' ? 'text-green-600'
+                                                : record.status === 'holiday' ? 'text-yellow-600'
+                                                  : 'text-red-600'
+                                              }`}>{day}</span>
+                                            <span className={`h-1 w-1 mt-[1px] rounded-full ${record.status === 'present' ? 'bg-green-500'
+                                                : record.status === 'holiday' ? 'bg-yellow-400'
+                                                  : 'bg-red-500'
+                                              }`} />
                                           </div>
                                         );
                                       })}
@@ -801,11 +868,11 @@ export default function ResultsPage() {
                                     return (
                                       <div className="mt-2">
                                         {status === 'present' ? (
-                                          <span className="inline-flex items-center gap-1 rounded bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-600 border border-green-200"><span className="h-1.5 w-1.5 rounded-full bg-green-500"/> Present</span>
+                                          <span className="inline-flex items-center gap-1 rounded bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-600 border border-green-200"><span className="h-1.5 w-1.5 rounded-full bg-green-500" /> Present</span>
                                         ) : status === 'absent' ? (
-                                          <span className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600 border border-red-200"><span className="h-1.5 w-1.5 rounded-full bg-red-500"/> Absent</span>
+                                          <span className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600 border border-red-200"><span className="h-1.5 w-1.5 rounded-full bg-red-500" /> Absent</span>
                                         ) : status === 'holiday' ? (
-                                          <span className="inline-flex items-center gap-1 rounded bg-yellow-50 px-2 py-0.5 text-[10px] font-bold text-yellow-600 border border-yellow-200"><span className="h-1.5 w-1.5 rounded-full bg-yellow-400"/> Holiday</span>
+                                          <span className="inline-flex items-center gap-1 rounded bg-yellow-50 px-2 py-0.5 text-[10px] font-bold text-yellow-600 border border-yellow-200"><span className="h-1.5 w-1.5 rounded-full bg-yellow-400" /> Holiday</span>
                                         ) : (
                                           <span className="inline-flex items-center gap-1 rounded bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500 border border-slate-200">No Record</span>
                                         )}

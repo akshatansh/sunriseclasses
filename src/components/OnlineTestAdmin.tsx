@@ -3,7 +3,7 @@ import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCirc
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
-import { 
+import {
   getAllTestsAdmin, createTestAdmin, updateTestAdmin, deleteTestAdmin,
   getQuestionsAdmin, createQuestionAdmin, createQuestionsBatchAdmin, updateQuestionAdmin, deleteQuestionAdmin, getTestAttemptsAdmin, getProctoringLogsAdmin,
   resetStudentAttempt,
@@ -14,11 +14,11 @@ import {
 export default function OnlineTestAdmin() {
   const [tests, setTests] = useState<OnlineTest[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Views: 'list', 'edit-test', 'manage-questions', 'view-attempts', 'view-proctoring', 'live-monitor'
   const [view, setView] = useState<'list' | 'edit-test' | 'manage-questions' | 'view-attempts' | 'view-proctoring' | 'live-monitor'>('list');
   const [currentTest, setCurrentTest] = useState<Partial<OnlineTest>>({});
-  
+
   const [questions, setQuestions] = useState<OnlineTestQuestion[]>([]);
   const [attempts, setAttempts] = useState<any[]>([]);
   const [proctoringLogs, setProctoringLogs] = useState<any[]>([]);
@@ -37,7 +37,7 @@ export default function OnlineTestAdmin() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
-  
+
   // Live Monitor State
   const [liveStudents, setLiveStudents] = useState<any[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);
@@ -172,94 +172,100 @@ export default function OnlineTestAdmin() {
   const handleBulkSubmit = async () => {
     if (!currentTest.id || !bulkText.trim()) return;
     setParsingBulk(true);
-    
+
     try {
-      const blocks = bulkText.split(/\n\s*\n/);
+      let normalizedText = bulkText.replace(/\r\n/g, '\n');
+      // Auto-insert double newlines before Question markers if missing
+      // Matches "1.", "1)", "Q1.", "Question 1.", etc. at the start of a line.
+      // Also handles Hindi word "प्रश्न 1."
+      normalizedText = normalizedText.replace(/\n(?=(?:Q(?:uestion)?\s*\d+[\.\)]\s*|प्रश्न\s*\d+[\.\)]\s*|\d+[\.\)]\s+))/gi, '\n\n');
+
+      const blocks = normalizedText.split(/\n\s*\n/);
       const parsedQuestions: Partial<OnlineTestQuestion>[] = [];
-      
+
       for (const block of blocks) {
         if (!block.trim()) continue;
         const lines = block.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
-        
+
         let ansLineIndex = lines.findIndex(l => {
           const lower = l.toLowerCase();
           return lower.startsWith('ans') || lower.startsWith('उत्तर');
         });
-        
+
         if (ansLineIndex === -1) {
-           const lastLine = lines[lines.length - 1];
-           if (['a', 'b', 'c', 'd'].includes(lastLine.toLowerCase().trim())) {
-              ansLineIndex = lines.length - 1;
-           }
+          const lastLine = lines[lines.length - 1];
+          if (['a', 'b', 'c', 'd'].includes(lastLine.toLowerCase().trim())) {
+            ansLineIndex = lines.length - 1;
+          }
         }
-        
+
         let optAIndex = lines.findIndex(l => l.match(/^[\(]?a[\.\)]?\s*/i));
-        
+
         if (ansLineIndex > 0 && optAIndex > 0) {
-           let qTextLines = lines.slice(0, optAIndex);
-           qTextLines[0] = qTextLines[0].replace(/^(Q?\d+[\.\)]\s*)/i, '');
-           let qText = qTextLines.join('\n').trim();
-           
-           let optA = '', optB = '', optC = '', optD = '';
-           let correctOpt = 'A';
-           
-           let optBIndex = lines.findIndex(l => l.match(/^[\(]?b[\.\)]?\s*/i));
-           let optCIndex = lines.findIndex(l => l.match(/^[\(]?c[\.\)]?\s*/i));
-           let optDIndex = lines.findIndex(l => l.match(/^[\(]?d[\.\)]?\s*/i));
-           
-           if (optAIndex !== -1 && optBIndex !== -1) {
-             optA = lines.slice(optAIndex, optBIndex).join('\n').replace(/^[\(]?a[\.\)]?\s*/i, '').trim();
-           }
-           if (optBIndex !== -1 && optCIndex !== -1) {
-             optB = lines.slice(optBIndex, optCIndex).join('\n').replace(/^[\(]?b[\.\)]?\s*/i, '').trim();
-           }
-           if (optCIndex !== -1 && optDIndex !== -1) {
-             optC = lines.slice(optCIndex, optDIndex).join('\n').replace(/^[\(]?c[\.\)]?\s*/i, '').trim();
-           }
-           if (optDIndex !== -1 && ansLineIndex !== -1) {
-             optD = lines.slice(optDIndex, ansLineIndex).join('\n').replace(/^[\(]?d[\.\)]?\s*/i, '').trim();
-           }
-           
-           const ansRaw = lines[ansLineIndex].replace(/^(ans(wer)?|उत्तर)[\:\.\-]?\s*/i, '').trim();
-           const match = ansRaw.match(/^[\[\(]?([A-D])[\]\)]?/i);
-           if (match && ['A', 'B', 'C', 'D'].includes(match[1].toUpperCase())) {
-             correctOpt = match[1].toUpperCase();
-           }
-           
-           let explanationText = '';
-           const extraTextMatch = ansRaw.match(/^[\[\(]?[A-D][\]\)]?[\s\:\-\.]*(.*)/i);
-           if (extraTextMatch && extraTextMatch[1] && extraTextMatch[1].trim().length > 3) {
-             explanationText = extraTextMatch[1].trim();
-             if (explanationText.startsWith('(') && explanationText.endsWith(')')) {
-               explanationText = explanationText.substring(1, explanationText.length - 1);
-             }
-           }
-           
-           if (ansLineIndex < lines.length - 1) {
-             const expLines = lines.slice(ansLineIndex + 1);
-             const expStr = expLines.join('\n').trim();
-             if (expStr.toLowerCase().startsWith('exp') || expStr.toLowerCase().startsWith('sol') || expStr.startsWith('व्याख्या') || expStr.startsWith('हल')) {
-               let cleanExp = expStr.replace(/^(exp(lanation)?|sol(ution)?|व्याख्या|हल)[\:\.\-]?\s*/i, '').trim();
-               explanationText = explanationText ? explanationText + '\n' + cleanExp : cleanExp;
-             } else {
-               explanationText = explanationText ? explanationText + '\n' + expStr : expStr;
-             }
-           }
-           
-           parsedQuestions.push({
-             test_id: currentTest.id,
-             question_text: qText,
-             option_a: optA,
-             option_b: optB,
-             option_c: optC,
-             option_d: optD,
-             correct_option: correctOpt,
-             marks: 1,
-             explanation: explanationText || undefined
-           });
+          let qTextLines = lines.slice(0, optAIndex);
+          qTextLines[0] = qTextLines[0].replace(/^(?:Q(?:uestion)?\s*\d+[\.\)]\s*|प्रश्न\s*\d+[\.\)]\s*|\d+[\.\)]\s*)/i, '');
+          let qText = qTextLines.join('\n').trim();
+
+          let optA = '', optB = '', optC = '', optD = '';
+          let correctOpt = 'A';
+
+          let optBIndex = lines.findIndex(l => l.match(/^[\(]?b[\.\)]?\s*/i));
+          let optCIndex = lines.findIndex(l => l.match(/^[\(]?c[\.\)]?\s*/i));
+          let optDIndex = lines.findIndex(l => l.match(/^[\(]?d[\.\)]?\s*/i));
+
+          if (optAIndex !== -1 && optBIndex !== -1) {
+            optA = lines.slice(optAIndex, optBIndex).join('\n').replace(/^[\(]?a[\.\)]?\s*/i, '').trim();
+          }
+          if (optBIndex !== -1 && optCIndex !== -1) {
+            optB = lines.slice(optBIndex, optCIndex).join('\n').replace(/^[\(]?b[\.\)]?\s*/i, '').trim();
+          }
+          if (optCIndex !== -1 && optDIndex !== -1) {
+            optC = lines.slice(optCIndex, optDIndex).join('\n').replace(/^[\(]?c[\.\)]?\s*/i, '').trim();
+          }
+          if (optDIndex !== -1 && ansLineIndex !== -1) {
+            optD = lines.slice(optDIndex, ansLineIndex).join('\n').replace(/^[\(]?d[\.\)]?\s*/i, '').trim();
+          }
+
+          const ansRaw = lines[ansLineIndex].replace(/^(ans(wer)?|उत्तर)[\:\.\-]?\s*/i, '').trim();
+          const match = ansRaw.match(/^[\[\(]?([A-D])[\]\)]?/i);
+          if (match && ['A', 'B', 'C', 'D'].includes(match[1].toUpperCase())) {
+            correctOpt = match[1].toUpperCase();
+          }
+
+          let explanationText = '';
+          const extraTextMatch = ansRaw.match(/^[\[\(]?[A-D][\]\)]?[\s\:\-\.]*(.*)/i);
+          if (extraTextMatch && extraTextMatch[1] && extraTextMatch[1].trim().length > 3) {
+            explanationText = extraTextMatch[1].trim();
+            if (explanationText.startsWith('(') && explanationText.endsWith(')')) {
+              explanationText = explanationText.substring(1, explanationText.length - 1);
+            }
+          }
+
+          if (ansLineIndex < lines.length - 1) {
+            const expLines = lines.slice(ansLineIndex + 1);
+            const expStr = expLines.join('\n').trim();
+            if (expStr.toLowerCase().startsWith('exp') || expStr.toLowerCase().startsWith('sol') || expStr.startsWith('व्याख्या') || expStr.startsWith('हल')) {
+              let cleanExp = expStr.replace(/^(exp(lanation)?|sol(ution)?|व्याख्या|हल)[\:\.\-]?\s*/i, '').trim();
+              explanationText = explanationText ? explanationText + '\n' + cleanExp : cleanExp;
+            } else {
+              explanationText = explanationText ? explanationText + '\n' + expStr : expStr;
+            }
+          }
+
+          parsedQuestions.push({
+            test_id: currentTest.id,
+            question_text: qText,
+            option_a: optA,
+            option_b: optB,
+            option_c: optC,
+            option_d: optD,
+            correct_option: correctOpt,
+            marks: 1,
+            explanation: explanationText || undefined
+          });
         }
       }
-      
+
       if (parsedQuestions.length > 0) {
         await createQuestionsBatchAdmin(parsedQuestions);
         setBulkText('');
@@ -513,7 +519,7 @@ export default function OnlineTestAdmin() {
           <Settings className="h-5 w-5 text-blue-600" />
           Online Tests Management
         </h2>
-        
+
         {view === 'list' ? (
           <div className="flex items-center gap-3">
             <button
@@ -548,9 +554,9 @@ export default function OnlineTestAdmin() {
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-2">
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search tests..." 
+                <input
+                  type="text"
+                  placeholder="Search tests..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -558,8 +564,8 @@ export default function OnlineTestAdmin() {
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Filter className="h-4 w-4 text-gray-400" />
-                <select 
-                  value={filterClass} 
+                <select
+                  value={filterClass}
                   onChange={(e) => setFilterClass(e.target.value)}
                   className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 >
@@ -583,108 +589,104 @@ export default function OnlineTestAdmin() {
                   {tests
                     .filter(t => (filterClass === 'All' || t.class_name === filterClass) && t.title.toLowerCase().includes(searchQuery.toLowerCase()))
                     .map(test => (
-                  <tr key={test.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-bold text-gray-900">{test.title}</div>
-                      <div className="text-[10px] flex items-center gap-1 text-gray-500 font-medium">
-                        <Clock className="h-3 w-3" /> {test.duration_minutes} mins
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 mb-1 uppercase tracking-wide">
-                        {test.class_name}
-                      </span>
-                      <div className="text-xs font-medium text-gray-400">{test.subject}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        {/* Hidden */}
-                        <button
-                          onClick={() => updateTestAdmin(test.id, { is_active: false, is_stopped: false }).then(fetchTests)}
-                          className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full border transition-all ${
-                            !test.is_active && !test.is_stopped
-                              ? 'bg-gray-200 text-gray-700 border-gray-300 shadow-sm'
-                              : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
-                          }`}
-                          title="Hidden - not visible to students"
-                        >Hidden</button>
-                        {/* Live */}
-                        <button
-                          onClick={() => updateTestAdmin(test.id, { is_active: true, is_stopped: false }).then(fetchTests)}
-                          className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full border transition-all ${
-                            test.is_active
-                              ? 'bg-green-50 text-green-700 border-green-200 shadow-sm'
-                              : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-green-50 hover:text-green-600'
-                          }`}
-                          title="Live - students can take this test"
-                        >
-                          <div className={`h-1.5 w-1.5 rounded-full ${test.is_active ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
-                          Live
-                        </button>
-                        {/* Stopped */}
-                        <button
-                          onClick={() => updateTestAdmin(test.id, { is_active: false, is_stopped: true }).then(fetchTests)}
-                          className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full border transition-all ${
-                            test.is_stopped
-                              ? 'bg-red-50 text-red-700 border-red-200 shadow-sm'
-                              : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-red-50 hover:text-red-600'
-                          }`}
-                          title="Stop - test ends; students see Completed/Pending"
-                        >
-                          <div className={`h-1.5 w-1.5 rounded-full ${test.is_stopped ? 'bg-red-500' : 'bg-gray-300'}`}></div>
-                          Stopped
-                        </button>
-                        {/* Allow Review */}
-                        <button
-                          onClick={() => updateTestAdmin(test.id, { allow_review: !test.allow_review }).then(fetchTests)}
-                          className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full border transition-all ${
-                            test.allow_review
-                              ? 'bg-purple-50 text-purple-700 border-purple-200 shadow-sm'
-                              : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-purple-50 hover:text-purple-600'
-                          }`}
-                          title="Allow Review - students can see Q&A review and download PDF"
-                        >
-                          {test.allow_review
-                            ? <Eye className="h-3 w-3" />
-                            : <EyeOff className="h-3 w-3" />}
-                          {test.allow_review ? 'Review ON' : 'Review OFF'}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => handleDuplicateTest(test)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Duplicate Test">
-                          <Copy className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => handleViewProctoringLogs(test)} className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all" title="View Proctoring Logs">
-                          <Camera className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => handleViewAttempts(test)} className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all" title="View Results">
-                          <Users className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => handleManageQuestions(test)} className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all" title="Manage Questions">
-                          <List className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => { setCurrentTest(test); setView('edit-test'); }} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit Settings">
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => handleDeleteTest(test.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete Test">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {tests.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                      <div className="flex flex-col items-center">
-                        <List className="h-12 w-12 text-gray-200 mb-2" />
-                        <p className="font-medium">No tests found. Create your first online test!</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
+                      <tr key={test.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-bold text-gray-900">{test.title}</div>
+                          <div className="text-[10px] flex items-center gap-1 text-gray-500 font-medium">
+                            <Clock className="h-3 w-3" /> {test.duration_minutes} mins
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 mb-1 uppercase tracking-wide">
+                            {test.class_name}
+                          </span>
+                          <div className="text-xs font-medium text-gray-400">{test.subject}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            {/* Hidden */}
+                            <button
+                              onClick={() => updateTestAdmin(test.id, { is_active: false, is_stopped: false }).then(fetchTests)}
+                              className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full border transition-all ${!test.is_active && !test.is_stopped
+                                ? 'bg-gray-200 text-gray-700 border-gray-300 shadow-sm'
+                                : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
+                                }`}
+                              title="Hidden - not visible to students"
+                            >Hidden</button>
+                            {/* Live */}
+                            <button
+                              onClick={() => updateTestAdmin(test.id, { is_active: true, is_stopped: false }).then(fetchTests)}
+                              className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full border transition-all ${test.is_active
+                                ? 'bg-green-50 text-green-700 border-green-200 shadow-sm'
+                                : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-green-50 hover:text-green-600'
+                                }`}
+                              title="Live - students can take this test"
+                            >
+                              <div className={`h-1.5 w-1.5 rounded-full ${test.is_active ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></div>
+                              Live
+                            </button>
+                            {/* Stopped */}
+                            <button
+                              onClick={() => updateTestAdmin(test.id, { is_active: false, is_stopped: true }).then(fetchTests)}
+                              className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full border transition-all ${test.is_stopped
+                                ? 'bg-red-50 text-red-700 border-red-200 shadow-sm'
+                                : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-red-50 hover:text-red-600'
+                                }`}
+                              title="Stop - test ends; students see Completed/Pending"
+                            >
+                              <div className={`h-1.5 w-1.5 rounded-full ${test.is_stopped ? 'bg-red-500' : 'bg-gray-300'}`}></div>
+                              Stopped
+                            </button>
+                            {/* Allow Review */}
+                            <button
+                              onClick={() => updateTestAdmin(test.id, { allow_review: !test.allow_review }).then(fetchTests)}
+                              className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full border transition-all ${test.allow_review
+                                ? 'bg-purple-50 text-purple-700 border-purple-200 shadow-sm'
+                                : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-purple-50 hover:text-purple-600'
+                                }`}
+                              title="Allow Review - students can see Q&A review and download PDF"
+                            >
+                              {test.allow_review
+                                ? <Eye className="h-3 w-3" />
+                                : <EyeOff className="h-3 w-3" />}
+                              {test.allow_review ? 'Review ON' : 'Review OFF'}
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end gap-2">
+                            <button onClick={() => handleDuplicateTest(test)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Duplicate Test">
+                              <Copy className="h-4 w-4" />
+                            </button>
+                            <button onClick={() => handleViewProctoringLogs(test)} className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all" title="View Proctoring Logs">
+                              <Camera className="h-4 w-4" />
+                            </button>
+                            <button onClick={() => handleViewAttempts(test)} className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all" title="View Results">
+                              <Users className="h-4 w-4" />
+                            </button>
+                            <button onClick={() => handleManageQuestions(test)} className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all" title="Manage Questions">
+                              <List className="h-4 w-4" />
+                            </button>
+                            <button onClick={() => { setCurrentTest(test); setView('edit-test'); }} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit Settings">
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button onClick={() => handleDeleteTest(test.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete Test">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  {tests.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
+                        <div className="flex flex-col items-center">
+                          <List className="h-12 w-12 text-gray-200 mb-2" />
+                          <p className="font-medium">No tests found. Create your first online test!</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -696,23 +698,23 @@ export default function OnlineTestAdmin() {
             <h3 className="text-lg font-bold text-gray-900 mb-4">{currentTest.id ? 'Edit Test Details' : 'Create New Test'}</h3>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Test Title</label>
-              <input type="text" required value={currentTest.title || ''} onChange={e => setCurrentTest({...currentTest, title: e.target.value})} className="w-full px-3 py-2 border rounded-md" placeholder="e.g. Weekly Physics Mock Test" />
+              <input type="text" required value={currentTest.title || ''} onChange={e => setCurrentTest({ ...currentTest, title: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="e.g. Weekly Physics Mock Test" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
-                <select value={currentTest.class_name || 'Class 10'} onChange={e => setCurrentTest({...currentTest, class_name: e.target.value})} className="w-full px-3 py-2 border rounded-md">
+                <select value={currentTest.class_name || 'Class 10'} onChange={e => setCurrentTest({ ...currentTest, class_name: e.target.value })} className="w-full px-3 py-2 border rounded-md">
                   {classes.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                <input type="text" required value={currentTest.subject || ''} onChange={e => setCurrentTest({...currentTest, subject: e.target.value})} className="w-full px-3 py-2 border rounded-md" placeholder="e.g. Physics" />
+                <input type="text" required value={currentTest.subject || ''} onChange={e => setCurrentTest({ ...currentTest, subject: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="e.g. Physics" />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Duration (Minutes)</label>
-              <input type="number" min="1" required value={currentTest.duration_minutes || 30} onChange={e => setCurrentTest({...currentTest, duration_minutes: parseInt(e.target.value)})} className="w-full px-3 py-2 border rounded-md" />
+              <input type="number" min="1" required value={currentTest.duration_minutes || 30} onChange={e => setCurrentTest({ ...currentTest, duration_minutes: parseInt(e.target.value) })} className="w-full px-3 py-2 border rounded-md" />
             </div>
             <div className="pt-4 flex justify-end gap-3 border-t mt-6">
               <button type="button" onClick={() => setView('list')} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
@@ -728,13 +730,13 @@ export default function OnlineTestAdmin() {
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
                 <div className="flex gap-4">
-                  <button 
+                  <button
                     onClick={() => setIsBulkMode(false)}
                     className={`font-bold pb-2 border-b-2 transition-colors ${!isBulkMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                   >
                     Add Single Question
                   </button>
-                  <button 
+                  <button
                     onClick={() => setIsBulkMode(true)}
                     className={`font-bold pb-2 border-b-2 transition-colors ${isBulkMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                   >
@@ -747,24 +749,24 @@ export default function OnlineTestAdmin() {
                 <form onSubmit={handleAddQuestion} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Question Text</label>
-                    <textarea required rows={3} value={newQuestion.question_text || ''} onChange={e => setNewQuestion({...newQuestion, question_text: e.target.value})} className="w-full px-3 py-2 border rounded-md" placeholder="Type question here..."></textarea>
+                    <textarea required rows={3} value={newQuestion.question_text || ''} onChange={e => setNewQuestion({ ...newQuestion, question_text: e.target.value })} className="w-full px-3 py-2 border rounded-md" placeholder="Type question here..."></textarea>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Option A</label>
-                      <input type="text" required value={newQuestion.option_a || ''} onChange={e => setNewQuestion({...newQuestion, option_a: e.target.value})} className="w-full px-3 py-2 border rounded-md" />
+                      <input type="text" required value={newQuestion.option_a || ''} onChange={e => setNewQuestion({ ...newQuestion, option_a: e.target.value })} className="w-full px-3 py-2 border rounded-md" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Option B</label>
-                      <input type="text" required value={newQuestion.option_b || ''} onChange={e => setNewQuestion({...newQuestion, option_b: e.target.value})} className="w-full px-3 py-2 border rounded-md" />
+                      <input type="text" required value={newQuestion.option_b || ''} onChange={e => setNewQuestion({ ...newQuestion, option_b: e.target.value })} className="w-full px-3 py-2 border rounded-md" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Option C</label>
-                      <input type="text" required value={newQuestion.option_c || ''} onChange={e => setNewQuestion({...newQuestion, option_c: e.target.value})} className="w-full px-3 py-2 border rounded-md" />
+                      <input type="text" required value={newQuestion.option_c || ''} onChange={e => setNewQuestion({ ...newQuestion, option_c: e.target.value })} className="w-full px-3 py-2 border rounded-md" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Option D</label>
-                      <input type="text" required value={newQuestion.option_d || ''} onChange={e => setNewQuestion({...newQuestion, option_d: e.target.value})} className="w-full px-3 py-2 border rounded-md" />
+                      <input type="text" required value={newQuestion.option_d || ''} onChange={e => setNewQuestion({ ...newQuestion, option_d: e.target.value })} className="w-full px-3 py-2 border rounded-md" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -772,18 +774,17 @@ export default function OnlineTestAdmin() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Question Image (Optional)</label>
                       <div className="flex items-center gap-2">
                         <div className="relative flex-grow">
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            onChange={handleImageUpload} 
-                            className="hidden" 
-                            id="q-image-upload" 
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                            id="q-image-upload"
                           />
-                          <label 
-                            htmlFor="q-image-upload" 
-                            className={`w-full flex items-center justify-center gap-2 px-3 py-2 border-2 border-dashed rounded-md cursor-pointer transition-colors ${
-                              newQuestion.question_image ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                            }`}
+                          <label
+                            htmlFor="q-image-upload"
+                            className={`w-full flex items-center justify-center gap-2 px-3 py-2 border-2 border-dashed rounded-md cursor-pointer transition-colors ${newQuestion.question_image ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                              }`}
                           >
                             {uploadingImage ? (
                               <>
@@ -804,9 +805,9 @@ export default function OnlineTestAdmin() {
                           </label>
                         </div>
                         {newQuestion.question_image && (
-                          <button 
-                            type="button" 
-                            onClick={() => setNewQuestion({...newQuestion, question_image: ''})}
+                          <button
+                            type="button"
+                            onClick={() => setNewQuestion({ ...newQuestion, question_image: '' })}
                             className="p-2 text-red-500 hover:bg-red-50 rounded"
                           >
                             <X className="h-4 w-4" />
@@ -816,7 +817,7 @@ export default function OnlineTestAdmin() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Correct Answer</label>
-                      <select value={newQuestion.correct_option || 'A'} onChange={e => setNewQuestion({...newQuestion, correct_option: e.target.value})} className="w-full px-3 py-2 border rounded-md">
+                      <select value={newQuestion.correct_option || 'A'} onChange={e => setNewQuestion({ ...newQuestion, correct_option: e.target.value })} className="w-full px-3 py-2 border rounded-md">
                         <option value="A">Option A</option>
                         <option value="B">Option B</option>
                         <option value="C">Option C</option>
@@ -826,24 +827,24 @@ export default function OnlineTestAdmin() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Marks</label>
-                    <input type="number" min="1" required value={newQuestion.marks || 1} onChange={e => setNewQuestion({...newQuestion, marks: parseInt(e.target.value)})} className="w-full px-3 py-2 border rounded-md" />
+                    <input type="number" min="1" required value={newQuestion.marks || 1} onChange={e => setNewQuestion({ ...newQuestion, marks: parseInt(e.target.value) })} className="w-full px-3 py-2 border rounded-md" />
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-sm font-medium text-gray-700">Detailed Solution / Explanation (Optional)</label>
                     </div>
-                    <textarea 
-                      rows={4} 
-                      value={newQuestion.explanation || ''} 
-                      onChange={e => setNewQuestion({...newQuestion, explanation: e.target.value})} 
-                      className="w-full px-3 py-2 border rounded-md focus:border-purple-400 focus:ring focus:ring-purple-200 outline-none transition-all" 
+                    <textarea
+                      rows={4}
+                      value={newQuestion.explanation || ''}
+                      onChange={e => setNewQuestion({ ...newQuestion, explanation: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-md focus:border-purple-400 focus:ring focus:ring-purple-200 outline-none transition-all"
                       placeholder="Step-by-step solution ya explanation yahan likhein..."
                     ></textarea>
                   </div>
                   <div className="text-right flex items-center justify-end gap-3">
                     {newQuestion.id && (
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => setNewQuestion({ id: undefined, question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: '', explanation: '' })}
                         className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md font-bold hover:bg-gray-300 transition"
                       >
@@ -860,7 +861,7 @@ export default function OnlineTestAdmin() {
                   <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg">
                     <h4 className="font-bold text-blue-800 mb-2">Paste Format Example:</h4>
                     <pre className="text-xs text-blue-700 font-mono bg-white p-3 rounded border border-blue-100">
-{`1. Bharat ki rajdhani kya hai?
+                      {`1. Bharat ki rajdhani kya hai?
 A) Mumbai
 B) New Delhi
 C) Kolkata
@@ -878,15 +879,15 @@ Explanation: Arunachal Pradesh is the easternmost state.
 `}
                     </pre>
                   </div>
-                  <textarea 
-                    rows={12} 
+                  <textarea
+                    rows={12}
                     value={bulkText}
                     onChange={(e) => setBulkText(e.target.value)}
                     placeholder="Paste all your questions here. Make sure there is a blank line between each question."
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono text-sm"
                   ></textarea>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
-                    <button 
+                    <button
                       onClick={handleBulkSubmit}
                       disabled={parsingBulk || !bulkText.trim()}
                       className="bg-green-600 text-white px-6 py-2.5 rounded-lg hover:bg-green-700 font-bold disabled:opacity-50 flex items-center justify-center gap-2"
@@ -905,7 +906,7 @@ Explanation: Arunachal Pradesh is the easternmost state.
                 {questions.map((q, idx) => (
                   <div key={q.id} className="border border-gray-200 rounded-lg p-4 relative group">
                     <div className="absolute top-4 right-4 flex items-center gap-2">
-                      <button 
+                      <button
                         onClick={() => setNewQuestion({
                           id: q.id,
                           question_text: q.question_text,
@@ -916,7 +917,7 @@ Explanation: Arunachal Pradesh is the easternmost state.
                           correct_option: q.correct_option,
                           marks: q.marks,
                           question_image: q.question_image || ''
-                        })} 
+                        })}
                         className="text-blue-500 hover:text-blue-700 bg-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
                         title="Edit Question"
                       >
@@ -962,7 +963,7 @@ Explanation: Arunachal Pradesh is the easternmost state.
                     {attempts.length > 0 ? Math.max(...attempts.map(a => a.score)) : 0}
                   </p>
                 </div>
-                <button 
+                <button
                   onClick={handleDownloadRankCard}
                   className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm font-medium transition-colors"
                 >
@@ -994,10 +995,10 @@ Explanation: Arunachal Pradesh is the easternmost state.
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{att.students?.class_name}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-lg text-blue-600">{att.score}</span> 
+                          <span className="font-bold text-lg text-blue-600">{att.score}</span>
                           <span className="text-xs text-gray-400">/ {att.total_marks}</span>
                           <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden hidden sm:block">
-                            <div className="h-full bg-blue-500" style={{ width: `${(att.score/att.total_marks)*100}%` }}></div>
+                            <div className="h-full bg-blue-500" style={{ width: `${(att.score / att.total_marks) * 100}%` }}></div>
                           </div>
                         </div>
                       </td>
@@ -1219,9 +1220,9 @@ Explanation: Arunachal Pradesh is the easternmost state.
                           onClick={() => setLightboxLog(log)}
                           title="Click to enlarge"
                         >
-                          <img 
-                            src={log.proof_image_url} 
-                            alt="Proctoring Proof" 
+                          <img
+                            src={log.proof_image_url}
+                            alt="Proctoring Proof"
                             className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
                           />
                           {/* Zoom hint overlay */}
