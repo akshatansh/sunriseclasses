@@ -843,9 +843,39 @@ export default function ResultsPage() {
                       </div>
                     ) : (
                       <div className="grid gap-3">
+                        {(() => {
+                          // DEBUG: Log what we have
+                          const statsKeys = Object.keys(attendanceStats);
+                          const studentIds = classFilteredData.students.map(s => s.id);
+                          const missingStudents = classFilteredData.students.filter(s => !attendanceStats[s.id]);
+                          console.log('[ResultsPage Attendance Debug]');
+                          console.log('  selectedMonth:', selectedMonth);
+                          console.log('  attendanceStats keys count:', statsKeys.length);
+                          console.log('  classFilteredData students count:', studentIds.length);
+                          console.log('  students WITH stats:', statsKeys.length);
+                          console.log('  students WITHOUT stats (showing blank):', missingStudents.map(s => s.name));
+                          
+                          if (studentIds.length > 0) {
+                            const targetStudent = classFilteredData.students.find(s => s.name.toLowerCase().includes('kajal')) 
+                                               || classFilteredData.students.find(s => s.name.toLowerCase().includes('dilkhush'))
+                                               || classFilteredData.students[0];
+                            const sampleStat = attendanceStats[targetStudent.id];
+                            if (sampleStat) {
+                                console.log(`  Sample History for ${targetStudent.name}:`, sampleStat.history.map(h => `${h.date}(${h.status})`).join(', '));
+                            }
+                          }
+
+                          return null;
+                        })()}
                         {classFilteredData.students.map(s => {
                           const stat = attendanceStats[s.id];
-                          if (!stat || stat.history.length === 0) return null;
+                          // Show ALL students — even those with no records (they'll show 0% / no dots)
+                          // Previously `return null` was hiding absent-only students
+                          const effectiveStat = stat || { percentage: 0, history: [] as {date: string, status: string}[] };
+                          if (effectiveStat.history.length === 0 && Object.keys(attendanceStats).length > 0) {
+                            // Student has no record this month — show blank row
+                          }
+                          if (!stat) return null; // Only hide if NO attendance data at all for this month for ANYONE
                           const isGood = stat.percentage >= 75;
                           return (
                             <div key={s.id} className="group relative flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-white p-3 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all hover:border-[#f5a623]/30 hover:shadow-md">
