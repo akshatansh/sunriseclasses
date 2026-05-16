@@ -51,10 +51,8 @@ export const generateRandomPin = () => Math.floor(1000 + Math.random() * 9000).t
 
 export async function loadResultsPortalData(): Promise<ResultsPortalData> {
   try {
-    // Fetch students and online attempts normally (assuming < 1000 for now)
-    const [{ data: studentsData, error: studentError }, { data: onlineAttemptsData }] = await Promise.all([
-      supabase.from('students').select('*'),
-      supabase.from('online_test_attempts').select('*, online_tests(*)')
+    const [{ data: studentsData, error: studentError }] = await Promise.all([
+      supabase.from('students').select('*')
     ]);
 
     // Fetch test_results with pagination to bypass 1000-row limit
@@ -82,6 +80,33 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
         }
       } else {
         keepFetching = false;
+      }
+    }
+
+    // Fetch online_test_attempts with pagination
+    let onlineAttemptsData: any[] = [];
+    let onlineFrom = 0;
+    let keepFetchingOnline = true;
+
+    while (keepFetchingOnline) {
+      const { data, error: onlineError } = await supabase
+        .from('online_test_attempts')
+        .select('*, online_tests(*)')
+        .range(onlineFrom, onlineFrom + limit - 1);
+
+      if (onlineError) {
+        console.error("Supabase online attempts fetch error:", onlineError);
+        break;
+      }
+
+      if (data && data.length > 0) {
+        onlineAttemptsData = [...onlineAttemptsData, ...data];
+        onlineFrom += limit;
+        if (data.length < limit) {
+          keepFetchingOnline = false;
+        }
+      } else {
+        keepFetchingOnline = false;
       }
     }
 
