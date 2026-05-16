@@ -49,16 +49,31 @@ export function createId(prefix: string) {
 
 export const generateRandomPin = () => Math.floor(1000 + Math.random() * 9000).toString();
 
+async function fetchAllSupabase(table: string, select: string) {
+  let allData: any[] = [];
+  let from = 0;
+  const step = 1000;
+  while (true) {
+    const { data, error } = await supabase.from(table).select(select).range(from, from + step - 1);
+    if (error) {
+      console.error(`Error fetching ${table}:`, error);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    allData = allData.concat(data);
+    if (data.length < step) break;
+    from += step;
+  }
+  return allData;
+}
+
 export async function loadResultsPortalData(): Promise<ResultsPortalData> {
   try {
-    const [{ data: studentsData, error: studentError }, { data: resultsData, error: resultsError }, { data: onlineAttemptsData }] = await Promise.all([
-      supabase.from('students').select('*'),
-      supabase.from('test_results').select('*'),
-      supabase.from('online_test_attempts').select('*, online_tests(*)')
+    const [studentsData, resultsData, onlineAttemptsData] = await Promise.all([
+      fetchAllSupabase('students', '*'),
+      fetchAllSupabase('test_results', '*'),
+      fetchAllSupabase('online_test_attempts', '*, online_tests(*)')
     ]);
-
-    if (studentError) console.error("Supabase student fetch error:", studentError);
-    if (resultsError) console.error("Supabase results fetch error:", resultsError);
 
     const students: StudentRecord[] = (studentsData || []).map((s: any) => ({
       id: s.id,

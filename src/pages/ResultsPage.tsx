@@ -32,14 +32,14 @@ export default function ResultsPage() {
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [attendanceViewMode, setAttendanceViewMode] = useState<'monthly' | 'daily'>('monthly');
-  
+
   // Get today's date in local timezone
   const getLocalISODate = () => {
     const d = new Date();
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     return d.toISOString().split('T')[0];
   };
-  
+
   const [selectedAttendanceDate, setSelectedAttendanceDate] = useState<string>(getLocalISODate());
   const [attendanceStats, setAttendanceStats] = useState<Record<string, { percentage: number, history: { date: string, status: string }[] }>>({});
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -262,8 +262,8 @@ export default function ResultsPage() {
                     id="class-8-toggle"
                     onClick={() => { setSelectedClass('8th'); setQuery(''); }}
                     className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${selectedClass === '8th'
-                        ? 'bg-[#0f2a5c] text-white shadow'
-                        : 'text-slate-500 hover:text-slate-700'
+                      ? 'bg-[#0f2a5c] text-white shadow'
+                      : 'text-slate-500 hover:text-slate-700'
                       }`}
                   >
                     Class 8
@@ -272,8 +272,8 @@ export default function ResultsPage() {
                     id="class-9-toggle"
                     onClick={() => { setSelectedClass('9th'); setQuery(''); }}
                     className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${selectedClass === '9th'
-                        ? 'bg-[#0f2a5c] text-white shadow'
-                        : 'text-slate-500 hover:text-slate-700'
+                      ? 'bg-[#0f2a5c] text-white shadow'
+                      : 'text-slate-500 hover:text-slate-700'
                       }`}
                   >
                     Class 9
@@ -282,8 +282,8 @@ export default function ResultsPage() {
                     id="class-10-toggle"
                     onClick={() => { setSelectedClass('10th'); setQuery(''); }}
                     className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${selectedClass === '10th'
-                        ? 'bg-[#0f2a5c] text-white shadow'
-                        : 'text-slate-500 hover:text-slate-700'
+                      ? 'bg-[#0f2a5c] text-white shadow'
+                      : 'text-slate-500 hover:text-slate-700'
                       }`}
                   >
                     Class 10
@@ -362,9 +362,9 @@ export default function ResultsPage() {
                   return (
                     <div
                       key={group.rank}
-                      className={`rounded-[2rem] border p-6 shadow-sm ${isFirst
-                          ? 'border-[#f5a623]/40 bg-[linear-gradient(180deg,_#fff8e8,_#ffffff)]'
-                          : 'border-slate-200 bg-white/90'
+                      className={`flex flex-col h-full rounded-[2rem] border p-6 shadow-sm ${isFirst
+                        ? 'border-[#f5a623]/40 bg-[linear-gradient(180deg,_#fff8e8,_#ffffff)]'
+                        : 'border-slate-200 bg-white/90'
                         }`}
                     >
                       {/* Header */}
@@ -386,39 +386,35 @@ export default function ResultsPage() {
                       {/* Student(s) */}
                       {isTied ? (
                         // Combined card: side by side photos
-                        <div className="mt-5">
-                          <div className="flex items-center justify-center gap-2">
+                        <div className="mt-5 flex-grow flex flex-col">
+                          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 my-auto">
                             {group.summaries.map((s, si) => (
-                              <>
-                                <div key={s.student.id} className="flex flex-col items-center gap-2 flex-1">
-                                  <img
-                                    src={s.student.image || '/sunrise-logo.png'}
-                                    alt={s.student.name}
-                                    className="h-16 w-16 rounded-2xl object-cover object-top border-2 border-[#f5a623]/40 bg-slate-50"
-                                    onError={(e) => { e.currentTarget.src = '/sunrise-logo.png'; }}
-                                  />
-                                  <div className="text-center">
-                                    <p className="text-sm font-bold text-[#0f2a5c] leading-tight">{s.student.name}</p>
-                                    <p className="text-[10px] text-slate-500 mt-0.5">{s.student.className}</p>
-                                    <p className="text-xs text-slate-600 mt-1">{s.totalMarksObtained}/{s.totalMarksPossible}</p>
-                                  </div>
+                              <div key={s.student.id} className="flex flex-col items-center gap-2 w-16 sm:w-20">
+                                <img
+                                  src={s.student.image || '/sunrise-logo.png'}
+                                  alt={s.student.name}
+                                  className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl object-cover object-top border border-slate-200 bg-slate-50 shadow-sm"
+                                  onError={(e) => { e.currentTarget.src = '/sunrise-logo.png'; }}
+                                />
+                                <div className="text-center w-full">
+                                  <p className="text-xs font-bold text-[#0f2a5c] leading-tight line-clamp-2">{s.student.name}</p>
+                                  <p className="text-[9px] text-slate-500 mt-0.5">{s.student.className}</p>
                                 </div>
-                                {si < group.summaries.length - 1 && (
-                                  <div className="flex flex-col items-center justify-center shrink-0 text-2xl select-none">🤝</div>
-                                )}
-                              </>
+                              </div>
                             ))}
                           </div>
                           {/* Shared stats */}
-                          <div className="mt-4 rounded-2xl bg-[#fff7e6] p-3 text-center">
-                            <p className="text-xs uppercase tracking-[0.2em] text-[#9a5b00]">Joint Average</p>
-                            <p className="mt-1 text-xl font-black text-[#9a5b00]">{pct}%</p>
+                          <div className="mt-auto pt-5">
+                            <div className="rounded-2xl bg-[#fff7e6] p-3 text-center">
+                              <p className="text-xs uppercase tracking-[0.2em] text-[#9a5b00]">Joint Average</p>
+                              <p className="mt-1 text-xl font-black text-[#9a5b00]">{pct}%</p>
+                            </div>
                           </div>
                         </div>
                       ) : (
                         // Single student card
-                        <div>
-                          <div className="mt-5 flex items-center gap-4">
+                        <div className="flex-grow flex flex-col">
+                          <div className="mt-5 flex items-center gap-4 my-auto">
                             <img
                               src={group.summaries[0].student.image || '/sunrise-logo.png'}
                               alt={group.summaries[0].student.name}
@@ -433,14 +429,16 @@ export default function ResultsPage() {
                               </p>
                             </div>
                           </div>
-                          <div className="mt-5 grid grid-cols-2 gap-3">
-                            <div className="rounded-2xl bg-[#f8fbff] p-4">
-                              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Marks</p>
-                              <p className="mt-1 text-xl font-black text-[#0f2a5c]">{group.summaries[0].marksObtained}/{group.summaries[0].totalMarks}</p>
-                            </div>
-                            <div className="rounded-2xl bg-[#fff7e6] p-4">
-                              <p className="text-xs uppercase tracking-[0.2em] text-[#9a5b00]">Score</p>
-                              <p className="mt-1 text-xl font-black text-[#9a5b00]">{pct}%</p>
+                          <div className="mt-auto pt-5">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="rounded-2xl bg-[#f8fbff] p-4 text-center">
+                                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Marks</p>
+                                <p className="mt-1 text-lg font-black text-[#0f2a5c]">{group.summaries[0].marksObtained}/{group.summaries[0].totalMarks}</p>
+                              </div>
+                              <div className="rounded-2xl bg-[#fff7e6] p-4 text-center">
+                                <p className="text-[10px] uppercase tracking-[0.2em] text-[#9a5b00]">Score</p>
+                                <p className="mt-1 text-lg font-black text-[#9a5b00]">{pct}%</p>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -730,8 +728,8 @@ export default function ResultsPage() {
                           setAttendanceViewMode('monthly');
                         }}
                         className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${selectedMonth === m
-                            ? 'bg-[#0f2a5c] text-white shadow-md transform scale-105'
-                            : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 hover:text-slate-700'
+                          ? 'bg-[#0f2a5c] text-white shadow-md transform scale-105'
+                          : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 hover:text-slate-700'
                           }`}
                       >
                         {m}
@@ -847,7 +845,7 @@ export default function ResultsPage() {
                           const stat = attendanceStats[s.id];
                           // Show ALL students — even those with no records (they'll show 0% / no dots)
                           // Previously `return null` was hiding absent-only students
-                          const effectiveStat = stat || { percentage: 0, history: [] as {date: string, status: string}[] };
+                          const effectiveStat = stat || { percentage: 0, history: [] as { date: string, status: string }[] };
                           if (effectiveStat.history.length === 0 && Object.keys(attendanceStats).length > 0) {
                             // Student has no record this month — show blank row
                           }
@@ -865,16 +863,16 @@ export default function ResultsPage() {
                                         const day = parseInt(record.date.split('-')[2], 10);
                                         return (
                                           <div key={i} className={`flex flex-col items-center justify-center w-[22px] h-[24px] rounded shrink-0 transition-all ${record.status === 'present' ? 'bg-green-50 border border-green-100 hover:bg-green-100'
-                                              : record.status === 'holiday' ? 'bg-yellow-50 border border-yellow-200 hover:bg-yellow-100'
-                                                : 'bg-red-50 border border-red-100 hover:bg-red-100'
+                                            : record.status === 'holiday' ? 'bg-yellow-50 border border-yellow-200 hover:bg-yellow-100'
+                                              : 'bg-red-50 border border-red-100 hover:bg-red-100'
                                             }`} title={`${record.date}: ${record.status}`}>
                                             <span className={`text-[8px] font-bold ${record.status === 'present' ? 'text-green-600'
-                                                : record.status === 'holiday' ? 'text-yellow-600'
-                                                  : 'text-red-600'
+                                              : record.status === 'holiday' ? 'text-yellow-600'
+                                                : 'text-red-600'
                                               }`}>{day}</span>
                                             <span className={`h-1 w-1 mt-[1px] rounded-full ${record.status === 'present' ? 'bg-green-500'
-                                                : record.status === 'holiday' ? 'bg-yellow-400'
-                                                  : 'bg-red-500'
+                                              : record.status === 'holiday' ? 'bg-yellow-400'
+                                                : 'bg-red-500'
                                               }`} />
                                           </div>
                                         );

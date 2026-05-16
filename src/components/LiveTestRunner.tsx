@@ -193,13 +193,23 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     if (!videoRef.current) return undefined;
     try {
       const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth || 640;
-      canvas.height = videoRef.current.videoHeight || 480;
+      let width = videoRef.current.videoWidth || 640;
+      let height = videoRef.current.videoHeight || 480;
+      
+      // Resize to compress size
+      const MAX_WIDTH = 320;
+      if (width > MAX_WIDTH) {
+        height = Math.floor(height * (MAX_WIDTH / width));
+        width = MAX_WIDTH;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(videoRef.current, 0, 0, width, height);
         return await new Promise<Blob | null>((resolve) => {
-          canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.6);
+          canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.4); // 40% quality
         }) || undefined;
       }
     } catch (e) {
@@ -676,7 +686,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 
                 // Audio Warning — only logs to proctoring, does NOT auto-submit
                 try {
-                  const mediaRecorder = new MediaRecorder(stream as MediaStream);
+                  const mediaRecorder = new MediaRecorder(stream as MediaStream, { audioBitsPerSecond: 16000 });
                   const audioChunks: Blob[] = [];
                   mediaRecorder.ondataavailable = e => { if(e.data.size > 0) audioChunks.push(e.data); };
                   mediaRecorder.onstop = () => {

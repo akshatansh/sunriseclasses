@@ -8,6 +8,7 @@ import {
   getQuestionsAdmin, createQuestionAdmin, createQuestionsBatchAdmin, updateQuestionAdmin, deleteQuestionAdmin, getTestAttemptsAdmin, getProctoringLogsAdmin,
   resetStudentAttempt,
   uploadQuestionImage,
+  deleteProctoringLogAdmin, autoDeleteOldProctoringLogs,
   OnlineTest, OnlineTestQuestion
 } from '../lib/onlineTests';
 
@@ -68,6 +69,8 @@ export default function OnlineTestAdmin() {
 
   useEffect(() => {
     fetchTests();
+    // Auto-cleanup old logs (older than 15 days) silently in the background
+    autoDeleteOldProctoringLogs();
   }, []);
 
   // Auto-refresh live monitor every 20 seconds when that view is active
@@ -158,6 +161,21 @@ export default function OnlineTestAdmin() {
       fetchTests();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDeleteProctoringLog = async (logId: string, proofUrl: string | null) => {
+    if (!window.confirm("Are you sure you want to delete this proctoring log and its media file?")) return;
+    try {
+      await deleteProctoringLogAdmin(logId, proofUrl);
+      // Refresh the logs view
+      if (currentTest.id) {
+        const logs = await getProctoringLogsAdmin(currentTest.id);
+        setProctoringLogs(logs);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete log.');
     }
   };
 
@@ -1248,10 +1266,19 @@ Explanation: Arunachal Pradesh is the easternmost state.
                       <p className="text-sm text-red-700 font-bold mb-2 flex items-center gap-1.5">
                         <AlertTriangle className="h-4 w-4" /> {log.warning_type}
                       </p>
-                      <p className="text-[11px] text-gray-500 flex items-center gap-1 font-medium">
-                        <Clock className="h-3 w-3" />
-                        {new Date(log.created_at).toLocaleString()}
-                      </p>
+                      <div className="flex justify-between items-center">
+                        <p className="text-[11px] text-gray-500 flex items-center gap-1 font-medium">
+                          <Clock className="h-3 w-3" />
+                          {new Date(log.created_at).toLocaleString()}
+                        </p>
+                        <button
+                          onClick={() => handleDeleteProctoringLog(log.id, log.proof_image_url)}
+                          className="text-red-400 hover:text-red-700 p-1 rounded transition-colors"
+                          title="Delete this log"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

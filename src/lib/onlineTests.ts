@@ -488,3 +488,60 @@ export async function resetStudentAttempt(studentId: string, testId: string) {
 
   if (error) throw error;
 }
+
+export async function deleteProctoringLogAdmin(logId: string, proofUrl: string | null) {
+  // If there's a file in storage, delete it first to save space
+  if (proofUrl) {
+    try {
+      // Extract file path from URL. Format is usually: .../storage/v1/object/public/test_proofs/path/to/file.jpg
+      const urlParts = proofUrl.split('/test_proofs/');
+      if (urlParts.length === 2) {
+        const filePath = urlParts[1].split('?')[0]; // remove query params if any
+        await supabase.storage.from('test_proofs').remove([filePath]);
+      }
+    } catch (e) {
+      console.warn('Failed to delete proof file from storage', e);
+    }
+  }
+
+  // Delete the database row
+  const { error } = await supabase.from('proctoring_logs').delete().eq('id', logId);
+  if (error) throw error;
+}
+
+export async function autoDeleteOldProctoringLogs() {
+  try {
+    // 15 days ago date string
+    const fifteenDaysAgo = new Date();
+    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+    const dateStr = fifteenDaysAgo.toISOString();
+
+    // Find old logs first so we can delete their files
+    const { data: oldLogs, error: fetchError } = await supabase
+      .from('proctoring_logs')
+      .select('id, proof_image_url')
+      .lt('created_at', dateStr);
+
+    if (fetchError || !oldLogs || oldLogs.length === 0) return;
+
+    // Extract storage paths to delete
+    const filePaths = oldLogs
+      .map(log => log.proof_image_url)
+      .filter(url => url && url.includes('/test_proofs/'))
+      .map(url => url.split('/test_proofs/')[1].split('?')[0]);
+
+    if (filePaths.length > 0) {
+      await supabase.storage.from('test_proofs').remove(filePaths);
+    }
+
+    // Delete the database rows
+    await supabase
+      .from('proctoring_logs')
+      .delete()
+      .lt('created_at', dateStr);
+
+    console.log(`Auto-deleted ${oldLogs.length} old proctoring logs.`);
+  } catch (err) {
+    console.error('Failed to auto-delete old proctoring logs', err);
+  }
+}
