@@ -51,14 +51,41 @@ export const generateRandomPin = () => Math.floor(1000 + Math.random() * 9000).t
 
 export async function loadResultsPortalData(): Promise<ResultsPortalData> {
   try {
-    const [{ data: studentsData, error: studentError }, { data: resultsData, error: resultsError }, { data: onlineAttemptsData }] = await Promise.all([
+    // Fetch students and online attempts normally (assuming < 1000 for now)
+    const [{ data: studentsData, error: studentError }, { data: onlineAttemptsData }] = await Promise.all([
       supabase.from('students').select('*'),
-      supabase.from('test_results').select('*'),
       supabase.from('online_test_attempts').select('*, online_tests(*)')
     ]);
 
+    // Fetch test_results with pagination to bypass 1000-row limit
+    let resultsData: any[] = [];
+    let from = 0;
+    const limit = 1000;
+    let keepFetching = true;
+
+    while (keepFetching) {
+      const { data, error: resultsError } = await supabase
+        .from('test_results')
+        .select('*')
+        .range(from, from + limit - 1);
+
+      if (resultsError) {
+        console.error("Supabase results fetch error:", resultsError);
+        break;
+      }
+      
+      if (data && data.length > 0) {
+        resultsData = [...resultsData, ...data];
+        from += limit;
+        if (data.length < limit) {
+          keepFetching = false;
+        }
+      } else {
+        keepFetching = false;
+      }
+    }
+
     if (studentError) console.error("Supabase student fetch error:", studentError);
-    if (resultsError) console.error("Supabase results fetch error:", resultsError);
 
     const students: StudentRecord[] = (studentsData || []).map((s: any) => ({
       id: s.id,
