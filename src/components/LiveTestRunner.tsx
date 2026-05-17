@@ -707,13 +707,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             }
             const average = sum / bufferLength;
             
-            // Threshold raised from 40 → 70: prevents mobile background hiss / fan noise
-            // from triggering false warnings. Only real loud sounds (voices) will trigger.
-            if (average > 70) {
+            // Threshold adjusted to 50: sensitive enough for talking, but ignores low background noise
+            if (average > 50) {
               noisyCount++;
-              // Raised from 3 → 10: needs 10 consecutive noisy readings (15s of noise)
-              // before a warning is logged. One-off sounds won't trigger this.
-              if (noisyCount > 10) {
+              // Needs 4 consecutive noisy readings (6 seconds of noise) before logging
+              if (noisyCount > 4) {
                 const msg = `${studentName.split(' ')[0]}, test ke beech aawaz nahi aani chahiye! Silence rakhiye.`;
                 setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, shor mat karo!`);
                 
