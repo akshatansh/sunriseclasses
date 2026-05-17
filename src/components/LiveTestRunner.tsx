@@ -62,6 +62,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const cameraStartRef = useRef<(() => void) | null>(null);
   const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const cameraFailedRef = useRef<boolean>(false); // true = camera never initialized
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -589,6 +590,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     const AI_AUTOSUBMIT_THRESHOLD = 25;
 
     const handleWarning = async (msg: string) => {
+      // ✅ FIX: Agar camera kabhi initialize nahi hua, warnings count nahi hongi
+      // Is se camera hardware issue wale students unfairly penalize nahi honge
+      if (cameraFailedRef.current) return;
+      
       const blob = await captureScreenshot();
       logProctoringEvent(test.id, studentId, msg, blob, 'image');
       setFaceWarnings(prev => {
@@ -636,6 +641,16 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       if (!gotStream || !stream) {
         setCameraError('unknown');
         setCameraRetrying(false);
+        // ✅ FIX: Log camera failure to proctoring so admin knows
+        // This prevents admin from thinking student hid face on purpose
+        cameraFailedRef.current = true;
+        logProctoringEvent(
+          test.id, 
+          studentId, 
+          `[CAMERA UNAVAILABLE] ${studentName}: Camera/mic permission denied ya hardware issue. AI face detection disabled for this student.`,
+          undefined,
+          'image'
+        );
         return;
       }
 

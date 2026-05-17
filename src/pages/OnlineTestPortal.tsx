@@ -25,6 +25,8 @@ export default function OnlineTestPortal() {
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
+  const [cameraCheckLoading, setCameraCheckLoading] = useState(false);
+  const [cameraCheckError, setCameraCheckError] = useState('');
 
   // Tests State
   const [tests, setTests] = useState<OnlineTest[]>([]);
@@ -529,19 +531,48 @@ export default function OnlineTestPortal() {
                 <button 
                   onClick={async () => {
                     if (!student || !testToStart) return;
+                    setCameraCheckError('');
+                    setCameraCheckLoading(true);
+                    
+                    // ✅ Camera check BEFORE starting test
+                    try {
+                      const testStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                      // Camera works! Stop the test stream immediately (LiveTestRunner will re-request)
+                      testStream.getTracks().forEach(t => t.stop());
+                    } catch (err: any) {
+                      setCameraCheckLoading(false);
+                      const isPermission = err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError';
+                      setCameraCheckError(
+                        isPermission
+                          ? '❌ Camera permission deny hai! Browser settings mein camera allow karo, phir dobara try karo.'
+                          : '❌ Camera detect nahi hua! Device mein camera connected hai? Phir dobara try karo.'
+                      );
+                      return;
+                    }
+                    
+                    // Camera OK — start test
                     try {
                       await startTestAttempt(student.id, testToStart.id);
                       setActiveTest(testToStart);
                       setTestToStart(null);
+                      setCameraCheckError('');
                     } catch (err) {
                       alert("Failed to securely start test. Please check internet connection.");
+                    } finally {
+                      setCameraCheckLoading(false);
                     }
                   }}
-                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-600/30"
+                  disabled={cameraCheckLoading}
+                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-600/30 disabled:opacity-60"
                 >
-                  I Agree, Start
+                  {cameraCheckLoading ? 'Camera Check...' : 'I Agree, Start'}
                 </button>
               </div>
+              {cameraCheckError && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-medium text-center">
+                  {cameraCheckError}
+                </div>
+              )}
             </div>
           </div>
         </div>
