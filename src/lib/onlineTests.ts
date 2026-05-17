@@ -218,20 +218,28 @@ export async function checkIfTestExpired(
   studentId: string,
   testId: string,
   durationMinutes: number
-): Promise<{ expired: boolean; secondsLeft: number; startedAt: string | null }> {
+): Promise<{ expired: boolean; secondsLeft: number; startedAt: string | null; isAlreadyCompleted: boolean; existingScore: number; existingTotal: number }> {
   const { data } = await supabase
     .from('online_test_attempts')
-    .select('started_at, is_completed')
+    .select('started_at, is_completed, score, total_marks')
     .eq('student_id', studentId)
     .eq('test_id', testId)
     .maybeSingle();
 
   if (!data || !data.started_at) {
-    return { expired: false, secondsLeft: durationMinutes * 60, startedAt: null };
+    return { expired: false, secondsLeft: durationMinutes * 60, startedAt: null, isAlreadyCompleted: false, existingScore: 0, existingTotal: 0 };
   }
 
+  // ✅ CRITICAL: If already completed, return existing score — do NOT re-submit!
   if (data.is_completed) {
-    return { expired: true, secondsLeft: 0, startedAt: data.started_at };
+    return { 
+      expired: true, 
+      secondsLeft: 0, 
+      startedAt: data.started_at,
+      isAlreadyCompleted: true,   // Flag: just show existing result, don't submit again
+      existingScore: data.score ?? 0,
+      existingTotal: data.total_marks ?? 0,
+    };
   }
 
   const startedAt = new Date(data.started_at).getTime();
@@ -243,6 +251,9 @@ export async function checkIfTestExpired(
     expired: secondsLeft <= 0,
     secondsLeft: Math.max(0, secondsLeft),
     startedAt: data.started_at,
+    isAlreadyCompleted: false,
+    existingScore: 0,
+    existingTotal: 0,
   };
 }
 

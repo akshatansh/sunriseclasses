@@ -309,8 +309,15 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         const expiry = await checkIfTestExpired(studentId, test.id, test.duration_minutes);
         
         if (expiry.expired) {
-          // Time is up on server — auto-submit with whatever answers student had saved
-          // IMPORTANT: Read from localStorage first — student may have answered many questions
+          // ✅ CRITICAL FIX: If already completed, just show existing result — NEVER re-submit!
+          // Re-submitting with empty answers was overwriting scores to 0
+          if (expiry.isAlreadyCompleted) {
+            setResult({ score: expiry.existingScore, total: expiry.existingTotal });
+            setLoading(false);
+            return;
+          }
+
+          // Time is up on server but NOT yet completed — auto-submit with saved answers
           const storageKey = `test_progress_${test.id}_${studentId}`;
           let savedAnswers: Record<string, string> = {};
           try {
@@ -320,10 +327,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               savedAnswers = parsed.answers || {};
             }
           } catch (_) { /* ignore parse errors */ }
-          
+
           const expiredResult = await submitTest(
             { student_id: studentId, test_id: test.id, cheat_warnings: 0, submission_type: 'auto_time', time_taken_seconds: test.duration_minutes * 60 },
-            savedAnswers // Use saved answers so student gets credit for what they answered
+            savedAnswers
           );
           localStorage.removeItem(storageKey);
           setResult({ score: expiredResult.score, total: expiredResult.total_marks });

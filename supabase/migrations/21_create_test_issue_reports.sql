@@ -19,16 +19,16 @@ FOR INSERT
 TO public
 WITH CHECK (true);
 
--- Allow admins (authenticated) to view all reports
+-- Allow admins (using public anon key) to view all reports
 CREATE POLICY "Enable read access for authenticated users"
 ON public.test_issue_reports
 FOR SELECT
-TO authenticated
+TO public
 USING (true);
 
--- Allow admins (authenticated) to delete reports
+-- Allow admins (using public anon key) to delete reports
 CREATE POLICY "Enable delete access for authenticated users"
 ON public.test_issue_reports
 FOR DELETE
-TO authenticated
+TO public
 USING (true);

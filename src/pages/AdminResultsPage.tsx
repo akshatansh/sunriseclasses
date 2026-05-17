@@ -2067,6 +2067,11 @@ export default function AdminResultsPage() {
                     <MonitorPlay size={20} strokeWidth={activeTab === 'onlinetest' ? 2.5 : 1.8} />
                     <span className="text-[9px] font-bold uppercase tracking-wide">Tests</span>
                   </button>
+                  <button onClick={() => setActiveTab('reports')}
+                    className={`flex flex-col items-center justify-center gap-0.5 min-w-[72px] flex-shrink-0 py-3 transition-colors border-t-2 ${activeTab === 'reports' ? 'border-red-600 text-red-600' : 'border-transparent text-slate-400'}`}>
+                    <ShieldAlert size={20} strokeWidth={activeTab === 'reports' ? 2.5 : 1.8} />
+                    <span className="text-[9px] font-bold uppercase tracking-wide">Reports</span>
+                  </button>
                 </>)}
               </div>
             </nav>

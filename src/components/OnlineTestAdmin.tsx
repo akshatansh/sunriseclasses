@@ -28,6 +28,11 @@ export default function OnlineTestAdmin() {
   const [studentAnswers, setStudentAnswers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterClass, setFilterClass] = useState('All');
+  // Edit Score inline state
+  const [editScoreAttemptId, setEditScoreAttemptId] = useState<string | null>(null);
+  const [editScoreValue, setEditScoreValue] = useState('');
+  const [editTotalValue, setEditTotalValue] = useState('');
+  const [savingScore, setSavingScore] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   // Lightbox for proctoring image zoom
   const [lightboxLog, setLightboxLog] = useState<any>(null);
@@ -412,6 +417,94 @@ export default function OnlineTestAdmin() {
       setProctoringLogs(data || []);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // Edit Score: Admin can manually correct a student's score
+  const handleEditScore = async (attemptId: string) => {
+    const newScore = parseInt(editScoreValue);
+    const newTotal = parseInt(editTotalValue);
+    if (isNaN(newScore) || isNaN(newTotal) || newScore < 0 || newTotal <= 0 || newScore > newTotal) {
+      alert('Galat marks! Score 0 se total_marks ke beech hona chahiye.');
+      return;
+    }
+    setSavingScore(true);
+    try {
+      const { error } = await supabase
+        .from('online_test_attempts')
+        .update({ score: newScore, total_marks: newTotal, is_completed: true })
+        .eq('id', attemptId);
+      if (error) throw error;
+      // Refresh list
+      if (currentTest.id) {
+        const data = await getTestAttemptsAdmin(currentTest.id);
+        setAttempts(data || []);
+      }
+      setEditScoreAttemptId(null);
+      alert(`✅ Score updated: ${newScore}/${newTotal}`);
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setSavingScore(false);
+    }
+  };
+
+  // Recalculate Score: DB mein stored answers se score dobara calculate karo
+  const handleRecalculateScore = async (att: any) => {
+    if (!window.confirm(`"${att.students?.name}" ka score stored answers se recalculate karein?`)) return;
+    setSavingScore(true);
+    try {
+      // Step 1: DB se stored answers lo
+      const { data: attemptData, error: aErr } = await supabase
+        .from('online_test_attempts')
+        .select('answers')
+        .eq('id', att.id)
+        .maybeSingle();
+      if (aErr) throw aErr;
+
+      const storedAnswers: Record<string, string> = attemptData?.answers || {};
+      const answeredCount = Object.keys(storedAnswers).length;
+
+      if (answeredCount === 0) {
+        alert('⚠️ Is student ke koi answers database mein save nahi hain.');
+        setSavingScore(false);
+        return;
+      }
+
+      // Step 2: Correct answers lo
+      const { data: questions, error: qErr } = await supabase
+        .from('online_test_questions')
+        .select('id, correct_option, marks')
+        .eq('test_id', att.test_id);
+      if (qErr) throw qErr;
+
+      // Step 3: Score calculate karo
+      let newScore = 0;
+      let newTotal = 0;
+      questions?.forEach((q: any) => {
+        newTotal += q.marks;
+        if (storedAnswers[q.id] === q.correct_option) {
+          newScore += q.marks;
+        }
+      });
+
+      // Step 4: DB update karo
+      const { error: uErr } = await supabase
+        .from('online_test_attempts')
+        .update({ score: newScore, total_marks: newTotal, is_completed: true })
+        .eq('id', att.id);
+      if (uErr) throw uErr;
+
+      // Refresh
+      if (currentTest.id) {
+        const data = await getTestAttemptsAdmin(currentTest.id);
+        setAttempts(data || []);
+      }
+      alert(`✅ Score recalculated!\n${att.students?.name}: ${newScore}/${newTotal}\n(${answeredCount} answers found in DB)`);
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setSavingScore(false);
     }
   };
 
@@ -1075,13 +1168,72 @@ Explanation: Arunachal Pradesh is the easternmost state.
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleResetAttempt(att.student_id, att.students?.name || 'Unknown')}
-                            className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-md transition-colors border border-transparent hover:border-orange-200"
-                            title="Reset Attempt"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                          </button>
+                          {editScoreAttemptId === att.id ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                value={editScoreValue}
+                                onChange={e => setEditScoreValue(e.target.value)}
+                                className="w-14 border border-blue-400 rounded px-1 py-0.5 text-sm text-center font-bold"
+                                placeholder="Score"
+                                min={0}
+                                max={att.total_marks || 999}
+                              />
+                              <span className="text-gray-400 text-xs">/</span>
+                              <input
+                                type="number"
+                                value={editTotalValue}
+                                onChange={e => setEditTotalValue(e.target.value)}
+                                className="w-14 border border-blue-400 rounded px-1 py-0.5 text-sm text-center"
+                                placeholder="Total"
+                                min={1}
+                              />
+                              <button
+                                onClick={() => handleEditScore(att.id)}
+                                disabled={savingScore}
+                                className="p-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                                title="Save Score"
+                              >
+                                <Save className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={() => setEditScoreAttemptId(null)}
+                                className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
+                                title="Cancel"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setEditScoreAttemptId(att.id);
+                                  setEditScoreValue(att.score.toString());
+                                  setEditTotalValue(att.total_marks.toString());
+                                }}
+                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors border border-transparent hover:border-blue-200"
+                                title="Score Edit Karo"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleRecalculateScore(att)}
+                                disabled={savingScore}
+                                className="p-1.5 text-green-600 hover:bg-green-50 rounded-md transition-colors border border-transparent hover:border-green-200 disabled:opacity-40"
+                                title="DB ke stored answers se score recalculate karo"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleResetAttempt(att.student_id, att.students?.name || 'Unknown')}
+                                className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-md transition-colors border border-transparent hover:border-orange-200"
+                                title="Reset Attempt"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
