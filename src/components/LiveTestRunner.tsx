@@ -86,7 +86,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           
           if (msg.toLowerCase().includes('tab switch') || msg.toLowerCase().includes('fullscreen')) {
             speechText = `${studentName ? studentName + ', ' : ''}Kripya doosra app na kholein, test jama ho jayega.`;
-          } else if (msg.toLowerCase().includes('audio') || msg.toLowerCase().includes('awaz') || msg.toLowerCase().includes('noise')) {
+          } else if (msg.toLowerCase().includes('audio') || msg.toLowerCase().includes('awaz') || msg.toLowerCase().includes('aawaz') || msg.toLowerCase().includes('noise') || msg.toLowerCase().includes('shor')) {
             speechText = `${studentName ? studentName + ', ' : ''}Kripya shor na karein, aawaz record ho rahi hai.`;
           }
 
