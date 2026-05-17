@@ -292,7 +292,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       return; // Exit early — do NOT fall through to setSubmitting(false) again
     }
     setSubmitting(false); // Only reached on success
-  }, [answers, cheatWarnings, faceWarnings, maxQuestionSeen, result, studentId, submitting, test.id, showSubtleMessage]);
+  }, [answers, cheatWarnings, faceWarnings, maxQuestionSeen, questions, result, studentId, submitting, test.id, showSubtleMessage]);
 
   // Sync current question to database for Live Monitor
   useEffect(() => {
@@ -309,13 +309,24 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         const expiry = await checkIfTestExpired(studentId, test.id, test.duration_minutes);
         
         if (expiry.expired) {
-          // Time is up on server — auto-submit with whatever answers we have (empty = 0 score)
-          // This handles the case where student reopens after time expired
-          await submitTest(
+          // Time is up on server — auto-submit with whatever answers student had saved
+          // IMPORTANT: Read from localStorage first — student may have answered many questions
+          const storageKey = `test_progress_${test.id}_${studentId}`;
+          let savedAnswers: Record<string, string> = {};
+          try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              savedAnswers = parsed.answers || {};
+            }
+          } catch (_) { /* ignore parse errors */ }
+          
+          const expiredResult = await submitTest(
             { student_id: studentId, test_id: test.id, cheat_warnings: 0, submission_type: 'auto_time', time_taken_seconds: test.duration_minutes * 60 },
-            {} // No answers — they abandoned the test
+            savedAnswers // Use saved answers so student gets credit for what they answered
           );
-          setResult({ score: 0, total: 0 }); // Will be recalculated from DB
+          localStorage.removeItem(storageKey);
+          setResult({ score: expiredResult.score, total: expiredResult.total_marks });
           setLoading(false);
           return;
         }

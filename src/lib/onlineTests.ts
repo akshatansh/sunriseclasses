@@ -152,9 +152,11 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
     .eq('student_id', attempt.student_id)
     .eq('test_id', attempt.test_id)
     .select()
-    .single();
+    .maybeSingle(); // maybeSingle() prevents PGRST116 error when 0 rows match
 
-  // If no existing row was updated (fallback in case they somehow bypassed startTestAttempt)
+  if (error) throw error;
+
+  // If no existing row was updated (student bypassed startTestAttempt somehow)
   if (!data) {
     const { data: fallbackData, error: fallbackError } = await supabase
       .from('online_test_attempts')
@@ -171,12 +173,12 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
         answers: answers || {},
       })
       .select()
-      .single();
+      .maybeSingle();
     if (fallbackError) throw fallbackError;
+    if (!fallbackData) throw new Error('Failed to save test result. Please retry.');
     return fallbackData as StudentTestAttempt;
   }
 
-  if (error) throw error;
   return data as StudentTestAttempt;
 }
 
