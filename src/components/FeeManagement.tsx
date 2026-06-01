@@ -111,9 +111,16 @@ const FeeManagement = () => {
     let phone = student.parentPhone.replace(/\D/g, '');
     if (phone.length === 10) phone = '91' + phone;
 
-    const pendingAmount = student.dueAmount || 0;
-    const paidAmount = student.paymentAmount || 0;
-    const msg = `Dear Parent, \nSunrise Classes & Academy inform karta hai ki student *${student.name}* (Class ${student.className}) ki fee details is prakar hai:\n
+    const currentMonthIndex = MONTHS.indexOf(month);
+    const now = new Date();
+    const currentCalendarMonthLabel = `${now.toLocaleString('en-US', { month: 'long' })} ${now.getFullYear()}`;
+    const currentCalendarMonthIndex = MONTHS.indexOf(currentCalendarMonthLabel);
+
+    const isCurrentMonthFeeDue = currentCalendarMonthIndex === -1 || currentMonthIndex < currentCalendarMonthIndex;
+
+    let msg = '';
+    if (isCurrentMonthFeeDue) {
+      msg = `Dear Parent, \nSunrise Classes & Academy inform karta hai ki student *${student.name}* (Class ${student.className}) ki fee details is prakar hai:\n
 *Month:* ${month}
 *Monthly Fee:* Rs. ${student.currentMonthFee}
 *Previous Dues:* Rs. ${student.initialPreviousDues}
@@ -121,6 +128,13 @@ const FeeManagement = () => {
 *Paid Amount:* Rs. ${student.paymentAmount}
 *Remaining Dues:* Rs. ${student.dueAmount}\n
 Kripya due amount (Rs. ${student.dueAmount}) samay par jama karein. \n- Sunrise Classes`;
+    } else {
+      const prevMonthName = currentMonthIndex > 0 ? MONTHS[currentMonthIndex - 1] : 'Previous Month';
+      msg = `Dear Parent, \nSunrise Classes & Academy inform karta hai ki student *${student.name}* (Class ${student.className}) ki fee details is prakar hai:\n
+*Outstanding Dues (till ${prevMonthName}):* Rs. ${student.dueAmount}\n
+Kripya due amount (Rs. ${student.dueAmount}) samay par jama karein. \n- Sunrise Classes`;
+    }
+
     const a = document.createElement('a');
     a.href = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
     a.target = '_blank';

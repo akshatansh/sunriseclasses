@@ -12,7 +12,8 @@ export default function HomeworkManagement() {
   // Filters and Selection
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const d = new Date();
-    return d.toLocaleString('default', { month: 'long' }) + ' ' + d.getFullYear();
+    const prev = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    return prev.toLocaleString('default', { month: 'long' }) + ' ' + prev.getFullYear();
   });
   const [selectedClass, setSelectedClass] = useState<string>('Class 10');
   const [searchQuery, setSearchQuery] = useState('');
@@ -181,13 +182,14 @@ export default function HomeworkManagement() {
     showMessage('Homework report PDF downloaded!');
   };
 
-  // Generate last 6 months for dropdown
+  // Generate last 6 months for dropdown (starting from the previous month)
   const months = useMemo(() => {
     const result = [];
     const d = new Date();
+    const prev = new Date(d.getFullYear(), d.getMonth() - 1, 1);
     for (let i = 0; i < 6; i++) {
-      result.push(d.toLocaleString('default', { month: 'long' }) + ' ' + d.getFullYear());
-      d.setMonth(d.getMonth() - 1);
+      result.push(prev.toLocaleString('default', { month: 'long' }) + ' ' + prev.getFullYear());
+      prev.setMonth(prev.getMonth() - 1);
     }
     return result;
   }, []);

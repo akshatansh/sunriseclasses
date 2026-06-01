@@ -87,8 +87,8 @@ export default function YouTubeFamilyPage() {
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-12">
       <Seo
-        title="YouTube Family Zone – Free Notes, Doubts & Topic Requests | Sunrise Classes"
-        description="SP Jha Sir ke YouTube students ke liye free Class 8, 9 & 10 notes download karein, doubts puchein aur naye video topics request karein. Sunrise Classes Champanagar, Purnia Bihar ka free online study portal."
+        title="YouTube Family Zone: Free Notes & Doubts | Sunrise Classes"
+        description="Free study portal for SP Jha Sir's YouTube students. Download Class 8, 9 & 10 revision notes, ask doubts, and request new topics. Sunrise Classes Purnia."
         keywords="SP Jha Sir free notes, Sunrise Classes YouTube notes download, Class 10 free PDF Bihar, Class 8 notes Purnia, Class 9 notes Purnia, BSEB board exam notes free, doubt portal Bihar board, Champanagar coaching notes, free study material Bihar, SP Jha YouTube classes notes, Sunrise Classes Champanagar Purnia Bihar"
         url="/youtube-family"
       />

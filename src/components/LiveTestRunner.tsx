@@ -81,6 +81,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       // Hindi Voice Warning
       try {
         if ('speechSynthesis' in window) {
+          window.speechSynthesis.resume(); // Fix stuck speech engine bug
           window.speechSynthesis.cancel();
           let speechText = `${studentName ? studentName + ', ' : ''}Kripya saamne dekhein, aapki recording ho rahi hai.`;
           
@@ -189,6 +190,18 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       });
     }
   }, [showSubtleMessage]);
+
+  // Load voices early to prevent empty voice array on Chrome
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          window.speechSynthesis.getVoices();
+        };
+      }
+    }
+  }, []);
 
   const captureScreenshot = useCallback(async (): Promise<Blob | undefined> => {
     if (!videoRef.current) return undefined;
@@ -522,12 +535,13 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     };
   }, [isTestStarted, loading, result]);
 
-  // Anti-Cheat: Prevent Copy/Paste/Right-Click
+  // Anti-Cheat: Prevent Copy/Paste/Right-Click & DevTools Shortcuts
   useEffect(() => {
     if (result) return;
     const preventAction = (e: Event) => e.preventDefault();
 
     const handleKeydown = (e: KeyboardEvent) => {
+      // 1. Block Printing (Ctrl+P, Cmd+P, PrintScreen)
       if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault();
         showSubtleMessage("Printing/Screenshots are not allowed!");
@@ -538,19 +552,50 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         showSubtleMessage("Screenshots are not allowed!");
         return false;
       }
+      
+      // 2. Block Saving (Ctrl+S, Cmd+S)
       if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
         e.preventDefault();
         return false;
       }
+      
+      // 3. Block Fullscreen Escaping (Escape)
       if (e.key === 'Escape') {
         e.preventDefault();
         showSubtleMessage("Escaping Fullscreen is not allowed!");
+        return false;
+      }
+
+      // 4. Block F12 (Inspect Element)
+      if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        showSubtleMessage("Inspect Element is disabled!");
+        return false;
+      }
+
+      // 5. Block DevTools key combos (Ctrl+Shift+I/J/C, Cmd+Option+I/J/C)
+      const isShiftInspect = e.ctrlKey && e.shiftKey && (e.key === 'i' || e.key === 'I' || e.key === 'j' || e.key === 'J' || e.key === 'c' || e.key === 'C');
+      const isMacInspect = e.metaKey && e.altKey && (e.key === 'i' || e.key === 'I' || e.key === 'j' || e.key === 'J' || e.key === 'c' || e.key === 'C');
+      if (isShiftInspect || isMacInspect) {
+        e.preventDefault();
+        showSubtleMessage("Developer tools are disabled!");
+        return false;
+      }
+
+      // 6. Block View Source (Ctrl+U, Cmd+U)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U')) {
+        e.preventDefault();
+        showSubtleMessage("View Source is disabled!");
         return false;
       }
     };
 
     document.addEventListener('contextmenu', preventAction);
     document.addEventListener('copy', preventAction);
+    document.addEventListener('paste', preventAction);
+    document.addEventListener('cut', preventAction);
+    document.addEventListener('selectstart', preventAction);
+    document.addEventListener('dragstart', preventAction);
     document.addEventListener('keydown', handleKeydown);
 
     const handleFullscreenChange = () => {
@@ -568,10 +613,77 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     return () => {
       document.removeEventListener('contextmenu', preventAction);
       document.removeEventListener('copy', preventAction);
+      document.removeEventListener('paste', preventAction);
+      document.removeEventListener('cut', preventAction);
+      document.removeEventListener('selectstart', preventAction);
+      document.removeEventListener('dragstart', preventAction);
       document.removeEventListener('keydown', handleKeydown);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, [result, isTestStarted, showSubtleMessage]);
+
+  // Anti-Cheat: DevTools Debugger Timing Trap
+  useEffect(() => {
+    if (result || !isTestStarted) return;
+
+    const checkDevTools = () => {
+      const startTime = performance.now();
+      debugger; // Pauses execution if DevTools is open
+      const endTime = performance.now();
+      
+      // If paused by debugger, the time difference will be large (normally < 1ms, set to > 200ms)
+      if (endTime - startTime > 200) {
+        logProctoringEvent(test.id, studentId, "DevTools open detection (Debugger Trap)", undefined, "image");
+        showSubtleMessage("⚠️ DevTools detected! Submitting test...");
+        
+        // Short timeout to let the UI show the message before submitting
+        setTimeout(() => {
+          finishTest('auto_cheat');
+        }, 1000);
+      }
+    };
+
+    const intervalId = setInterval(checkDevTools, 1000);
+    return () => clearInterval(intervalId);
+  }, [result, isTestStarted, test.id, studentId, finishTest, showSubtleMessage]);
+
+  // Anti-Cheat: Focus Loss & Screenshot Detection with Question Tracking
+  useEffect(() => {
+    if (result || !isTestStarted) return;
+
+    const handleBlur = async () => {
+      // Find active question details
+      const q = questions[currentQuestionIdx];
+      const qSnippet = q ? `Question #${currentQuestionIdx + 1}: ${q.question_text.slice(0, 80)}` : 'Unknown Question';
+      const warningMsg = `[SCREENSHOT/FOCUS LOSS] Left test screen during ${qSnippet}`;
+
+      // Capture webcam image of student
+      const blob = await captureScreenshot();
+      
+      // Log event to Supabase
+      logProctoringEvent(test.id, studentId, warningMsg, blob, 'image');
+
+      // Show warning message
+      showSubtleMessage(`⚠️ Warning: Screenshot/Focus loss detected on Question #${currentQuestionIdx + 1}! S.P Sir has been notified.`);
+
+      // Increment warnings count
+      setCheatWarnings(prev => {
+        const newCount = prev + 2; // Incremented by 2 for high strictness
+        if (newCount >= 8) {
+          showSubtleMessage("Too many screen switches/screenshots! Submitting test...");
+          setTimeout(() => {
+            finishTest('auto_cheat');
+          }, 1000);
+        }
+        return newCount;
+      });
+    };
+
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [result, isTestStarted, test.id, studentId, questions, currentQuestionIdx, captureScreenshot, showSubtleMessage, finishTest]);
 
   // Anti-Cheat: AI Camera Proctoring
   useEffect(() => {
@@ -700,6 +812,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           
           audioInterval = setInterval(() => {
             if (isOffline || document.hidden) return; // ⛔ Don't check audio when browser is in background
+            
+            // ✅ Fix: Auto-resume audio context if browser suspended it (due to autoplay/gesture restriction)
+            if (audioContext && audioContext.state === 'suspended') {
+              audioContext.resume().catch(() => {});
+            }
+
             analyser.getByteFrequencyData(dataArray);
             let sum = 0;
             for(let i = 0; i < bufferLength; i++) {
@@ -707,11 +825,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             }
             const average = sum / bufferLength;
             
-            // Threshold adjusted to 50: sensitive enough for talking, but ignores low background noise
-            if (average > 50) {
+            // Threshold lowered to 30: sensitive enough for normal talking & whispers, ignores absolute silence
+            if (average > 30) {
               noisyCount++;
-              // Needs 4 consecutive noisy readings (6 seconds of noise) before logging
-              if (noisyCount > 4) {
+              // Needs 2 consecutive noisy readings (3 seconds of noise) before logging
+              if (noisyCount > 1) {
                 const msg = `${studentName.split(' ')[0]}, test ke beech aawaz nahi aani chahiye! Silence rakhiye.`;
                 setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, shor mat karo!`);
                 
@@ -1361,6 +1479,20 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             onClick={() => {
               setIsTestStarted(true);
               testStartedAtRef.current = Date.now(); // Record when test actually started
+              
+              // ✅ Speech synthesis gesture unlock trigger
+              try {
+                if ('speechSynthesis' in window) {
+                  window.speechSynthesis.resume();
+                  window.speechSynthesis.cancel();
+                  const intro = new SpeechSynthesisUtterance("Test shuru ho gaya hai. All the best.");
+                  intro.lang = 'hi-IN';
+                  window.speechSynthesis.speak(intro);
+                }
+              } catch (e) {
+                console.warn('Intro speech failed', e);
+              }
+
               // Activate anti-cheat only after a 3-second grace period.
               // This prevents fullscreen transition + camera permission dialogs
               // from being falsely detected as tab-switch cheating events.

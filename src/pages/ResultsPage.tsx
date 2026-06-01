@@ -61,10 +61,19 @@ export default function ResultsPage() {
       setAvailableMonths(combinedMonths);
 
       if (combinedMonths.length > 0) {
-        setSelectedMonth(combinedMonths[combinedMonths.length - 1]);
+        const now = new Date();
+        const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const prevMonthLabel = prev.toLocaleString('default', { month: 'long' }) + ' ' + prev.getFullYear();
+
+        if (combinedMonths.includes(prevMonthLabel)) {
+          setSelectedMonth(prevMonthLabel);
+        } else {
+          setSelectedMonth(combinedMonths[combinedMonths.length - 1]);
+        }
       } else {
         const now = new Date();
-        setSelectedMonth(now.toLocaleString('default', { month: 'long' }) + ' ' + now.getFullYear());
+        const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        setSelectedMonth(prev.toLocaleString('default', { month: 'long' }) + ' ' + prev.getFullYear());
       }
     }).catch(console.error);
   }, []);
@@ -231,8 +240,8 @@ export default function ResultsPage() {
   return (
     <div className="pt-[116px]">
       <Seo
-        title="Daily Test Results & Monthly Toppers - Sunrise Classes Champanagar Purnia"
-        description="Check daily test results, student rankings, monthly toppers, and performance charts at Sunrise Classes & Academy, Champanagar Purnia Bihar. Parents can track attendance, homework, and marks online."
+        title="Daily Test Results & Toppers | Sunrise Classes Purnia"
+        description="Track student progress, daily test marks, rankings, and monthly toppers online. Sunrise Classes & Academy, Purnia. Parents can check attendance & homework."
         keywords="daily test results Champanagar Purnia, Sunrise Classes marks, monthly toppers Sunrise Classes, student test marks Purnia, coaching test results Bihar, student attendance report Purnia, homework progress tracking Champanagar"
         url="/results"
       />

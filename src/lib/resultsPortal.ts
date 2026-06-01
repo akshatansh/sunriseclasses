@@ -86,24 +86,30 @@ export async function loadResultsPortalData(): Promise<ResultsPortalData> {
       createdAt: s.created_at
     }));
 
-    const results: TestResultRecord[] = (resultsData || []).map((r: any) => ({
-      id: r.id,
-      studentId: r.student_id,
-      testName: r.test_name,
-      subject: r.subject,
-      testDate: r.test_date,
-      marksObtained: Number(r.marks_obtained),
-      totalMarks: Number(r.total_marks),
-      createdAt: r.created_at
-    }));
+    const results: TestResultRecord[] = (resultsData || []).map((r: any) => {
+      const name = (r.test_name || '').trim();
+      const suffix = (name.endsWith('(Online)') || name.endsWith('(Offline)')) ? '' : ' (Offline)';
+      return {
+        id: r.id,
+        studentId: r.student_id,
+        testName: name + suffix,
+        subject: r.subject,
+        testDate: r.test_date,
+        marksObtained: Number(r.marks_obtained),
+        totalMarks: Number(r.total_marks),
+        createdAt: r.created_at
+      };
+    });
 
     if (onlineAttemptsData) {
       onlineAttemptsData.forEach((att: any) => {
         if (att.online_tests && att.is_completed && att.submitted_at) {
+          const title = (att.online_tests.title || '').trim();
+          const suffix = (title.endsWith('(Online)') || title.endsWith('(Offline)')) ? '' : ' (Online)';
           results.push({
             id: att.id,
             studentId: att.student_id,
-            testName: att.online_tests.title + ' (Online)',
+            testName: title + suffix,
             subject: att.online_tests.subject,
             testDate: att.submitted_at,
             marksObtained: Number(att.score),
