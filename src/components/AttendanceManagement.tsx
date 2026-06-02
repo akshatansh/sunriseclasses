@@ -136,14 +136,17 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
       const daysInMonth = new Date(year, month, 0).getDate();
       const stats = await getMonthlyAttendanceStats(monthStr, year);
       
+      const classStudentIds = new Set(filteredStudents.map(s => s.id));
       const holidayDays = new Set<number>();
-      Object.values(stats).forEach(s => {
-        s.history.forEach(h => {
-          if (h.status === 'holiday') {
-            const dateNum = parseInt(h.date.split('-')[2], 10);
-            holidayDays.add(dateNum);
-          }
-        });
+      Object.entries(stats).forEach(([studentId, s]) => {
+        if (classStudentIds.has(studentId)) {
+          s.history.forEach(h => {
+            if (h.status === 'holiday') {
+              const dateNum = parseInt(h.date.split('-')[2], 10);
+              holidayDays.add(dateNum);
+            }
+          });
+        }
       });
 
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
@@ -170,12 +173,12 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
         
         for (let i = 1; i <= daysInMonth; i++) {
            const st = dayStatusMap[i];
-           if (holidayDays.has(i)) {
-             rowData.push('H');
-           } else if (st === 'present') {
+           if (st === 'present') {
              rowData.push('P');
            } else if (st === 'absent') {
              rowData.push('A');
+           } else if (st === 'holiday' || holidayDays.has(i)) {
+             rowData.push('H');
            } else {
              rowData.push('');
            }
