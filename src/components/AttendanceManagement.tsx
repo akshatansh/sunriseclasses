@@ -257,12 +257,27 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
 
         // Marks — filter to this month
         const studentResults = portalData.results.filter(r => {
-          const rd = new Date(r.testDate);
-          const rLabel = rd.toLocaleString('default', { month: 'long' }) + ' ' + rd.getFullYear();
-          return r.studentId === s.id && rLabel === monthLabel;
+          if (r.studentId !== s.id) return false;
+          const dateStr = r.testDate;
+          if (!dateStr) return false;
+
+          let y: number;
+          let m: number;
+          if (dateStr.includes('T') || dateStr.includes(' ')) {
+            const d = new Date(dateStr);
+            y = d.getFullYear();
+            m = d.getMonth() + 1;
+          } else {
+            const parts = dateStr.split('-');
+            y = parseInt(parts[0], 10);
+            m = parseInt(parts[1], 10);
+          }
+          if (isNaN(y) || isNaN(m)) return false;
+          const rLabel = new Date(y, m - 1, 1).toLocaleString('default', { month: 'long' }) + ' ' + y;
+          return rLabel === monthLabel;
         });
         const avgMarks = studentResults.length > 0
-          ? studentResults.reduce((sum, r) => sum + (r.obtainedMarks / r.totalMarks) * 100, 0) / studentResults.length
+          ? studentResults.reduce((sum, r) => sum + ((r.marksObtained ?? r.obtainedMarks ?? 0) / r.totalMarks) * 100, 0) / studentResults.length
           : null;
 
         // Homework

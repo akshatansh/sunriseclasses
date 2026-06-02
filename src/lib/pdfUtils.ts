@@ -144,7 +144,7 @@ export async function generateStudentRankCardPDF(
   studentName: string,
   className: string,
   month: string,
-  testResults: {testDate: string, subject: string, totalMarks: number, obtainedMarks: number, rank: number}[],
+  testResults: {testDate: string, subject: string, totalMarks: number, obtainedMarks?: number, marksObtained?: number, rank: number}[],
   attendance: { percentage: number, history: {date: string, status: string}[] } | null,
   homework: { completedPages: number, targetPages: number } | null
 ) {
@@ -179,13 +179,16 @@ export async function generateStudentRankCardPDF(
   doc.text('Test Performance', 10, y);
   y += 4;
   
-  const tableData = testResults.map((r, i) => [
-    i + 1,
-    new Date(r.testDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
-    r.subject,
-    `${r.obtainedMarks} / ${r.totalMarks}`,
-    r.rank > 0 ? `#${r.rank}` : '-'
-  ]);
+  const tableData = testResults.map((r, i) => {
+    const obtained = r.marksObtained ?? r.obtainedMarks ?? 0;
+    return [
+      i + 1,
+      new Date(r.testDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+      r.subject,
+      `${obtained} / ${r.totalMarks}`,
+      r.rank > 0 ? `#${r.rank}` : '-'
+    ];
+  });
   
   if (tableData.length === 0) {
     tableData.push(['-', '-', 'No tests taken this month', '-', '-']);
@@ -407,7 +410,8 @@ export async function generateStudentRankCardPDF(
     const spacing = (chartW - 10 - (barWidth * barsToShow.length)) / (barsToShow.length + 1);
     
     barsToShow.forEach((tr, idx) => {
-      const pct = Math.min(100, Math.max(0, (tr.obtainedMarks / tr.totalMarks) * 100));
+      const obtained = tr.marksObtained ?? tr.obtainedMarks ?? 0;
+      const pct = Math.min(100, Math.max(0, (obtained / tr.totalMarks) * 100));
       const bH = (pct / 100) * (chartH - 2);
       const bX = chartX + spacing + (idx * (barWidth + spacing));
       const bY = chartY + chartH - bH;
@@ -543,15 +547,48 @@ export async function generateMonthlyClassReportPDF(
       return 'No data recorded for this month.';
     }
 
-    if (a >= 90 && m >= 80) return 'Outstanding! Excellent performance overall.';
-    if (a >= 75 && m >= 70) return 'Good performance. Keep it up!';
-    if (a >= 75 && m >= 50) return 'Average marks. Needs more focus on studies.';
-    if (a >= 75 && m < 50)  return 'Low marks. Serious attention needed.';
-    if (a < 75 && m >= 70)  return 'Good marks but attendance is low.';
-    if (a < 50 && m < 50)   return 'Attendance & marks both poor. Urgent action.';
-    if (a < 50)             return 'Attendance critical. Parents to be informed.';
-    if (h >= 0 && h < 50)   return 'Homework incomplete. Follow-up needed.';
-    return 'Satisfactory. Can perform better.';
+    // High achievers (marks >= 80)
+    if (m >= 90) {
+      if (a >= 90) return 'Outstanding! Brilliant academic performance and attendance.';
+      if (a >= 75) return 'Excellent marks. Maintain high attendance.';
+      return 'Exceptional student, but attendance is low. Needs regular classes.';
+    }
+    if (m >= 80) {
+      if (a >= 90) return 'Excellent marks and great attendance. Keep it up!';
+      if (a >= 75) return 'Very good performance. Can achieve A+ with more focus.';
+      return 'Strong academic potential. Attendance must be improved.';
+    }
+
+    // Good performers (marks between 60 and 80)
+    if (m >= 70) {
+      if (a >= 75) return 'Good performance. Consistent effort will lead to excellence.';
+      return 'Decent marks, but low attendance is hindering progress.';
+    }
+    if (m >= 60) {
+      if (a >= 75) return 'Satisfactory results. Target 70%+ in the next month.';
+      return 'Average score. Please ensure regular attendance to improve marks.';
+    }
+
+    // Average performers (marks between 45 and 60)
+    if (m >= 45) {
+      if (a >= 75) return 'Average score. Requires extra practice and regular revision.';
+      return 'Low attendance and average score. Both need urgent improvement.';
+    }
+
+    // Weak / Low performers (marks < 45)
+    if (m < 45) {
+      if (a < 50) return 'Attendance & marks both critical. Urgent parent-teacher meeting.';
+      if (a < 75) return 'Attendance is low and marks are poor. Strict supervision required.';
+      if (h >= 0 && h < 50) return 'Very low test score and incomplete homework. Needs hard work.';
+      return 'Academic performance is poor. Needs special attention and extra study time.';
+    }
+
+    // Homework-specific fallbacks if homework is extremely poor
+    if (h >= 0 && h < 50) {
+      return 'Homework incomplete. Daily follow-up required at home.';
+    }
+
+    return 'Satisfactory. Can perform better with steady efforts.';
   }
 
   function getGrade(marks: number | null): string {

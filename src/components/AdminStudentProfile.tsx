@@ -294,14 +294,15 @@ export default function AdminStudentProfile({ student, allResults, onClose }: Ad
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-sm">
                     {monthResults.map((r, i) => {
-                      const pct = Math.round((r.obtainedMarks / r.totalMarks) * 100);
+                      const obtained = r.marksObtained ?? r.obtainedMarks ?? 0;
+                      const pct = Math.round((obtained / r.totalMarks) * 100);
                       return (
                         <tr key={i} className="hover:bg-slate-50 transition-colors">
                           <td className="p-3 font-medium text-slate-700">
                             {new Date(r.testDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                           </td>
                           <td className="p-3 font-bold text-[#0f2a5c]">{r.subject}</td>
-                          <td className="p-3 font-bold text-slate-700">{r.obtainedMarks} <span className="text-slate-400 text-xs font-normal">/ {r.totalMarks}</span></td>
+                          <td className="p-3 font-bold text-slate-700">{obtained} <span className="text-slate-400 text-xs font-normal">/ {r.totalMarks}</span></td>
                           <td className="p-3">
                             <span className={`px-2 py-1 rounded-md text-xs font-bold ${
                               pct >= 80 ? 'bg-green-100 text-green-700' :
