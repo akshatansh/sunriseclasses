@@ -31,6 +31,7 @@ export default function ResultsPage() {
   const [homeworkData, setHomeworkData] = useState<StudentWithHomework[]>([]);
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [selectedHomeworkMonth, setSelectedHomeworkMonth] = useState<string>('');
   const [attendanceViewMode, setAttendanceViewMode] = useState<'monthly' | 'daily'>('monthly');
 
   // Get today's date in local timezone
@@ -60,20 +61,28 @@ export default function ResultsPage() {
       const combinedMonths = Array.from(monthsSet).sort((a, b) => new Date("1 " + a).getTime() - new Date("1 " + b).getTime());
       setAvailableMonths(combinedMonths);
 
-      if (combinedMonths.length > 0) {
-        const now = new Date();
-        const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const prevMonthLabel = prev.toLocaleString('default', { month: 'long' }) + ' ' + prev.getFullYear();
+      const now = new Date();
+      const currentMonthLabel = now.toLocaleString('default', { month: 'long' }) + ' ' + now.getFullYear();
+      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const prevMonthLabel = prev.toLocaleString('default', { month: 'long' }) + ' ' + prev.getFullYear();
 
-        if (combinedMonths.includes(prevMonthLabel)) {
-          setSelectedMonth(prevMonthLabel);
+      if (combinedMonths.length > 0) {
+        // Attendance / General defaults to current month
+        if (combinedMonths.includes(currentMonthLabel)) {
+          setSelectedMonth(currentMonthLabel);
         } else {
           setSelectedMonth(combinedMonths[combinedMonths.length - 1]);
         }
+
+        // Homework defaults to previous month
+        if (combinedMonths.includes(prevMonthLabel)) {
+          setSelectedHomeworkMonth(prevMonthLabel);
+        } else {
+          setSelectedHomeworkMonth(combinedMonths[combinedMonths.length - 1]);
+        }
       } else {
-        const now = new Date();
-        const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        setSelectedMonth(prev.toLocaleString('default', { month: 'long' }) + ' ' + prev.getFullYear());
+        setSelectedMonth(currentMonthLabel);
+        setSelectedHomeworkMonth(prevMonthLabel);
       }
     }).catch(console.error);
   }, []);
@@ -105,13 +114,13 @@ export default function ResultsPage() {
 
   // Fetch homework data whenever class or month changes
   useEffect(() => {
-    if (!selectedMonth) return;
-    getStudentsWithHomework(selectedMonth).then(all => {
+    if (!selectedHomeworkMonth) return;
+    getStudentsWithHomework(selectedHomeworkMonth).then(all => {
       // Filter by selected class
       const filtered = all.filter(s => normalizeClass(s.className) === selectedClass);
       setHomeworkData(filtered);
     }).catch(console.error);
-  }, [selectedClass, selectedMonth]);
+  }, [selectedClass, selectedHomeworkMonth]);
 
   // Filter students and results to only the selected class
   const classFilteredData = useMemo(() => {
@@ -553,10 +562,18 @@ export default function ResultsPage() {
                                 </button>
                                 <button
                                   onClick={async () => {
-                                    const hwRecord = homeworkData.find(h => h.id === summary.student.id)?.homework;
-                                    const attStat = attendanceStats[summary.student.id];
+                                    const currentMonth = selectedMonth || (new Date().toLocaleString('default', { month: 'long' }) + ' ' + new Date().getFullYear());
+                                    
+                                    // Dynamic/safe homework mapping for the rank card
+                                    let hwRecord = null;
+                                    if (currentMonth === selectedHomeworkMonth) {
+                                      hwRecord = homeworkData.find(h => h.id === summary.student.id)?.homework;
+                                    } else {
+                                      const dynamicHwList = await getStudentsWithHomework(currentMonth);
+                                      hwRecord = dynamicHwList.find(h => h.id === summary.student.id)?.homework;
+                                    }
 
-                                    const currentMonth = selectedMonth || monthLabel;
+                                    const attStat = attendanceStats[summary.student.id];
 
                                     const pdfTestResults = summary.allTests
                                       .filter(t => {
@@ -582,7 +599,7 @@ export default function ResultsPage() {
                                     );
                                   }}
                                   className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1 rounded transition-colors ml-1"
-                                  title={`Download ${selectedMonth || monthLabel} Rank Card`}
+                                  title={`Download ${selectedMonth || (new Date().toLocaleString('default', { month: 'long' }) + ' ' + new Date().getFullYear())} Rank Card`}
                                 >
                                   <Download size={12} />
                                 </button>
@@ -723,6 +740,7 @@ export default function ResultsPage() {
             const firstHw = homeworkData.find(s => s.homework)?.homework;
             const target = firstHw?.targetPages ?? 0;
             const month = selectedMonth;
+            const hwMonth = selectedHomeworkMonth;
 
             return (
               <div className="mt-14 rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-5 sm:p-7 shadow-sm">
@@ -734,6 +752,7 @@ export default function ResultsPage() {
                         key={m}
                         onClick={() => {
                           setSelectedMonth(m);
+                          setSelectedHomeworkMonth(m);
                           setAttendanceViewMode('monthly');
                         }}
                         className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${selectedMonth === m
@@ -757,7 +776,7 @@ export default function ResultsPage() {
                         </div>
                         <div>
                           <h2 className="text-xl font-bold text-[#0f2a5c]">Homework Progress</h2>
-                          <p className="text-xs text-slate-500">{month}</p>
+                          <p className="text-xs text-slate-500">{hwMonth}</p>
                         </div>
                       </div>
                       {target > 0 && (
