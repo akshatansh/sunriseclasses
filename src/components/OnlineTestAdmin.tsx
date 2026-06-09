@@ -60,7 +60,15 @@ export default function OnlineTestAdmin() {
         .eq('is_completed', false)
         .order('submitted_at', { ascending: false });
       if (!error) {
-        setLiveStudents(data || []);
+        const now = Date.now();
+        // Only show students who started within (test duration + 45 min buffer) — filter out stale/abandoned attempts
+        const activeLive = (data || []).filter(att => {
+          const startedAt = new Date(att.submitted_at).getTime();
+          const minutesAgo = (now - startedAt) / 60000;
+          const maxMinutes = (att.online_tests?.duration_minutes || 60) + 45;
+          return minutesAgo <= maxMinutes;
+        });
+        setLiveStudents(activeLive);
         setLastRefreshed(new Date());
       }
     } catch (err) {
