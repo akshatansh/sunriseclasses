@@ -2,6 +2,30 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
 import { Camera, CheckCircle, AlertTriangle, RefreshCw, UserX, Loader } from 'lucide-react';
 
+const fetchImageWithTimeout = (url: string, timeoutMs = 7000): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const timer = setTimeout(() => {
+      img.src = '';
+      reject(new Error('Profile photo load hone mein zyada samay lag raha hai. Network/proxy slow hai.'));
+    }, timeoutMs);
+
+    img.onload = () => {
+      clearTimeout(timer);
+      resolve(img);
+    };
+
+    img.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error('Profile photo fetch fail hui (CORS block ya galat URL).'));
+    };
+
+    img.src = url;
+  });
+};
+
+
 interface Props {
   studentPhotoUrl: string | null | undefined;
   studentName: string;
@@ -100,7 +124,7 @@ export default function FaceVerification({ studentPhotoUrl, studentName, onSucce
       canvas.getContext('2d')!.drawImage(videoRef.current, 0, 0);
       const snapshotUrl = canvas.toDataURL('image/jpeg', 0.85);
 
-      const liveImg = await faceapi.fetchImage(snapshotUrl);
+      const liveImg = await fetchImageWithTimeout(snapshotUrl, 3000);
       const liveDet = await faceapi
         .detectSingleFace(liveImg, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
         .withFaceLandmarks()
@@ -108,11 +132,18 @@ export default function FaceVerification({ studentPhotoUrl, studentName, onSucce
 
       if (!liveDet) throw new Error('Chehra camera mein nahi dikh raha. Seedha camera ki taraf dekhein aur achhi roshni mein baithen.');
 
-      // Fetch stored photo via CORS proxy
+      // Fetch stored photo via CORS proxy with a timeout
       const proxyUrl = `https://images.weserv.nl/?url=${encodeURIComponent(studentPhotoUrl!.replace(/^https?:\/\//, ''))}&w=400&h=400&fit=cover`;
       let storedImg: HTMLImageElement;
-      try { storedImg = await faceapi.fetchImage(proxyUrl); }
-      catch { storedImg = await faceapi.fetchImage(studentPhotoUrl!); }
+      try {
+        storedImg = await fetchImageWithTimeout(proxyUrl, 5000);
+      } catch (proxyErr) {
+        try {
+          storedImg = await fetchImageWithTimeout(studentPhotoUrl!, 5000);
+        } catch (rawErr) {
+          throw new Error('Aapki stored photo load nahi ho saki. Niche diye "Camera thik nahi hai" option se bina camera ke aage jaaein.');
+        }
+      }
 
       const storedDet = await faceapi
         .detectSingleFace(storedImg, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
@@ -141,7 +172,6 @@ export default function FaceVerification({ studentPhotoUrl, studentName, onSucce
         if (remaining <= 0) {
           stopCamera();
           setStep('exhausted');
-          setTimeout(onFail, 2000);
         } else {
           setErrorMsg(`Chehra match nahi hua (score: ${(1 - distance).toFixed(2)}). ${remaining} chance bacha hai. Achhi roshni mein seedha dekhein.`);
           setStep('ready');
@@ -153,7 +183,6 @@ export default function FaceVerification({ studentPhotoUrl, studentName, onSucce
       if (remaining <= 0) {
         stopCamera();
         setStep('exhausted');
-        setTimeout(onFail, 2000);
       } else {
         setErrorMsg(e?.message || 'Verification fail hui. Dobara try karo.');
         setStep('ready');
@@ -350,13 +379,21 @@ export default function FaceVerification({ studentPhotoUrl, studentName, onSucce
 
           {/* Exhausted */}
           {step === 'exhausted' && (
-            <div className="p-12 text-center">
-              <div className="h-24 w-24 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-5 ring-4 ring-red-500/30">
-                <UserX className="h-12 w-12 text-red-400" />
+            <div className="p-12 text-center animate-in fade-in duration-300">
+              <div className="h-20 w-20 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-5 ring-4 ring-orange-500/30">
+                <UserX className="h-10 w-10 text-orange-400" />
               </div>
-              <h3 className="text-xl font-black text-white mb-2">Verification Failed</h3>
-              <p className="text-red-400 font-semibold">3 baar try kiya — chehra match nahi hua.</p>
-              <p className="text-slate-400 text-xs mt-3 leading-relaxed">Admin se contact karo ya apni profile photo update karwao.</p>
+              <h3 className="text-xl font-black text-white mb-2">Chehra Match Nahi Hua</h3>
+              <p className="text-orange-400 text-sm font-semibold mb-2">3 chances khatam ho gaye hain.</p>
+              <p className="text-slate-400 text-xs mb-6 leading-relaxed">
+                Security ke liye admin panel par warning log ki jaayegi. Kripya bina camera ke test dene ke liye niche button par click karein.
+              </p>
+              <button
+                onClick={onSuccess}
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg text-sm active:scale-95"
+              >
+                Bina Camera Ke Aage Jaao
+              </button>
             </div>
           )}
 
