@@ -219,6 +219,24 @@ export async function getTestQuestionsWithAnswers(testId: string) {
 }
 
 export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: Record<string, string>) {
+  // Check if student is banned before allowing submission
+  const { data: student } = await supabase
+    .from('students')
+    .select('test_ban_type, test_ban_until')
+    .eq('id', attempt.student_id!)
+    .single();
+
+  if (student) {
+    if (student.test_ban_type === 'permanent') {
+      throw new Error('Aap permanently online tests se ban hain. Submit nahi kiya ja sakta.');
+    }
+    if (student.test_ban_type === 'temporary' && student.test_ban_until) {
+      if (new Date(student.test_ban_until) > new Date()) {
+        throw new Error('Aap temporarily online tests se ban hain. Submit nahi kiya ja sakta.');
+      }
+    }
+  }
+
   // First, calculate the score securely on the server? 
   // Wait, Supabase allows us to fetch correct_option if we are admin, 
   // but since we are public, we need a secure way to grade.
@@ -292,6 +310,24 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
 
 // Create initial attempt when test starts to prevent back button cheating
 export async function startTestAttempt(studentId: string, testId: string) {
+  // Check if student is banned
+  const { data: student } = await supabase
+    .from('students')
+    .select('test_ban_type, test_ban_until')
+    .eq('id', studentId)
+    .single();
+
+  if (student) {
+    if (student.test_ban_type === 'permanent') {
+      throw new Error('Aap permanently online tests se ban hain.');
+    }
+    if (student.test_ban_type === 'temporary' && student.test_ban_until) {
+      if (new Date(student.test_ban_until) > new Date()) {
+        throw new Error('Aap temporarily online tests se ban hain.');
+      }
+    }
+  }
+
   // Check if already exists
   const { data: existing } = await supabase
     .from('online_test_attempts')
