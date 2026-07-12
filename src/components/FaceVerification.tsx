@@ -179,7 +179,7 @@ export default function FaceVerification({ studentPhotoUrl, studentName, onSucce
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="text-center mb-6">
           <img src="/sunrise-logo.png" alt="Sunrise" className="h-14 w-14 mx-auto mb-3 rounded-2xl bg-white p-1.5 shadow-lg" />
@@ -212,49 +212,86 @@ export default function FaceVerification({ studentPhotoUrl, studentName, onSucce
             </div>
           )}
 
-          {/* Webcam Step */}
+          {/* Webcam Step — Side by Side Layout */}
           {(step === 'ready' || step === 'capturing' || step === 'verifying') && (
             <div>
-              <div className="relative bg-black" style={{ aspectRatio: '4/3' }}>
-                <video
-                  ref={videoRef}
-                  muted
-                  playsInline
-                  autoPlay
-                  className="w-full h-full object-cover"
-                  style={{ transform: 'scaleX(-1)' }}
-                />
-                {/* Oval guide */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className={`w-44 h-56 rounded-full border-4 transition-colors duration-300 ${
-                    step === 'capturing' ? 'border-yellow-400 animate-pulse shadow-[0_0_30px_rgba(234,179,8,0.5)]' :
-                    step === 'verifying' ? 'border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.5)]' :
-                    'border-white/30'
-                  }`} />
+              {/* Two column: stored photo LEFT, webcam RIGHT */}
+              <div className="grid grid-cols-2 gap-0">
+
+                {/* ── LEFT: Stored Profile Photo ── */}
+                <div className="relative bg-[#080f1e] border-r border-white/10 flex flex-col">
+                  <div className="absolute top-3 left-3 z-10">
+                    <span className="bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded-full backdrop-blur tracking-wider uppercase">Profile Photo</span>
+                  </div>
+                  <div className="flex-1 flex items-center justify-center p-4" style={{ minHeight: '260px' }}>
+                    {studentPhotoUrl ? (
+                      <img
+                        src={studentPhotoUrl}
+                        alt={studentName}
+                        className="w-full h-full object-cover object-top rounded-2xl border-2 border-white/10 shadow-2xl"
+                        style={{ maxHeight: '280px', objectFit: 'cover' }}
+                        onError={(e) => { e.currentTarget.src = '/sunrise-logo.png'; }}
+                      />
+                    ) : (
+                      <div className="w-full h-44 rounded-2xl bg-slate-800 flex items-center justify-center">
+                        <UserX className="h-12 w-12 text-slate-600" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="px-4 pb-4 text-center">
+                    <p className="text-white font-bold text-sm truncate">{studentName}</p>
+                    <p className="text-slate-500 text-[10px] mt-0.5">Registered Photo</p>
+                  </div>
                 </div>
-                {/* Countdown */}
-                {step === 'capturing' && countdown > 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-8xl font-black text-white drop-shadow-2xl">{countdown}</span>
+
+                {/* ── RIGHT: Live Webcam ── */}
+                <div className="relative bg-black flex flex-col">
+                  <div className="absolute top-3 left-3 z-10">
+                    <span className="bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded-full backdrop-blur tracking-wider uppercase flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
+                      Live Camera
+                    </span>
                   </div>
-                )}
-                {/* Verifying overlay */}
-                {step === 'verifying' && (
-                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3">
-                    <Loader className="h-10 w-10 text-blue-400 animate-spin" />
-                    <p className="text-white font-bold text-sm">Verify ho raha hai...</p>
+                  <div className="flex-1 relative" style={{ minHeight: '260px' }}>
+                    <video
+                      ref={videoRef}
+                      muted
+                      playsInline
+                      autoPlay
+                      className="w-full h-full object-cover"
+                      style={{ transform: 'scaleX(-1)', minHeight: '260px', maxHeight: '280px' }}
+                    />
+                    {/* Oval guide */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className={`w-32 h-40 rounded-full border-4 transition-colors duration-300 ${
+                        step === 'capturing' ? 'border-yellow-400 animate-pulse shadow-[0_0_30px_rgba(234,179,8,0.5)]' :
+                        step === 'verifying' ? 'border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.5)]' :
+                        'border-white/30'
+                      }`} />
+                    </div>
+                    {/* Countdown */}
+                    {step === 'capturing' && countdown > 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-7xl font-black text-white drop-shadow-2xl">{countdown}</span>
+                      </div>
+                    )}
+                    {/* Verifying overlay */}
+                    {step === 'verifying' && (
+                      <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3">
+                        <Loader className="h-8 w-8 text-blue-400 animate-spin" />
+                        <p className="text-white font-bold text-xs">Verify ho raha hai...</p>
+                      </div>
+                    )}
                   </div>
-                )}
-                {/* Attempt counter */}
-                <div className="absolute top-3 right-3 bg-black/70 text-white text-xs font-bold px-2.5 py-1 rounded-full backdrop-blur">
-                  {attemptsLeft}/{MAX_ATTEMPTS} Chances
+                  <div className="px-4 pb-4 text-center">
+                    <p className="text-slate-400 text-[10px] mt-1">Seedha camera ki taraf dekhein</p>
+                    <div className="text-[10px] font-bold text-white/50 mt-0.5">{attemptsLeft}/{MAX_ATTEMPTS} Chances Left</div>
+                  </div>
                 </div>
               </div>
 
-              <div className="p-5">
-                <p className="text-center text-white font-bold mb-1">{studentName}</p>
-                <p className="text-center text-slate-400 text-xs mb-4">Apna chehra oval ke andar rakhen • Seedha camera ki taraf dekhein</p>
-
+              {/* Bottom Controls */}
+              <div className="p-5 border-t border-white/10">
                 {errorMsg && (
                   <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-4 flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
@@ -265,11 +302,17 @@ export default function FaceVerification({ studentPhotoUrl, studentName, onSucce
                 {step === 'ready' && (
                   <button
                     onClick={startCountdown}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg text-sm"
                   >
                     <Camera className="h-5 w-5" />
                     Apna Chehra Scan Karo
                   </button>
+                )}
+                {(step === 'capturing' || step === 'verifying') && (
+                  <div className="w-full bg-slate-800 text-slate-400 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-sm">
+                    <Loader className="h-4 w-4 animate-spin" />
+                    {step === 'capturing' ? `${countdown} second mein capture hoga...` : 'AI verify kar raha hai...'}
+                  </div>
                 )}
               </div>
             </div>
