@@ -147,6 +147,7 @@ export default function OnlineTestAdmin() {
   const [streams, setStreams] = useState<Record<string, MediaStream>>({});
   const [mutedMap, setMutedMap] = useState<Record<string, boolean>>({}); // student_id -> isMuted
   const [fullscreenStudentStream, setFullscreenStudentStream] = useState<{ id: string; name: string } | null>(null);
+  const [manualDisconnects, setManualDisconnects] = useState<Record<string, boolean>>({});
 
   const activeConnectionsRef = useRef<Record<string, { pc: RTCPeerConnection; channel: any }>>({});
   const adminSocketIdRef = useRef(Math.random().toString(36).substring(7));
