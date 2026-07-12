@@ -69,6 +69,98 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
 
+  // ── WebRTC Live Streaming Proctoring Setup ──
+  useEffect(() => {
+    if (!studentId || !cameraActive || !streamRef.current) return;
+
+    // Listen on a channel specific to this student
+    const channel = supabase.channel(`proctoring-stream-${studentId}`, {
+      config: {
+        broadcast: { self: false }
+      }
+    });
+
+    let pc: RTCPeerConnection | null = null;
+
+    const handleWebRTCMessage = async (payload: { event: string; payload: any }) => {
+      const { type, sdp, candidate, adminSocketId } = payload.payload || {};
+
+      try {
+        if (type === 'offer') {
+          if (pc) {
+            pc.close();
+          }
+
+          pc = new RTCPeerConnection({
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+          });
+
+          // Add active video/audio tracks to the WebRTC connection
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => {
+              pc?.addTrack(track, streamRef.current!);
+            });
+          }
+
+          pc.onicecandidate = (event) => {
+            if (event.candidate) {
+              channel.send({
+                type: 'broadcast',
+                event: 'signal',
+                payload: {
+                  type: 'candidate',
+                  candidate: event.candidate,
+                  studentId,
+                  adminSocketId
+                }
+              });
+            }
+          };
+
+          await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+
+          // Send answer back to the channel
+          channel.send({
+            type: 'broadcast',
+            event: 'signal',
+            payload: {
+              type: 'answer',
+              sdp: answer.sdp,
+              studentId,
+              adminSocketId
+            }
+          });
+        } else if (type === 'candidate' && pc) {
+          if (candidate) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          }
+        } else if (type === 'disconnect' && pc) {
+          pc.close();
+          pc = null;
+        }
+      } catch (err) {
+        console.error('WebRTC handling error on student side:', err);
+      }
+    };
+
+    channel
+      .on('broadcast', { event: 'signal' }, handleWebRTCMessage)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`WebRTC proctoring signaling active for student: ${studentId}`);
+        }
+      });
+
+    return () => {
+      if (pc) {
+        pc.close();
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [studentId, cameraActive, isTestStarted]);
+
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

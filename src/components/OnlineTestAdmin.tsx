@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download, Camera, AlertTriangle, Clock, RotateCcw, Copy, Search, Filter, FileSpreadsheet, Radio, RefreshCw, Eye, EyeOff, CheckCircle, Wand2, MessageCircle } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download, Camera, AlertTriangle, Clock, RotateCcw, Copy, Search, Filter, FileSpreadsheet, Radio, RefreshCw, Eye, EyeOff, CheckCircle, Wand2, MessageCircle, Volume2, VolumeX } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
@@ -13,6 +13,66 @@ import {
   banStudent, unbanStudent, getBannedStudentsAdmin,
   toggleSilentRecordAdmin, getTestVideoAdmin
 } from '../lib/onlineTests';
+function VideoGridCell({ stream, studentName, isMuted, onToggleMute, onExpand }: { stream: MediaStream | undefined; studentName: string; isMuted: boolean; onToggleMute: () => void; onExpand: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+
+  return (
+    <div className="relative bg-black aspect-video rounded-xl overflow-hidden border border-gray-800 flex flex-col group shadow-lg">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted={isMuted}
+        className="w-full h-full object-cover flex-1 bg-black"
+      />
+      {/* Controls Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-between p-3 opacity-90 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <div className="flex justify-between items-start pointer-events-auto">
+          <span className="bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wide flex items-center gap-1 animate-pulse">
+            <span className="w-1.5 h-1.5 bg-white rounded-full" /> Live
+          </span>
+          <button
+            onClick={onExpand}
+            className="p-1 bg-black/60 hover:bg-black/90 text-white rounded transition-colors"
+            title="Expand Fullscreen"
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <div className="flex justify-between items-center pointer-events-auto mt-auto">
+          <p className="text-white text-xs font-bold truncate pr-2">{studentName}</p>
+          <button
+            onClick={onToggleMute}
+            className={`p-1.5 rounded-full transition-colors ${
+              isMuted
+                ? 'bg-slate-750/80 hover:bg-slate-800 text-white/70'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+            }`}
+            title={isMuted ? 'Suno (Unmute)' : 'Mute'}
+          >
+            {isMuted ? (
+              <VolumeX className="h-3.5 w-3.5" />
+            ) : (
+              <Volume2 className="h-3.5 w-3.5" />
+            )}
+          </button>
+        </div>
+      </div>
+      {!stream && (
+        <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center gap-2">
+          <RefreshCw className="h-5 w-5 text-blue-500 animate-spin" />
+          <p className="text-slate-400 text-[10px] font-medium tracking-wide">Connecting live stream...</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function OnlineTestAdmin() {
   const [tests, setTests] = useState<OnlineTest[]>([]);
@@ -38,6 +98,15 @@ export default function OnlineTestAdmin() {
   const [videoRecordings, setVideoRecordings] = useState<Record<string, string>>({});
   const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
   const [currentVideoStudentName, setCurrentVideoStudentName] = useState<string>('');
+
+  // WebRTC Live Grid proctoring states & references
+  const [liveVideoGridActive, setLiveVideoGridActive] = useState(false);
+  const [streams, setStreams] = useState<Record<string, MediaStream>>({});
+  const [mutedMap, setMutedMap] = useState<Record<string, boolean>>({}); // student_id -> isMuted
+  const [fullscreenStudentStream, setFullscreenStudentStream] = useState<{ id: string; name: string } | null>(null);
+
+  const activeConnectionsRef = useRef<Record<string, { pc: RTCPeerConnection; channel: any }>>({});
+  const adminSocketIdRef = useRef(Math.random().toString(36).substring(7));
 
 
   const [questions, setQuestions] = useState<OnlineTestQuestion[]>([]);
@@ -116,6 +185,135 @@ export default function OnlineTestAdmin() {
       if (liveRefreshRef.current) clearInterval(liveRefreshRef.current);
     };
   }, [view]);
+
+  // WebRTC Multi-Grid Connection Manager
+  useEffect(() => {
+    if (view !== 'live-monitor' || !liveVideoGridActive) {
+      // Cleanup all connections when grid is closed or view changes
+      Object.keys(activeConnectionsRef.current).forEach(studentId => {
+        try {
+          const { pc, channel } = activeConnectionsRef.current[studentId];
+          pc.close();
+          supabase.removeChannel(channel);
+        } catch (e) {
+          console.warn('Cleanup error:', e);
+        }
+      });
+      activeConnectionsRef.current = {};
+      setStreams({});
+      return;
+    }
+
+    const currentLiveIds = new Set(liveStudents.map(s => s.student_id));
+
+    // 1. Cleanup any connections for students who are no longer active
+    Object.keys(activeConnectionsRef.current).forEach(studentId => {
+      if (!currentLiveIds.has(studentId)) {
+        try {
+          const { pc, channel } = activeConnectionsRef.current[studentId];
+          pc.close();
+          supabase.removeChannel(channel);
+        } catch (e) {
+          console.warn('Individual cleanup error:', e);
+        }
+        delete activeConnectionsRef.current[studentId];
+        setStreams(prev => {
+          const next = { ...prev };
+          delete next[studentId];
+          return next;
+        });
+      }
+    });
+
+    // 2. Establish connections for newly active students
+    liveStudents.forEach(s => {
+      const studentId = s.student_id;
+      if (activeConnectionsRef.current[studentId]) return; // already connecting/connected
+
+      try {
+        const channel = supabase.channel(`proctoring-stream-${studentId}`, {
+          config: {
+            broadcast: { self: false }
+          }
+        });
+
+        const pc = new RTCPeerConnection({
+          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
+
+        pc.ontrack = (event) => {
+          console.log(`Received WebRTC stream for student ${studentId}`);
+          if (event.streams && event.streams[0]) {
+            setStreams(prev => ({
+              ...prev,
+              [studentId]: event.streams[0]
+            }));
+          }
+        };
+
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            channel.send({
+              type: 'broadcast',
+              event: 'signal',
+              payload: {
+                type: 'candidate',
+                candidate: event.candidate,
+                adminSocketId: adminSocketIdRef.current,
+                studentId
+              }
+            });
+          }
+        };
+
+        // Listen for answers and candidates from student
+        channel.on('broadcast', { event: 'signal' }, async (payload) => {
+          const { type, sdp, candidate, studentId: msgStudentId } = payload.payload || {};
+          if (msgStudentId !== studentId) return;
+
+          try {
+            if (type === 'answer') {
+              await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
+            } else if (type === 'candidate') {
+              if (candidate) {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+              }
+            }
+          } catch (err) {
+            console.error(`Error processing peer signal for ${studentId}:`, err);
+          }
+        });
+
+        channel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log(`Subscribed to signaling for student ${studentId}. Sending offer...`);
+            // Create Offer
+            const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+            await pc.setLocalDescription(offer);
+
+            // Send offer to student
+            channel.send({
+              type: 'broadcast',
+              event: 'signal',
+              payload: {
+                type: 'offer',
+                sdp: offer.sdp,
+                adminSocketId: adminSocketIdRef.current,
+                studentId
+              }
+            });
+          }
+        });
+
+        // Store references
+        activeConnectionsRef.current[studentId] = { pc, channel };
+
+      } catch (err) {
+        console.error(`Failed to initiate WebRTC stream for student ${studentId}:`, err);
+      }
+    });
+
+  }, [view, liveVideoGridActive, liveStudents]);
 
   // Load student list when ban management view is open
   useEffect(() => {
@@ -1419,7 +1617,7 @@ Explanation: Arunachal Pradesh is the easternmost state.
         {view === 'live-monitor' && (
           <div>
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
                 <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                   <span className="relative flex h-3 w-3">
@@ -1432,14 +1630,29 @@ Explanation: Arunachal Pradesh is the easternmost state.
                   {lastRefreshed ? `Last updated: ${lastRefreshed.toLocaleTimeString('en-IN')} · Auto-refreshes every 20s` : 'Loading...'}
                 </p>
               </div>
-              <button
-                onClick={fetchLiveStudents}
-                disabled={liveLoading}
-                className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`h-4 w-4 ${liveLoading ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+              <div className="flex items-center gap-3">
+                {liveStudents.length > 0 && (
+                  <button
+                    onClick={() => setLiveVideoGridActive(!liveVideoGridActive)}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
+                      liveVideoGridActive
+                        ? 'bg-red-600 border-red-700 text-white shadow-md'
+                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Camera className="h-4 w-4" />
+                    {liveVideoGridActive ? 'Stop Live Grid View' : 'Start Live Grid View (P2P)'}
+                  </button>
+                )}
+                <button
+                  onClick={fetchLiveStudents}
+                  disabled={liveLoading}
+                  className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-4 w-4 ${liveLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
             </div>
 
             {liveLoading && liveStudents.length === 0 ? (
@@ -1463,65 +1676,94 @@ Explanation: Arunachal Pradesh is the easternmost state.
                   {liveStudents.length} Student{liveStudents.length > 1 ? 's' : ''} Currently In Exam
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {liveStudents.map((att) => {
-                    const startedAt = new Date(att.submitted_at);
-                    const minutesAgo = Math.floor((Date.now() - startedAt.getTime()) / 60000);
-                    return (
-                      <div key={att.id} className="bg-white border border-green-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center gap-3 mb-3">
-                          {/* Student Photo */}
-                          <div className="relative shrink-0">
-                            {att.students?.image ? (
-                              <img src={att.students.image} alt={att.students?.name} className="h-11 w-11 rounded-full object-cover border-2 border-green-300" />
-                            ) : (
-                              <div className="h-11 w-11 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center border-2 border-green-300">
-                                <span className="text-white font-black text-sm">{(att.students?.name || 'U').charAt(0).toUpperCase()}</span>
-                              </div>
-                            )}
-                            {/* Live dot */}
-                            <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-green-500 border-2 border-white"></span>
-                            </span>
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-gray-900 text-sm truncate">{att.students?.name || 'Unknown'}</p>
-                            <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded font-bold uppercase tracking-wide">
-                              {att.students?.class_name}
-                            </span>
-                          </div>
+            {liveVideoGridActive ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 animate-in fade-in duration-350">
+                {liveStudents.map((att) => {
+                  const studentId = att.student_id;
+                  const studentName = att.students?.name || 'Unknown';
+                  const stream = streams[studentId];
+                  const isMuted = mutedMap[studentId] !== false; // default to true (muted)
+                  
+                  return (
+                    <VideoGridCell
+                      key={studentId}
+                      stream={stream}
+                      studentName={studentName}
+                      isMuted={isMuted}
+                      onToggleMute={() => {
+                        setMutedMap(prev => ({
+                          ...prev,
+                          [studentId]: !isMuted
+                        }));
+                      }}
+                      onExpand={() => {
+                        setFullscreenStudentStream({ id: studentId, name: studentName });
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {liveStudents.map((att) => {
+                  const startedAt = new Date(att.submitted_at);
+                  const minutesAgo = Math.floor((Date.now() - startedAt.getTime()) / 60000);
+                  return (
+                    <div key={att.id} className="bg-white border border-green-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow animate-in fade-in duration-200">
+                      <div className="flex items-center gap-3 mb-3">
+                        {/* Student Photo */}
+                        <div className="relative shrink-0">
+                          {att.students?.image ? (
+                            <img src={att.students.image} alt={att.students?.name} className="h-11 w-11 rounded-full object-cover border-2 border-green-300" />
+                          ) : (
+                            <div className="h-11 w-11 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center border-2 border-green-300">
+                              <span className="text-white font-black text-sm">{(att.students?.name || 'U').charAt(0).toUpperCase()}</span>
+                            </div>
+                          )}
+                          {/* Live dot */}
+                          <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-green-500 border-2 border-white"></span>
+                          </span>
                         </div>
-
-                        {/* Test Info */}
-                        <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
-                          <p className="text-xs font-bold text-gray-800 truncate">{att.online_tests?.title || 'Test'}</p>
-                          <div className="flex items-center justify-between mt-1">
-                            <p className="text-[10px] text-gray-500 font-medium">{att.online_tests?.subject}</p>
-                            <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full animate-pulse">
-                              Solving Q.{att.current_question_index || 1}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Time Info */}
-                        <div className="flex items-center justify-between text-[11px] text-gray-500">
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            <span>Started {minutesAgo < 1 ? 'just now' : `${minutesAgo} min ago`}</span>
-                          </div>
-                          <button
-                            onClick={() => handleResetAttempt(att.student_id, att.students?.name || 'Unknown')}
-                            className="flex items-center gap-1 text-orange-500 hover:text-orange-700 font-bold transition-colors"
-                            title="Reset attempt so student can retake"
-                          >
-                            <RotateCcw className="h-3 w-3" /> Reset
-                          </button>
+                        <div className="min-w-0">
+                          <p className="font-bold text-gray-900 text-sm truncate">{att.students?.name || 'Unknown'}</p>
+                          <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded font-bold uppercase tracking-wide">
+                            {att.students?.class_name}
+                          </span>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {/* Test Info */}
+                      <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
+                        <p className="text-xs font-bold text-gray-800 truncate">{att.online_tests?.title || 'Test'}</p>
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-[10px] text-gray-500 font-medium">{att.online_tests?.subject}</p>
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full animate-pulse">
+                            Solving Q.{att.current_question_index || 1}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Time Info */}
+                      <div className="flex items-center justify-between text-[11px] text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>Started {minutesAgo < 1 ? 'just now' : `${minutesAgo} min ago`}</span>
+                        </div>
+                        <button
+                          onClick={() => handleResetAttempt(att.student_id, att.students?.name || 'Unknown')}
+                          className="flex items-center gap-1 text-orange-500 hover:text-orange-700 font-bold transition-colors"
+                          title="Reset attempt so student can retake"
+                        >
+                          <RotateCcw className="h-3 w-3" /> Reset
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
               </div>
             )}
           </div>
@@ -2008,6 +2250,60 @@ Explanation: Arunachal Pradesh is the easternmost state.
             >
               Download Video
             </a>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── WebRTC Fullscreen Live Watch Modal ── */}
+    {fullscreenStudentStream && (
+      <div
+        className="fixed inset-0 z-[250] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4"
+        onClick={() => setFullscreenStudentStream(null)}
+      >
+        <div
+          className="relative max-w-3xl w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 bg-slate-800 border-b border-white/5">
+            <div>
+              <p className="font-bold text-white text-base">Live Proctoring View</p>
+              <p className="text-red-400 text-xs mt-0.5 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" />
+                Live Streaming: {fullscreenStudentStream.name}
+              </p>
+            </div>
+            <button
+              onClick={() => setFullscreenStudentStream(null)}
+              className="text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-all"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          {/* Large Video Player */}
+          <div className="bg-black flex items-center justify-center relative aspect-video flex-1">
+            <video
+              ref={el => {
+                if (el && streams[fullscreenStudentStream.id]) {
+                  el.srcObject = streams[fullscreenStudentStream.id];
+                }
+              }}
+              autoPlay
+              playsInline
+              controls
+              className="w-full h-full object-contain"
+            />
+          </div>
+          {/* Footer Controls */}
+          <div className="px-6 py-4 bg-slate-800/80 flex justify-between items-center text-xs text-slate-400">
+            <p>Peer-to-peer live communication. Zero latency.</p>
+            <button
+              onClick={() => setFullscreenStudentStream(null)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl transition-colors"
+            >
+              Close Live Watch
+            </button>
           </div>
         </div>
       </div>
