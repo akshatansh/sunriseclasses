@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe, Mic, Eye, Lock, Unlock, FileText, AlertTriangle } from 'lucide-react';
 import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, reportTestIssue, OnlineTest, StudentTestAttempt, verifyStudentPin, getTestQuestionsWithAnswers, OnlineTestQuestion } from '../lib/onlineTests';
 import jsPDF from 'jspdf';
+import FaceVerification from '../components/FaceVerification';
 
 // Lazy load the runner to prevent heavy TFJS imports from crashing the main bundle
 const LiveTestRunner = React.lazy(() => 
@@ -18,6 +19,9 @@ export default function OnlineTestPortal() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [student, setStudent] = useState<{ id: string; name: string; class_name: string; image?: string } | null>(null);
   
+  // Face Verification step
+  const [showFaceVerify, setShowFaceVerify] = useState(false);
+
   // Login Form State
   const [name, setName] = useState('');
   const [className, setClassName] = useState('Class 10');
@@ -57,18 +61,32 @@ export default function OnlineTestPortal() {
       const studentData = await loginStudentForTest(name.trim(), className, pin);
       setStudent(studentData);
       setLoginSuccess(true);
-      
-      // Artificial delay for the "Wow" effect with student photo
+      // Show "Welcome" card briefly, then go to Face Verification
       setTimeout(() => {
-        setIsLoggedIn(true);
-        fetchTests(studentData.class_name, studentData.id);
         setLoginSuccess(false);
-      }, 2000);
+        setShowFaceVerify(true);
+      }, 1800);
     } catch (err: any) {
       setLoginError(err.message || 'Login failed');
     } finally {
       setIsLoggingIn(false);
     }
+  };
+
+  // Called when face verification passes
+  const handleFaceSuccess = () => {
+    setShowFaceVerify(false);
+    setIsLoggedIn(true);
+    if (student) fetchTests(student.class_name, student.id);
+  };
+
+  // Called when student exhausts all 3 face attempts
+  const handleFaceFail = () => {
+    setShowFaceVerify(false);
+    setStudent(null);
+    setName('');
+    setPin('');
+    setLoginError('Face verification fail ho gayi. Apni profile photo check karein ya admin se milein.');
   };
 
   const fetchTests = async (cls: string, studentId: string) => {
@@ -187,6 +205,18 @@ export default function OnlineTestPortal() {
 
 
 
+
+  // Face Verification screen — shown after login, before test portal
+  if (showFaceVerify && student) {
+    return (
+      <FaceVerification
+        studentPhotoUrl={student.image}
+        studentName={student.name}
+        onSuccess={handleFaceSuccess}
+        onFail={handleFaceFail}
+      />
+    );
+  }
 
   // If a test is active, show the runner — early return AFTER all hooks
   if (activeTest && student) {
