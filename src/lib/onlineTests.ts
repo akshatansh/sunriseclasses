@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { sendWhatsAppMessage } from './whatsapp';
 
 export interface OnlineTest {
   id: string;
@@ -46,7 +47,7 @@ export interface StudentTestAttempt {
 export async function loginStudentForTest(name: string, className: string, pin: string) {
   const { data, error } = await supabase
     .from('students')
-    .select('id, name, class_name, image, test_ban_type, test_ban_reason, test_ban_until, silent_record_enabled')
+    .select('id, name, class_name, image, test_ban_type, test_ban_reason, test_ban_until, silent_record_enabled, parent_phone')
     .ilike('name', `%${name}%`)
     .eq('class_name', className)
     .eq('pin', pin)
@@ -66,6 +67,13 @@ export async function banStudent(
   reason: string,
   banUntil?: string // ISO date string, required for temporary
 ) {
+  // Fetch student details for messaging
+  const { data: student } = await supabase
+    .from('students')
+    .select('name, class_name, parent_phone')
+    .eq('id', studentId)
+    .single();
+
   const { error } = await supabase
     .from('students')
     .update({
@@ -76,10 +84,29 @@ export async function banStudent(
     .eq('id', studentId);
 
   if (error) throw error;
+
+  // Send WhatsApp message if parent_phone is registered
+  if (student && student.parent_phone) {
+    const formattedUntil = banType === 'temporary' && banUntil 
+      ? new Date(banUntil).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) 
+      : '';
+    const msg = banType === 'permanent'
+      ? `Sunrise Classes Alert: Aapke bachhe ${student.name} (${student.class_name}) ko online test portal se PERMANENTLY ban kar diya gaya hai. Reason: ${reason}.`
+      : `Sunrise Classes Alert: Aapke bachhe ${student.name} (${student.class_name}) ko online test portal se TEMPORARILY ban kiya gaya hai. Reason: ${reason}. Ban Time: ${formattedUntil} tak.`;
+    
+    // Fire-and-forget sending to avoid blocking execution flow
+    sendWhatsAppMessage(student.parent_phone, msg).catch(err => console.error(err));
+  }
 }
 
 // Remove ban from a student
 export async function unbanStudent(studentId: string) {
+  const { data: student } = await supabase
+    .from('students')
+    .select('name, class_name, parent_phone')
+    .eq('id', studentId)
+    .single();
+
   const { error } = await supabase
     .from('students')
     .update({
@@ -90,6 +117,12 @@ export async function unbanStudent(studentId: string) {
     .eq('id', studentId);
 
   if (error) throw error;
+
+  // Send WhatsApp notification
+  if (student && student.parent_phone) {
+    const msg = `Sunrise Classes Update: Aapke bachhe ${student.name} (${student.class_name}) ka online test access restore (UNBAN) kar diya gaya hai. Ab wo tests de sakte hain.`;
+    sendWhatsAppMessage(student.parent_phone, msg).catch(err => console.error(err));
+  }
 }
 
 // Admin: fetch all students with their ban status
@@ -281,6 +314,35 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
     .maybeSingle(); // maybeSingle() prevents PGRST116 error when 0 rows match
 
   if (error) throw error;
+
+  // Trigger WhatsApp Parent Notification
+  const resolvedStudentId = attempt.student_id!;
+  const resolvedTestId = attempt.test_id!;
+  const submissionType = attempt.submission_type || 'manual';
+
+  (async () => {
+    try {
+      const [studentRes, testRes] = await Promise.all([
+        supabase.from('students').select('name, parent_phone').eq('id', resolvedStudentId).single(),
+        supabase.from('online_tests').select('title').eq('id', resolvedTestId).single()
+      ]);
+
+      const s = studentRes.data;
+      const t = testRes.data;
+
+      if (s && s.parent_phone && t) {
+        let msg = '';
+        if (submissionType === 'auto_cheat') {
+          msg = `🔴 Sunrise Classes ALERT: Aapka bachha ${s.name} online test "${t.title}" dete waqt cheating warnings limits exceed karne ke karan system dwara AUTO-SUBMIT kar diya gaya hai. Score: ${score}/${total_marks} marks. Kripya dhyan rakhein.`;
+        } else {
+          msg = `🟢 Sunrise Classes Update: Aapke bachhe ${s.name} ne online test "${t.title}" safalta-purvak complete kar liya hai. Score: ${score}/${total_marks} marks.`;
+        }
+        await sendWhatsAppMessage(s.parent_phone, msg);
+      }
+    } catch (waErr) {
+      console.error('WhatsApp notify error:', waErr);
+    }
+  })();
 
   // If no existing row was updated (student bypassed startTestAttempt somehow)
   if (!data) {
