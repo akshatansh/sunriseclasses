@@ -13,14 +13,48 @@ import {
   banStudent, unbanStudent, getBannedStudentsAdmin,
   toggleSilentRecordAdmin, getTestVideoAdmin
 } from '../lib/onlineTests';
-function VideoGridCell({ stream, studentName, isMuted, onToggleMute, onExpand }: { stream: MediaStream | undefined; studentName: string; isMuted: boolean; onToggleMute: () => void; onExpand: () => void }) {
+function VideoGridCell({ 
+  stream, 
+  studentName, 
+  isMuted, 
+  onToggleMute, 
+  onExpand,
+  isDisconnected,
+  onDisconnect,
+  onReconnect
+}: { 
+  stream: MediaStream | undefined; 
+  studentName: string; 
+  isMuted: boolean; 
+  onToggleMute: () => void; 
+  onExpand: () => void;
+  isDisconnected: boolean;
+  onDisconnect: () => void;
+  onReconnect: () => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   
   useEffect(() => {
-    if (videoRef.current && stream) {
+    if (videoRef.current && stream && !isDisconnected) {
       videoRef.current.srcObject = stream;
     }
-  }, [stream]);
+  }, [stream, isDisconnected]);
+
+  if (isDisconnected) {
+    return (
+      <div className="relative bg-slate-900 aspect-video rounded-xl overflow-hidden border border-gray-800 flex flex-col items-center justify-center p-4 shadow-lg text-center animate-in fade-in duration-200">
+        <Camera className="h-6 w-6 text-gray-500 mb-1.5" />
+        <p className="text-white text-xs font-bold truncate max-w-full px-2 mb-1">{studentName}</p>
+        <p className="text-[10px] text-gray-400 mb-3">Connection closed</p>
+        <button
+          onClick={onReconnect}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] transition-all"
+        >
+          Reconnect Video
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative bg-black aspect-video rounded-xl overflow-hidden border border-gray-800 flex flex-col group shadow-lg">
@@ -37,13 +71,22 @@ function VideoGridCell({ stream, studentName, isMuted, onToggleMute, onExpand }:
           <span className="bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-wide flex items-center gap-1 animate-pulse">
             <span className="w-1.5 h-1.5 bg-white rounded-full" /> Live
           </span>
-          <button
-            onClick={onExpand}
-            className="p-1 bg-black/60 hover:bg-black/90 text-white rounded transition-colors"
-            title="Expand Fullscreen"
-          >
-            <Eye className="h-3.5 w-3.5" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={onExpand}
+              className="p-1 bg-black/60 hover:bg-black/90 text-white rounded transition-colors"
+              title="Expand Fullscreen"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={onDisconnect}
+              className="p-1 bg-red-600/80 hover:bg-red-600 text-white rounded transition-colors"
+              title="Close Stream"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
         <div className="flex justify-between items-center pointer-events-auto mt-auto">
           <p className="text-white text-xs font-bold truncate pr-2">{studentName}</p>
@@ -206,9 +249,12 @@ export default function OnlineTestAdmin() {
 
     const currentLiveIds = new Set(liveStudents.map(s => s.student_id));
 
-    // 1. Cleanup any connections for students who are no longer active
+    // 1. Cleanup any connections for students who are no longer active OR manually disconnected
     Object.keys(activeConnectionsRef.current).forEach(studentId => {
-      if (!currentLiveIds.has(studentId)) {
+      const isStillActive = currentLiveIds.has(studentId);
+      const isManuallyDisconnected = manualDisconnects[studentId] === true;
+
+      if (!isStillActive || isManuallyDisconnected) {
         try {
           const { pc, channel } = activeConnectionsRef.current[studentId];
           pc.close();
@@ -225,9 +271,10 @@ export default function OnlineTestAdmin() {
       }
     });
 
-    // 2. Establish connections for newly active students
+    // 2. Establish connections for newly active students (skip if manually disconnected)
     liveStudents.forEach(s => {
       const studentId = s.student_id;
+      if (manualDisconnects[studentId] === true) return; // skipped manually
       if (activeConnectionsRef.current[studentId]) return; // already connecting/connected
 
       try {
@@ -313,7 +360,7 @@ export default function OnlineTestAdmin() {
       }
     });
 
-  }, [view, liveVideoGridActive, liveStudents]);
+  }, [view, liveVideoGridActive, liveStudents, manualDisconnects]);
 
   // Load student list when ban management view is open
   useEffect(() => {
@@ -1698,6 +1745,19 @@ Explanation: Arunachal Pradesh is the easternmost state.
                       }}
                       onExpand={() => {
                         setFullscreenStudentStream({ id: studentId, name: studentName });
+                      }}
+                      isDisconnected={manualDisconnects[studentId] === true}
+                      onDisconnect={() => {
+                        setManualDisconnects(prev => ({
+                          ...prev,
+                          [studentId]: true
+                        }));
+                      }}
+                      onReconnect={() => {
+                        setManualDisconnects(prev => ({
+                          ...prev,
+                          [studentId]: false
+                        }));
                       }}
                     />
                   );
