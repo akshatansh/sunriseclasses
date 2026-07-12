@@ -237,6 +237,15 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
     }
   }
 
+  // If auto_cheat is triggered, automatically enable silent_record for this student's future tests
+  if (attempt.submission_type === 'auto_cheat') {
+    await supabase
+      .from('students')
+      .update({ silent_record_enabled: true })
+      .eq('id', attempt.student_id!)
+      .catch(err => console.error('Failed to auto-flag student:', err));
+  }
+
   // First, calculate the score securely on the server? 
   // Wait, Supabase allows us to fetch correct_option if we are admin, 
   // but since we are public, we need a secure way to grade.

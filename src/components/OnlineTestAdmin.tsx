@@ -210,6 +210,36 @@ export default function OnlineTestAdmin() {
     }
   };
 
+  const playProctoringAlertSound = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      
+      const playBeep = (timeOffset: number) => {
+        const osc = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime + timeOffset);
+        
+        gainNode.gain.setValueAtTime(0, ctx.currentTime + timeOffset);
+        gainNode.gain.linearRampToValueAtTime(0.12, ctx.currentTime + timeOffset + 0.02);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + timeOffset + 0.15);
+        
+        osc.start(ctx.currentTime + timeOffset);
+        osc.stop(ctx.currentTime + timeOffset + 0.16);
+      };
+
+      playBeep(0);
+      playBeep(0.18);
+    } catch (e) {
+      console.warn('Audio synthesis alert failed:', e);
+    }
+  };
+
   const classes = ['Class 8', 'Class 9', 'Class 10'];
 
   useEffect(() => {
@@ -226,6 +256,28 @@ export default function OnlineTestAdmin() {
     }
     return () => {
       if (liveRefreshRef.current) clearInterval(liveRefreshRef.current);
+    };
+  }, [view]);
+
+  // Real-time sound alert and instant update trigger for proctoring logs
+  useEffect(() => {
+    if (view !== 'live-monitor') return;
+
+    const logChannel = supabase
+      .channel('live-proctoring-logs')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'proctoring_logs' },
+        (payload) => {
+          console.log('Realtime proctoring warning trigger:', payload.new);
+          playProctoringAlertSound();
+          fetchLiveStudents();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(logChannel);
     };
   }, [view]);
 
