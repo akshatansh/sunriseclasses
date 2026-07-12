@@ -10,7 +10,8 @@ import {
   uploadQuestionImage,
   deleteProctoringLogAdmin, autoDeleteOldProctoringLogs,
   OnlineTest, OnlineTestQuestion,
-  banStudent, unbanStudent, getBannedStudentsAdmin
+  banStudent, unbanStudent, getBannedStudentsAdmin,
+  toggleSilentRecordAdmin, getTestVideoAdmin
 } from '../lib/onlineTests';
 
 export default function OnlineTestAdmin() {
@@ -32,6 +33,12 @@ export default function OnlineTestAdmin() {
   const [savingBan, setSavingBan] = useState(false);
   const [banSearchQuery, setBanSearchQuery] = useState('');
   const [banFilterClass, setBanFilterClass] = useState('All');
+
+  // Video proctoring playback states
+  const [videoRecordings, setVideoRecordings] = useState<Record<string, string>>({});
+  const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
+  const [currentVideoStudentName, setCurrentVideoStudentName] = useState<string>('');
+
 
   const [questions, setQuestions] = useState<OnlineTestQuestion[]>([]);
   const [attempts, setAttempts] = useState<any[]>([]);
@@ -195,6 +202,16 @@ export default function OnlineTestAdmin() {
     } catch (err) {
       console.error(err);
       alert('Error unbanning student');
+    }
+  };
+
+  const handleToggleSilentRecord = async (studentId: string, currentVal: boolean) => {
+    try {
+      await toggleSilentRecordAdmin(studentId, !currentVal);
+      fetchBannedStudents();
+    } catch (err) {
+      console.error(err);
+      alert('Error updating silent video proctor setting');
     }
   };
 
@@ -455,6 +472,17 @@ export default function OnlineTestAdmin() {
     try {
       const data = await getTestAttemptsAdmin(test.id);
       setAttempts(data || []);
+
+      const { data: vData } = await supabase
+        .from('test_video_recordings')
+        .select('student_id, video_url')
+        .eq('test_id', test.id);
+      
+      const vMap: Record<string, string> = {};
+      vData?.forEach(v => {
+        vMap[v.student_id] = v.video_url;
+      });
+      setVideoRecordings(vMap);
     } catch (err) {
       console.error(err);
     }
@@ -464,10 +492,25 @@ export default function OnlineTestAdmin() {
     if (!currentTest.id) return;
     if (!window.confirm(`"${studentName}" ka attempt reset kar doge? Unka score delete ho jaayega aur wo dobara test de sakenge.`)) return;
     try {
+      // Also delete video recording if any
+      await supabase.from('test_video_recordings').delete().eq('student_id', studentId).eq('test_id', currentTest.id);
+
       await resetStudentAttempt(studentId, currentTest.id);
       // Refresh attempts list
       const data = await getTestAttemptsAdmin(currentTest.id);
       setAttempts(data || []);
+
+      const { data: vData } = await supabase
+        .from('test_video_recordings')
+        .select('student_id, video_url')
+        .eq('test_id', currentTest.id);
+      
+      const vMap: Record<string, string> = {};
+      vData?.forEach(v => {
+        vMap[v.student_id] = v.video_url;
+      });
+      setVideoRecordings(vMap);
+
       alert(`${studentName} ka attempt successfully reset ho gaya. Ab wo dobara test de sakte hain.`);
     } catch (err) {
       console.error(err);
@@ -1312,6 +1355,18 @@ Explanation: Arunachal Pradesh is the easternmost state.
                               >
                                 <RefreshCw className="h-4 w-4" />
                               </button>
+                              {videoRecordings[att.student_id] && (
+                                <button
+                                  onClick={() => {
+                                    setCurrentVideoUrl(videoRecordings[att.student_id]);
+                                    setCurrentVideoStudentName(att.students?.name || 'Student');
+                                  }}
+                                  className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-md transition-colors border border-transparent hover:border-purple-200"
+                                  title="Play Proctoring Video"
+                                >
+                                  <PlayCircle className="h-4 w-4 animate-pulse" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleResetAttempt(att.student_id, att.students?.name || 'Unknown')}
                                 className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-md transition-colors border border-transparent hover:border-orange-200"
@@ -1581,6 +1636,7 @@ Explanation: Arunachal Pradesh is the easternmost state.
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Student</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Class</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ban Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Silent Record (Video)</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Reason / Details</th>
                       <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
@@ -1648,6 +1704,22 @@ Explanation: Arunachal Pradesh is the easternmost state.
                                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Temp Ban
                                 </span>
                               )}
+                            </td>
+
+                            {/* Silent Record Toggle */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={!!s.silent_record_enabled}
+                                  onChange={() => handleToggleSilentRecord(s.id, !!s.silent_record_enabled)}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                <span className="ml-2 text-xs font-medium text-gray-700">
+                                  {s.silent_record_enabled ? 'ON (Recording)' : 'OFF'}
+                                </span>
+                              </label>
                             </td>
 
                             {/* Reason / Details */}
@@ -1852,6 +1924,55 @@ Explanation: Arunachal Pradesh is the easternmost state.
             alt="Proctoring Proof Full"
             className="w-full max-h-[80vh] object-contain bg-black"
           />
+        </div>
+      </div>
+    )}
+
+    {/* ── Video Playback Modal ── */}
+    {currentVideoUrl && (
+      <div
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+        onClick={() => setCurrentVideoUrl(null)}
+      >
+        <div
+          className="relative max-w-2xl w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10 animate-in fade-in zoom-in-95 duration-150"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 bg-slate-800 border-b border-white/5">
+            <div>
+              <p className="font-bold text-white text-base">Proctoring Video Recording</p>
+              <p className="text-purple-400 text-xs mt-0.5">Student: {currentVideoStudentName}</p>
+            </div>
+            <button
+              onClick={() => setCurrentVideoUrl(null)}
+              className="text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-all"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          {/* Video Player */}
+          <div className="bg-black flex items-center justify-center relative aspect-video">
+            <video
+              src={currentVideoUrl}
+              controls
+              autoPlay
+              className="w-full h-full object-contain"
+            />
+          </div>
+          {/* Footer controls/download */}
+          <div className="px-6 py-4 bg-slate-800/50 flex justify-between items-center text-xs text-slate-400">
+            <p>Runs silently in background. Auto-deletes in 10 days.</p>
+            <a
+              href={currentVideoUrl}
+              download={`recording_${currentVideoStudentName.replace(/\s+/g, '_')}.webm`}
+              target="_blank"
+              rel="noreferrer"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Download Video
+            </a>
+          </div>
         </div>
       </div>
     )}

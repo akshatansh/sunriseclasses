@@ -46,7 +46,7 @@ export interface StudentTestAttempt {
 export async function loginStudentForTest(name: string, className: string, pin: string) {
   const { data, error } = await supabase
     .from('students')
-    .select('id, name, class_name, image, test_ban_type, test_ban_reason, test_ban_until')
+    .select('id, name, class_name, image, test_ban_type, test_ban_reason, test_ban_until, silent_record_enabled')
     .ilike('name', `%${name}%`)
     .eq('class_name', className)
     .eq('pin', pin)
@@ -96,12 +96,76 @@ export async function unbanStudent(studentId: string) {
 export async function getBannedStudentsAdmin() {
   const { data, error } = await supabase
     .from('students')
-    .select('id, name, class_name, image, test_ban_type, test_ban_reason, test_ban_until')
+    .select('id, name, class_name, image, test_ban_type, test_ban_reason, test_ban_until, silent_record_enabled')
     .order('name', { ascending: true });
 
   if (error) throw error;
   return data || [];
 }
+
+// Admin: toggle silent video recording on a student
+export async function toggleSilentRecordAdmin(studentId: string, enabled: boolean) {
+  const { error } = await supabase
+    .from('students')
+    .update({ silent_record_enabled: enabled })
+    .eq('id', studentId);
+
+  if (error) throw error;
+}
+
+// Upload a silent video proctoring recording for an attempt
+export async function uploadTestVideo(studentId: string, testId: string, videoBlob: Blob) {
+  try {
+    const fileName = `recording_${studentId}_${testId}_${Date.now()}.webm`;
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('proctoring_recordings')
+      .upload(fileName, videoBlob, { contentType: 'video/webm' });
+
+    if (uploadError) throw uploadError;
+
+    const { data: publicUrlData } = supabase.storage
+      .from('proctoring_recordings')
+      .getPublicUrl(uploadData.path);
+
+    const videoUrl = publicUrlData.publicUrl;
+
+    // Delete any existing recording for this student & test first
+    await supabase
+      .from('test_video_recordings')
+      .delete()
+      .eq('student_id', studentId)
+      .eq('test_id', testId);
+
+    // Save to recordings table
+    const { error: dbError } = await supabase
+      .from('test_video_recordings')
+      .insert({
+        student_id: studentId,
+        test_id: testId,
+        video_url: videoUrl
+      });
+
+    if (dbError) throw dbError;
+    return videoUrl;
+  } catch (err) {
+    console.error('Error uploading test video:', err);
+    throw err;
+  }
+}
+
+// Retrieve test recording URL for a student + test
+export async function getTestVideoAdmin(studentId: string, testId: string) {
+  const { data, error } = await supabase
+    .from('test_video_recordings')
+    .select('video_url')
+    .eq('student_id', studentId)
+    .eq('test_id', testId)
+    .maybeSingle();
+
+  if (error) return null;
+  return data?.video_url || null;
+}
+
 
 export async function verifyStudentPin(studentId: string, pin: string) {
   const { data, error } = await supabase
@@ -568,37 +632,63 @@ export async function deleteProctoringLogAdmin(logId: string, proofUrl: string |
 
 export async function autoDeleteOldProctoringLogs() {
   try {
-    // 15 days ago date string
+    // 1. Clean up proctoring logs older than 15 days
     const fifteenDaysAgo = new Date();
     fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
-    const dateStr = fifteenDaysAgo.toISOString();
+    const dateStr15 = fifteenDaysAgo.toISOString();
 
-    // Find old logs first so we can delete their files
     const { data: oldLogs, error: fetchError } = await supabase
       .from('proctoring_logs')
       .select('id, proof_image_url')
-      .lt('created_at', dateStr);
+      .lt('created_at', dateStr15);
 
-    if (fetchError || !oldLogs || oldLogs.length === 0) return;
+    if (!fetchError && oldLogs && oldLogs.length > 0) {
+      const filePaths = oldLogs
+        .map(log => log.proof_image_url)
+        .filter(url => url && url.includes('/test_proofs/'))
+        .map(url => url.split('/test_proofs/')[1].split('?')[0]);
 
-    // Extract storage paths to delete
-    const filePaths = oldLogs
-      .map(log => log.proof_image_url)
-      .filter(url => url && url.includes('/test_proofs/'))
-      .map(url => url.split('/test_proofs/')[1].split('?')[0]);
+      if (filePaths.length > 0) {
+        await supabase.storage.from('test_proofs').remove(filePaths);
+      }
 
-    if (filePaths.length > 0) {
-      await supabase.storage.from('test_proofs').remove(filePaths);
+      await supabase
+        .from('proctoring_logs')
+        .delete()
+        .lt('created_at', dateStr15);
+
+      console.log(`Auto-deleted ${oldLogs.length} old proctoring logs.`);
     }
 
-    // Delete the database rows
-    await supabase
-      .from('proctoring_logs')
-      .delete()
-      .lt('created_at', dateStr);
+    // 2. Clean up test video recordings older than 10 days
+    const tenDaysAgo = new Date();
+    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+    const dateStr10 = tenDaysAgo.toISOString();
 
-    console.log(`Auto-deleted ${oldLogs.length} old proctoring logs.`);
+    const { data: oldVideos, error: videoFetchErr } = await supabase
+      .from('test_video_recordings')
+      .select('id, video_url')
+      .lt('created_at', dateStr10);
+
+    if (!videoFetchErr && oldVideos && oldVideos.length > 0) {
+      const videoPaths = oldVideos
+        .map(v => v.video_url)
+        .filter(url => url && url.includes('/proctoring_recordings/'))
+        .map(url => url.split('/proctoring_recordings/')[1].split('?')[0]);
+
+      if (videoPaths.length > 0) {
+        await supabase.storage.from('proctoring_recordings').remove(videoPaths);
+      }
+
+      await supabase
+        .from('test_video_recordings')
+        .delete()
+        .lt('created_at', dateStr10);
+
+      console.log(`Auto-deleted ${oldVideos.length} old video recordings.`);
+    }
   } catch (err) {
-    console.error('Failed to auto-delete old proctoring logs', err);
+    console.error('Failed to auto-delete old proctoring data', err);
   }
 }
+

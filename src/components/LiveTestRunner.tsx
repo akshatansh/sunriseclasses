@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest, logProctoringEvent, updateTestProgress, checkIfTestExpired } from '../lib/onlineTests';
+import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest, logProctoringEvent, updateTestProgress, checkIfTestExpired, uploadTestVideo } from '../lib/onlineTests';
 import { AlertTriangle, CheckCircle, Clock, ShieldAlert, Camera, CameraOff, RefreshCw, Share2, Award, Download, Smartphone, Users, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import * as tf from '@tensorflow/tfjs';
@@ -63,6 +63,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const cameraFailedRef = useRef<boolean>(false); // true = camera never initialized
+
+  // Silent video proctoring state & refs
+  const [silentRecordEnabled, setSilentRecordEnabled] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -244,6 +250,31 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       ? Math.floor((Date.now() - testStartedAtRef.current) / 1000)
       : null;
 
+    // Stop recording first if active
+    let videoBlob: Blob | null = null;
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        videoBlob = await new Promise<Blob | null>((resolve) => {
+          if (!mediaRecorderRef.current) {
+            resolve(null);
+            return;
+          }
+          mediaRecorderRef.current.onstop = () => {
+            if (recordedChunksRef.current && recordedChunksRef.current.length > 0) {
+              const mime = mediaRecorderRef.current.mimeType || 'video/webm';
+              const compiled = new Blob(recordedChunksRef.current, { type: mime });
+              resolve(compiled);
+            } else {
+              resolve(null);
+            }
+          };
+          mediaRecorderRef.current.stop();
+        });
+      } catch (recStopErr) {
+        console.error("Error stopping silent recorder:", recStopErr);
+      }
+    }
+
     // Stop camera immediately on submit
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
@@ -265,6 +296,13 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         answers
       );
       localStorage.removeItem(`test_progress_${test.id}_${studentId}`);
+
+      if (videoBlob) {
+        uploadTestVideo(studentId, test.id, videoBlob).catch(err => {
+          console.error("Silent video upload failed:", err);
+        });
+      }
+
       setResult({ score: finalResult.score, total: finalResult.total_marks });
       if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
       setShowSubmitSummary(false);
@@ -390,10 +428,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         setQuestions(withShuffledOptions as any[]);
 
         // Also fetch student name and photo for the certificate/header
-        const { data: sData } = await supabase.from('students').select('name, image').eq('id', studentId).single();
+        const { data: sData } = await supabase.from('students').select('name, image, silent_record_enabled').eq('id', studentId).single();
         if (sData) {
           setStudentName(sData.name);
           setStudentPhoto(sData.image || '');
+          setSilentRecordEnabled(!!sData.silent_record_enabled);
         }
       } catch (err) {
         console.error('Failed to load questions', err);
@@ -761,6 +800,38 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       setCameraError(null);
       setShowCameraGuide(false);
       setCameraRetrying(false);
+
+      if (silentRecordEnabled && stream) {
+        try {
+          recordedChunksRef.current = [];
+          let mimeType = 'video/webm;codecs=vp8';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'video/webm';
+          }
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'video/mp4';
+          }
+
+          let recorder: MediaRecorder;
+          if (MediaRecorder.isTypeSupported(mimeType)) {
+            recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 100000 });
+          } else {
+            recorder = new MediaRecorder(stream);
+          }
+
+          recorder.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) {
+              recordedChunksRef.current.push(event.data);
+            }
+          };
+
+          recorder.start(5000);
+          mediaRecorderRef.current = recorder;
+          console.log("Silent proctoring video recording started...");
+        } catch (recErr) {
+          console.error("Failed to start background proctoring recording:", recErr);
+        }
+      }
       setFaceDetectionStatus('Monitoring Active');
 
       // Start Audio Proctoring
