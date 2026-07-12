@@ -72,7 +72,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
   const showSubtleMessage = useCallback((msg: string) => {
     setActiveMessage(msg);
-    const isWarning = msg.toLowerCase().includes('warning') || msg.toLowerCase().includes('detected') || msg.includes('⚠️') || msg.toLowerCase().includes('pakda');
+    const isWarning = msg.toLowerCase().includes('warning') || msg.toLowerCase().includes('detected') || msg.includes('[WARN]') || msg.toLowerCase().includes('pakda');
     
     if (isWarning) {
       setIsWarningFlash(true);
@@ -163,7 +163,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     };
     const handleOffline = () => {
       setIsOffline(true);
-      showSubtleMessage("⚠️ You are OFFLINE! Please check your internet connection.");
+      showSubtleMessage("You are OFFLINE! Please check your internet connection.");
     };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -181,7 +181,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           const level = Math.round(battery.level * 100);
           setBatteryLevel(level);
           if (level < 20 && !battery.charging) {
-            showSubtleMessage(`⚠️ Low Battery (${level}%). Please plug in your charger!`);
+            showSubtleMessage(`Low Battery (${level}%). Please plug in your charger!`);
           }
         };
         updateBattery();
@@ -298,10 +298,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       console.error('Error submitting test:', err);
       setSubmitting(false); // Must reset so retry/user can try again
       if (!isRetry) {
-        showSubtleMessage('❌ Network Error! Retrying in 3 seconds...');
+        showSubtleMessage('Network Error! Retrying in 3 seconds...');
         setTimeout(() => finishTest(submissionType, true), 3000);
       } else {
-        showSubtleMessage('❌ Submission failed. Please check connection and try submitting again.');
+        showSubtleMessage('Submission failed. Please check connection and try submitting again.');
       }
       return; // Exit early — do NOT fall through to setSubmitting(false) again
     }
@@ -456,20 +456,20 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         } else if (timeAwayMs < 120000) {
           warningsToAdd = 5; // Long switch (1-2 minutes) — serious
         } else {
-          warningsToAdd = 8; // 2+ minutes away — auto-submit immediately
+          warningsToAdd = 5; // 2+ minutes away — high penalty but don't auto-submit alone
         }
 
         if (warningsToAdd > 0) {
           setCheatWarnings(prev => {
             const newCount = prev + warningsToAdd;
-            if (newCount >= 8) {
+            if (newCount >= 12) {
               showSubtleMessage('Bahut zyada tab switch! Test submit ho raha hai...');
               finishTest('auto_cheat');
             } else {
               const timeAwayStr = timeAwayMs > 60000
                 ? `${Math.floor(timeAwayMs / 60000)} min`
                 : `${Math.floor(timeAwayMs / 1000)} sec`;
-              showSubtleMessage(`⚠️ Warning ${newCount}/8: Aap ${timeAwayStr} bahar the! Dobara mat karna.`);
+              showSubtleMessage(`Warning ${newCount}/12: Aap ${timeAwayStr} bahar the! Dobara mat karna.`);
             }
             return newCount;
           });
@@ -604,7 +604,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         document.documentElement.requestFullscreen().catch(() => {
           // If auto-restore fails (e.g. user explicitly exited), show a warning
           setCheatWarnings(prev => prev + 1);
-          showSubtleMessage("⚠️ Fullscreen band ho gayi! Wapas lao.");
+          showSubtleMessage("Fullscreen band ho gayi! Wapas lao.");
         });
       }
     };
@@ -631,10 +631,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       debugger; // Pauses execution if DevTools is open
       const endTime = performance.now();
       
-      // If paused by debugger, the time difference will be large (normally < 1ms, set to > 200ms)
-      if (endTime - startTime > 200) {
+      // If paused by debugger, time difference is large (normally < 2ms, set to > 500ms to avoid slow-device false positives)
+      if (endTime - startTime > 500) {
         logProctoringEvent(test.id, studentId, "DevTools open detection (Debugger Trap)", undefined, "image");
-        showSubtleMessage("⚠️ DevTools detected! Submitting test...");
+        showSubtleMessage("DevTools detected! Submitting test...");
         
         // Short timeout to let the UI show the message before submitting
         setTimeout(() => {
@@ -643,47 +643,13 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       }
     };
 
-    const intervalId = setInterval(checkDevTools, 1000);
+    const intervalId = setInterval(checkDevTools, 3000); // Check every 3s — reduces CPU load & false positives on slow phones
     return () => clearInterval(intervalId);
   }, [result, isTestStarted, test.id, studentId, finishTest, showSubtleMessage]);
 
-  // Anti-Cheat: Focus Loss & Screenshot Detection with Question Tracking
-  useEffect(() => {
-    if (result || !isTestStarted) return;
-
-    const handleBlur = async () => {
-      // Find active question details
-      const q = questions[currentQuestionIdx];
-      const qSnippet = q ? `Question #${currentQuestionIdx + 1}: ${q.question_text.slice(0, 80)}` : 'Unknown Question';
-      const warningMsg = `[SCREENSHOT/FOCUS LOSS] Left test screen during ${qSnippet}`;
-
-      // Capture webcam image of student
-      const blob = await captureScreenshot();
-      
-      // Log event to Supabase
-      logProctoringEvent(test.id, studentId, warningMsg, blob, 'image');
-
-      // Show warning message
-      showSubtleMessage(`⚠️ Warning: Screenshot/Focus loss detected on Question #${currentQuestionIdx + 1}! S.P Sir has been notified.`);
-
-      // Increment warnings count
-      setCheatWarnings(prev => {
-        const newCount = prev + 2; // Incremented by 2 for high strictness
-        if (newCount >= 8) {
-          showSubtleMessage("Too many screen switches/screenshots! Submitting test...");
-          setTimeout(() => {
-            finishTest('auto_cheat');
-          }, 1000);
-        }
-        return newCount;
-      });
-    };
-
-    window.addEventListener('blur', handleBlur);
-    return () => {
-      window.removeEventListener('blur', handleBlur);
-    };
-  }, [result, isTestStarted, test.id, studentId, questions, currentQuestionIdx, captureScreenshot, showSubtleMessage, finishTest]);
+  // NOTE: window.blur handler removed intentionally.
+  // 'blur' fires on mobile keyboard open, system notifications, and our own submit modal —
+  // causing false auto-submits. visibilitychange + camera proctoring cover real cheating cases.
 
   // Anti-Cheat: AI Camera Proctoring
   useEffect(() => {
@@ -831,7 +797,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               // Needs 2 consecutive noisy readings (3 seconds of noise) before logging
               if (noisyCount > 1) {
                 const msg = `${studentName.split(' ')[0]}, test ke beech aawaz nahi aani chahiye! Silence rakhiye.`;
-                setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, shor mat karo!`);
+                setFaceDetectionStatus(`! ${studentName.split(' ')[0]}, shor mat karo!`);
                 
                 // Audio Warning — only logs to proctoring, does NOT auto-submit
                 try {
@@ -875,10 +841,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           if (videoRef.current && videoRef.current.readyState >= 2 && !isOffline) {
             const predictions = await model.estimateFaces(videoRef.current, false);
             if (predictions.length === 0) {
-              setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, camera mein dekho!`);
+              setFaceDetectionStatus(`! ${studentName.split(' ')[0]}, camera mein dekho!`);
               handleWarning(`${studentName.split(' ')[0]}, camera mein dekho! Chehra nahi dikh raha.`);
             } else if (predictions.length > 1) {
-              setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, akele baithiye!`);
+              setFaceDetectionStatus(`! ${studentName.split(' ')[0]}, akele baithiye!`);
               handleWarning(`${studentName.split(' ')[0]}, akele baithiye! Ek se zyada chehra dikh raha hai.`);
             } else {
               // Check Face Orientation / "Eye Contact" using landmarks
@@ -897,13 +863,13 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 // the face is turned significantly left or right
                 if (eyeDistance > 10) { // avoid division by zero or tiny faces
                   if (noseToRightEye < eyeDistance * 0.25 || noseToLeftEye < eyeDistance * 0.25) {
-                    setFaceDetectionStatus(`⚠️ ${studentName.split(' ')[0]}, screen par dhyan do!`);
+                    setFaceDetectionStatus(`! ${studentName.split(' ')[0]}, screen par dhyan do!`);
                     handleWarning(`${studentName.split(' ')[0]}, idhar-udhar mat dekhiye! Apna dhyan screen par rakhiye.`);
                     return;
                   }
                 }
               }
-              setFaceDetectionStatus('Monitoring Active ✓');
+              setFaceDetectionStatus('Monitoring Active');
             }
           }
         }, 8000); // Increased interval to 8 seconds for better performance on slow devices
@@ -986,11 +952,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   }[language];
 
   if (result) {
-    const shareMessage = `🎯 I scored ${result.score}/${result.total} in the ${test.title} at Sunrise Classes! 🚀\n\nJoin the elite batch at Sunrise Classes and ace your exams! 📖✨`;
+    const shareMessage = `I scored ${result.score}/${result.total} in the ${test.title} at Sunrise Classes!\n\nJoin the elite batch at Sunrise Classes and ace your exams!`;
 
     const handleShare = async () => {
       const shareUrl = `https://sunriseclasses.co.in/online-tests`;
-      const text = `Hey! I just scored ${result.score}/${result.total} in the ${test.title} at Sunrise Classes! 🏆 Check it out!`;
+      const text = `Hey! I just scored ${result.score}/${result.total} in the ${test.title} at Sunrise Classes! Check it out!`;
 
       try {
         // Try to share as a file if supported
@@ -1331,7 +1297,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
           <div className="mt-8 flex flex-col gap-4 px-4 pb-10">
             <div className="bg-blue-600/10 p-4 rounded-2xl border border-blue-400/20 text-center">
-              <p className="text-blue-300 text-sm font-bold">🎉 Social Media par share karein aur coaching ko tag karein! Sunriseclasses81 📸</p>
+              <p className="text-blue-300 text-sm font-bold">Social Media par share karein aur coaching ko tag karein — @Sunriseclasses81</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -1376,15 +1342,15 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 {/* Header */}
                 <div className="bg-gradient-to-r from-indigo-700 to-blue-700 px-6 py-5 flex items-center justify-between">
                   <div>
-                    <h3 className="text-white font-black text-xl tracking-tight">📋 Answer Review</h3>
+                    <h3 className="text-white font-black text-xl tracking-tight">Answer Review</h3>
                     <p className="text-indigo-200 text-xs mt-0.5">Sirf aapko dikh raha hai — share karne par questions nahi jaayenge</p>
                   </div>
                   <div className="flex gap-3 text-sm font-bold">
                     <span className="bg-green-500/20 text-green-300 px-3 py-1 rounded-full border border-green-500/30">
-                      ✓ {detailedReview.filter(r => r.isCorrect).length} Sahi
+                      {detailedReview.filter(r => r.isCorrect).length} Sahi
                     </span>
                     <span className="bg-red-500/20 text-red-300 px-3 py-1 rounded-full border border-red-500/30">
-                      ✗ {detailedReview.filter(r => !r.isCorrect).length} Galat
+                      {detailedReview.filter(r => !r.isCorrect).length} Galat
                     </span>
                   </div>
                 </div>
@@ -1410,7 +1376,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                           item.studentAnswer ? 'bg-red-500/20 text-red-300' :
                           'bg-yellow-500/20 text-yellow-300'
                         }`}>
-                          {item.isCorrect ? '✓ Sahi' : item.studentAnswer ? '✗ Galat' : '— Chhoda'}
+                          {item.isCorrect ? 'Sahi' : item.studentAnswer ? 'Galat' : '— Chhoda'}
                         </span>
                       </div>
 
@@ -1545,7 +1511,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
       {activeMessage && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[300] w-max max-w-[88vw]">
-          <div className={`backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border border-white/20 ${activeMessage.includes('⚠️') || activeMessage.includes('Warning') || activeMessage.includes('pakda') || activeMessage.includes('dekho') ? 'bg-red-600/95' : 'bg-gray-900/90'}`}>
+          <div className={`backdrop-blur-md text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border border-white/20 ${activeMessage.includes('[WARN]') || activeMessage.includes('Warning') || activeMessage.includes('pakda') || activeMessage.includes('dekho') ? 'bg-red-600/95' : 'bg-gray-900/90'}`}>
             <AlertTriangle className="h-5 w-5 text-yellow-400 flex-shrink-0" />
             <p className="text-sm font-bold">{activeMessage}</p>
           </div>
@@ -1645,8 +1611,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 <div className="flex flex-col items-end">
                   <p className="text-[9px] text-gray-400 font-black uppercase tracking-tighter leading-none mb-1">AI PROCTORING</p>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest">{faceDetectionStatus.includes('⚠️') ? 'ALERT' : 'ACTIVE'}</span>
-                    <div className={`h-1.5 w-1.5 rounded-full ${faceDetectionStatus.includes('⚠️') ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
+                    <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest">{faceDetectionStatus.startsWith('!') ? 'ALERT' : 'ACTIVE'}</span>
+                    <div className={`h-1.5 w-1.5 rounded-full ${faceDetectionStatus.startsWith('!') ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
                   </div>
                 </div>
               </div>
@@ -1818,7 +1784,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       {showPalette && (
         <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm lg:hidden p-4">
           <div className="bg-white rounded-2xl p-6 mt-10 max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6"><h3 className="font-bold">{t.jump}</h3><button onClick={() => setShowPalette(false)}>✕</button></div>
+            <div className="flex justify-between items-center mb-6"><h3 className="font-bold">{t.jump}</h3><button onClick={() => setShowPalette(false)}>&times;</button></div>
             <div className="palette-grid">
               {questions.map((q, i) => (
                 <button key={q.id} onClick={() => { setCurrentQuestionIdx(i); setMaxQuestionSeen(m => Math.max(m, i)); setShowPalette(false); }} className={`h-12 w-12 rounded-xl text-sm font-bold flex items-center justify-center border-2 ${currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2' : ''} ${answers[q.id] ? 'bg-blue-600 border-blue-600 text-white' : markedForReview[q.id] ? 'bg-yellow-400 border-yellow-400 text-white' : 'bg-white border-gray-200'}`}>{i + 1}</button>
@@ -1853,7 +1819,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                   {new Date().toLocaleTimeString()}
                 </div>
                 {/* Warning overlay when face not detected */}
-                {faceDetectionStatus.includes('⚠️') && (
+                {faceDetectionStatus.startsWith('!') && (
                   <div className="absolute inset-0 flex items-center justify-center bg-red-900/70 backdrop-blur-[2px]">
                     <p className="text-[11px] font-black text-white text-center px-2 animate-pulse uppercase leading-snug">
                       {studentName.split(' ')[0]},<br />camera mein dekho!

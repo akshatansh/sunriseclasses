@@ -97,7 +97,7 @@ export default function Contact() {
             />
           </div>
           <span className="inline-flex items-center gap-2 text-[#f5a623] text-xs sm:text-sm font-semibold uppercase tracking-widest">
-            <Sparkles size={14} />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#f5a623] inline-block" />
             Get In Touch
           </span>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0f2a5c] mt-2">Contact Sunrise Classes - Best Coaching in Champanagar, Purnia</h2>

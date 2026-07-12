@@ -93,7 +93,7 @@ export default function LaunchCountdown({ children }: { children: React.ReactNod
             onClick={() => setShowWelcomeModal(false)}
             className="w-full bg-[linear-gradient(135deg,_#f5a623,_#ffb740)] text-[#0f2a5c] font-black text-lg py-3 rounded-xl shadow-[0_8px_20px_rgba(245,166,35,0.3)] hover:-translate-y-1 transition-all duration-200"
           >
-            Start Exploring 🚀
+            Start Exploring
           </button>
         </div>
       </div>

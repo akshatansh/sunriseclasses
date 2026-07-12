@@ -1,7 +1,7 @@
-import { Calculator, FlaskConical, Sparkles, ArrowRight } from 'lucide-react';
+import { Calculator, FlaskConical, BookOpen, ArrowRight } from 'lucide-react';
 
 const courses = [
-  { icon: Sparkles, title: 'Class 8 Coaching', sub: 'Strong Foundation', desc: 'Build a strong base for Class 8 students with detailed Science and Maths coaching. Early preparation and concept clarity for future board exams.', color: 'bg-purple-50 border-purple-200 text-purple-600' },
+  { icon: BookOpen, title: 'Class 8 Coaching', sub: 'Strong Foundation', desc: 'Build a strong base for Class 8 students with detailed Science and Maths coaching. Early preparation and concept clarity for future board exams.', color: 'bg-purple-50 border-purple-200 text-purple-600' },
   { icon: FlaskConical, title: 'Class 9 Coaching', sub: 'CBSE & State Board', desc: 'Comprehensive Class 9 coaching in Champanagar, Purnia with Science, Maths, Social Studies, and Languages. Regular mock tests and doubt clearing sessions for board exam success.', color: 'bg-green-50 border-green-200 text-green-600' },
   { icon: Calculator, title: 'Class 10 Coaching', sub: 'Board Exam Focused', desc: 'Intensive Class 10 board exam preparation in Champanagar, Purnia. Practice tests, model papers, and expert guidance covering CBSE & Bihar state syllabus.', color: 'bg-amber-50 border-amber-200 text-amber-600' },
 ];
@@ -26,7 +26,7 @@ export default function Courses() {
             />
           </div>
           <span className="inline-flex items-center gap-2 text-[#f5a623] text-xs sm:text-sm font-semibold uppercase tracking-widest">
-            <Sparkles size={14} />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#f5a623] inline-block" />
             What We Offer
           </span>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0f2a5c] mt-2">Board Exam Coaching Classes in Champanagar, Purnia, Bihar</h2>

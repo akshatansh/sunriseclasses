@@ -174,7 +174,7 @@ Kripya due amount (Rs. ${student.dueAmount}) samay par jama karein. \n- Sunrise 
         ['Total Payable', `Rs. ${student.totalFee}`],
         ['Amount Paid', `Rs. ${student.paymentAmount}`],
         ['Balance Due', `Rs. ${student.dueAmount}`],
-        ['Status', student.dueAmount && student.dueAmount > 0 ? 'PARTIAL PAYMENT' : 'PAID ✔'],
+        ['Status', student.dueAmount && student.dueAmount > 0 ? 'PARTIAL PAYMENT' : 'PAID'],
       ],
       theme: 'grid',
       headStyles: { fillColor: [15, 42, 92], textColor: [245, 166, 35], fontStyle: 'bold', fontSize: 9 },

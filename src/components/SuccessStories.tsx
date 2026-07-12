@@ -9,7 +9,7 @@ const successStories = [
     score: '456/500',
     year: '2026',
     photo: '/gallery/Untitled design (21).jpg',
-    story: 'Sir, aapki coaching mein padhkar humein bahut achha laga. Aapka padhane ka tareeka bahut hi alag aur achha hai. Aap har topic ko itni aasani se samjhate hain ki padhai interesting lagti hai.\n\nAapne humein sirf padhai hi nahi, discipline aur sabka respect karna bhi sikhaya hai. Aap har student ko motivate karte hain aur hamesha support karte hain.\n\nSir, aap jaise teacher milna hamare liye bahut khushi ki baat hai. Dil se thank you Sir.✨',
+    story: 'Sir, aapki coaching mein padhkar humein bahut achha laga. Aapka padhane ka tareeka bahut hi alag aur achha hai. Aap har topic ko itni aasani se samjhate hain ki padhai interesting lagti hai.\n\nAapne humein sirf padhai hi nahi, discipline aur sabka respect karna bhi sikhaya hai. Aap har student ko motivate karte hain aur hamesha support karte hain.\n\nSir, aap jaise teacher milna hamare liye bahut khushi ki baat hai. Dil se thank you Sir.',
   },
   {
     name: 'Nitish Kumar',
@@ -50,7 +50,7 @@ const successStories = [
     score: '429/500',
     year: '2025',
     photo: '/gallery/Untitled design (29).jpg',
-    story: 'Pranaam sir 🙏Mera naam Shabnam Kumari hai. Maine 10th Board mein 429 ank prapt kiye. Ye sab aapki wajah se hi ho paya, kyunki aapne hume 0 se nahi balki minus (-) se padhaya jiski wajah se main itna achha marks la paayi. Coaching ka environment bahut hi achha aur disciplined hai jahan padhai ke liye positive mahaul milta hai. Aap har student par personal dhyaan dete hain aur mushkil topics ko bhi bahut easily samjha dete hain. Jo student aapki classes regular attend kare aur aapki baaton ko follow kare wo board mein zarur achha karega. Thank you so much sir 😊🙏❤️ hamare liye itne efforts lagane ke liye.',
+    story: 'Pranaam sir. Mera naam Shabnam Kumari hai. Maine 10th Board mein 429 ank prapt kiye. Ye sab aapki wajah se hi ho paya, kyunki aapne hume 0 se nahi balki minus (-) se padhaya jiski wajah se main itna achha marks la paayi. Coaching ka environment bahut hi achha aur disciplined hai jahan padhai ke liye positive mahaul milta hai. Aap har student par personal dhyaan dete hain aur mushkil topics ko bhi bahut easily samjha dete hain. Jo student aapki classes regular attend kare aur aapki baaton ko follow kare wo board mein zarur achha karega. Thank you so much sir, hamare liye itne efforts lagane ke liye.',
   },
   {
     name: 'Diya Kumari',
@@ -58,7 +58,7 @@ const successStories = [
     score: '418/500',
     year: '2025',
     photo: '/gallery/Untitled design (30).jpg',
-    story: 'Sunrise Coaching Centre keval ek coaching sansthan nahi, balki ek aisa prerna sthal hai jahan har student ke sapno ko samajhkar unhe saakar karne ki disha mein lagataar kaam kiya jata hai.\n\nYahan shiksha ke saath-saath discipline, self-confidence aur mehnat ka mahatva bhi sikhaya jata hai, taaki har student na sirf padhai mein achha kare, balki life ke har field mein success paa sake.\n\nIs sansthan ka uddeshya sirf achhe marks dilana nahi, balki ek strong, aware aur successful personality banana hai, jisse har student apne bright future ki taraf confidence ke saath badh sake.\n\nThank you Sir 🙏',
+    story: 'Sunrise Coaching Centre keval ek coaching sansthan nahi, balki ek aisa prerna sthal hai jahan har student ke sapno ko samajhkar unhe saakar karne ki disha mein lagataar kaam kiya jata hai.\n\nYahan shiksha ke saath-saath discipline, self-confidence aur mehnat ka mahatva bhi sikhaya jata hai, taaki har student na sirf padhai mein achha kare, balki life ke har field mein success paa sake.\n\nIs sansthan ka uddeshya sirf achhe marks dilana nahi, balki ek strong, aware aur successful personality banana hai, jisse har student apne bright future ki taraf confidence ke saath badh sake.\n\nThank you Sir',
   },
   {
     name: 'Laxmi Kumari',
@@ -110,7 +110,7 @@ const successStories = [
     score: '431/500',
     year: '2023',
     photo: '/gallery/Untitled design (17).jpg',
-    story: 'Main Mithi Kumari..... Hamari coaching Sunrise Classes & Academy sirf padhne ka nahi, balki students ke future ko mazboot banane ka sthaan hai..... Humne apni coaching se bahut saari cheezein seekhi hain, jo hamare future ke liye bahut zaroori hai..... Top result yun hi nahi aate, iske peeche hamari coaching ka sahi guidance aur lagataar mehnat chhupi hoti hai. Dil se dhanyavaad Sir aapko humein itna kuch sikhane ke liye....✨❤️',
+    story: 'Main Mithi Kumari..... Hamari coaching Sunrise Classes & Academy sirf padhne ka nahi, balki students ke future ko mazboot banane ka sthaan hai. Humne apni coaching se bahut saari cheezein seekhi hain, jo hamare future ke liye bahut zaroori hai. Top result yun hi nahi aate, iske peeche hamari coaching ka sahi guidance aur lagataar mehnat chhupi hoti hai. Dil se dhanyavaad Sir aapko humein itna kuch sikhane ke liye.',
   },
   {
     name: 'Ayush Kumar',
@@ -126,7 +126,7 @@ const successStories = [
     score: '400/500',
     year: '2023',
     photo: '/gallery/Untitled design (19).jpg',
-    story: 'Ye Sir aur unke institute ke liye mere dil se bahut respect hai. Sir sirf padhate hi nahi, balki har topic ko itni achhi tarah samjhate hain ki concepts easily clear ho jaate hain. Jab bhi koi problem aati hai, chahe padhai se related ho ya kisi aur cheez se, sir hamesha patiently uska solution dete hain. Unka support aur guidance students ke liye bahut valuable hai. Institute ka environment bhi bahut positive aur motivating hai, jahan padhai karne ka mann khud hi karta hai. Sach me, aise teacher aur aisa institute milna bahut lucky baat hai... thank you so much sir for everything🙏',
+    story: 'Ye Sir aur unke institute ke liye mere dil se bahut respect hai. Sir sirf padhate hi nahi, balki har topic ko itni achhi tarah samjhate hain ki concepts easily clear ho jaate hain. Jab bhi koi problem aati hai, chahe padhai se related ho ya kisi aur cheez se, sir hamesha patiently uska solution dete hain. Unka support aur guidance students ke liye bahut valuable hai. Institute ka environment bhi bahut positive aur motivating hai, jahan padhai karne ka mann khud hi karta hai. Sach me, aise teacher aur aisa institute milna bahut lucky baat hai... thank you so much sir for everything.',
   },
   {
     name: 'Muskan Kumari',
@@ -254,7 +254,7 @@ export default function SuccessStories() {
           <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="text-center lg:text-left">
               <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#f5a623]/30 bg-[#fff6df] px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-[#0f2a5c]">
-                <Sparkles size={14} className="text-[#f5a623]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#f5a623] inline-block" />
                 Student Achievements
               </div>
               <div className="flex justify-center lg:justify-start mb-4">
@@ -367,7 +367,7 @@ export default function SuccessStories() {
                   <p className="text-xs sm:text-sm text-blue-700 font-semibold mb-1">Students Scored</p>
                   <p className="text-2xl sm:text-3xl font-black text-blue-700">90%+</p>
                 </div>
-                <Star size={32} className="text-blue-600 opacity-30 sm:h-10 sm:w-10 shrink-0" />
+                <div className="h-8 w-8 rounded-xl bg-blue-100 shrink-0 sm:h-10 sm:w-10" />
               </div>
               <div>
                 <p className="text-xs text-blue-600 mt-3">{studentsWith90Plus} top performers</p>
@@ -397,7 +397,7 @@ export default function SuccessStories() {
                   <p className="text-xs sm:text-sm text-green-700 font-semibold mb-1">Result Coverage</p>
                   <p className="text-2xl sm:text-3xl font-black text-green-700">{sortedYears.length} Yrs</p>
                 </div>
-                <Star size={32} className="text-green-600 opacity-30 fill-current sm:h-10 sm:w-10 shrink-0" />
+                <div className="h-8 w-8 rounded-xl bg-green-100 shrink-0 sm:h-10 sm:w-10" />
               </div>
               <div>
                 <p className="text-xs text-green-600 mt-3">Consistent year-wise results</p>
@@ -447,16 +447,16 @@ export default function SuccessStories() {
                   <div className="flex items-center gap-4">
                     <div>
                       <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 shadow-sm">
-                        <Sparkles size={12} className="text-[#f5a623]" />
+                        <span className="w-1 h-1 rounded-full bg-[#f5a623] inline-block" />
                         Results Archive
                       </div>
                       <h3 className="text-3xl sm:text-4xl font-bold text-[#0f2a5c] mb-2">Year {year}</h3>
                       <div className="h-1 w-16 bg-[#f5a623] rounded-full" />
                     </div>
                     <div className="flex gap-2 flex-wrap">
-                      {[...Array(yearStarCount)].map((_, i) => (
-                        <Star key={i} size={24} className="fill-[#f5a623] text-[#f5a623]" />
-                      ))}
+                      {yearStarCount > 0 ? (
+                        <span className="rounded-full bg-[#fff3d3] border border-[#f5a623]/30 px-3 py-1 text-xs font-bold text-[#9a5b00]">{yearStarCount} Top Scorer{yearStarCount > 1 ? "s" : ""}</span>
+                      ) : null}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3 lg:flex">

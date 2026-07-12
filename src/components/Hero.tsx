@@ -1,4 +1,4 @@
-import { BookOpen, Users, Award, TrendingUp, Sparkles, ArrowRight, PlayCircle } from 'lucide-react';
+import { BookOpen, Users, Award, TrendingUp, ArrowRight, PlayCircle } from 'lucide-react';
 
 const stats = [
   { icon: Users, value: '500+', label: 'Students' },
@@ -24,7 +24,6 @@ export default function Hero() {
         <div className="grid items-center gap-10 lg:grid-cols-[1.15fr_0.85fr]">
           <div className="text-center lg:text-left">
             <div className="inline-flex items-center gap-2 bg-[#f5a623]/15 border border-[#f5a623]/25 rounded-full px-4 py-2 mb-6 backdrop-blur">
-              <Sparkles size={14} className="text-[#f5a623]" />
               <span className="text-[#f5a623] text-xs font-semibold tracking-wide uppercase">
                 Champanagar, Purnia, Bihar
               </span>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Menu, X, Sparkles, ArrowRight, Download } from 'lucide-react';
+import { Menu, X, ArrowRight, Download } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import NotificationBar from './NotificationBar';
 
@@ -82,7 +82,6 @@ export default function Navbar() {
                 Sunrise Classes
               </p>
               <div className="flex items-center gap-1 text-[#f5a623] text-[8px] sm:text-xs leading-tight truncate">
-                <Sparkles size={10} />
                 <span>& Academy, Champanagar</span>
               </div>
             </div>

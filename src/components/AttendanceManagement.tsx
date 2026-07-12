@@ -113,7 +113,7 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
     if (result.success) {
       setMessageType('success');
       setMessage(
-        `✅ Saved for ${selectedDate} — ` +
+        `Saved for ${selectedDate} — ` +
         `Present: ${presentCount} | Absent: ${absentCount}` +
         (holidayCount > 0 ? ` | Holiday: ${holidayCount}` : '') +
         ` (Total: ${recordsToSave.length} students)`
@@ -121,7 +121,7 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
       setTimeout(() => setMessage(''), 6000);
     } else {
       setMessageType('error');
-      setMessage(`❌ Save FAILED! Error: ${result.error || 'Unknown error'}. Please retry.`);
+      setMessage(`Save FAILED! Error: ${result.error || 'Unknown error'}. Please retry.`);
     }
   };
 
@@ -341,7 +341,7 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
             title="Download Monthly Class Report (All Students) for WhatsApp sharing"
           >
             <FileText size={16} />
-            {isReporting ? 'Generating...' : '📋 Monthly Report'}
+            {isReporting ? 'Generating...' : 'Monthly Report'}
           </button>
         </div>
       </div>
@@ -381,7 +381,7 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
           <div className="mb-6 rounded-xl bg-amber-50 border border-amber-300 p-4 flex items-center gap-3">
             <Coffee className="text-amber-500 shrink-0" size={22} />
             <div>
-              <p className="font-bold text-amber-700 text-sm">🌞 Sunday — Auto Holiday</p>
+              <p className="font-bold text-amber-700 text-sm">Sunday — Auto Holiday</p>
               <p className="text-xs text-amber-600 mt-0.5">Sab students automatically Holiday mark ho gaye hain. Save karo ya manually change karo.</p>
             </div>
           </div>
@@ -395,7 +395,7 @@ export default function AttendanceManagement({ students }: AttendanceManagementP
             : 'bg-green-50 border-green-200 text-green-700'
         }`}>
           <span>{message}</span>
-          <button onClick={() => setMessage('')} className="ml-4 text-xs opacity-60 hover:opacity-100">✕</button>
+          <button onClick={() => setMessage('')} className="ml-4 text-xs opacity-60 hover:opacity-100">×</button>
         </div>
       )}
 

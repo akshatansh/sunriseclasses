@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { Medal, Search, Sparkles, Trophy, BookOpen, TrendingUp, Download } from 'lucide-react';
+import { Medal, Search, Sparkles, Trophy, BookOpen, TrendingUp, Download, CalendarDays } from 'lucide-react';
 import Seo from '../components/Seo';
 import StudentProgressChart from '../components/StudentProgressChart';
 import { generateStudentRankCardPDF } from '../lib/pdfUtils';
@@ -261,7 +261,7 @@ export default function ResultsPage() {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#f5a623]/20 bg-[#fff6df] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#0f2a5c]">
-                  <Sparkles size={14} className="text-[#f5a623]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#f5a623] inline-block" />
                   Daily Test Dashboard
                 </div>
                 <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#0f2a5c]">
@@ -337,7 +337,7 @@ export default function ResultsPage() {
                 </div>
                 <div className="flex flex-wrap gap-3">
                   {monthlyTop3.groups.map((g) => {
-                    const medal = g.rank === 1 ? '🥇' : g.rank === 2 ? '🥈' : '🥉';
+                    const medal = g.rank === 1 ? '1st' : g.rank === 2 ? '2nd' : '3rd';
                     return (
                       <div key={g.rank} className="flex items-center gap-2 rounded-full border border-[#f5a623]/30 bg-white px-4 py-1.5">
                         <span className="text-base">{medal}</span>
@@ -364,7 +364,7 @@ export default function ResultsPage() {
               </div>
               {latestTestInfo && (
                 <span className="inline-flex items-center gap-2 rounded-full border border-[#f5a623]/30 bg-[#fff8e8] px-4 py-1.5 text-xs font-bold text-[#9a5b00]">
-                  📝 {latestTestInfo.testName} &nbsp;·&nbsp; {new Date(latestTestInfo.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  {latestTestInfo.testName} &nbsp;·&nbsp; {new Date(latestTestInfo.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                 </span>
               )}
             </div>
@@ -394,7 +394,7 @@ export default function ResultsPage() {
                           </div>
                           {isTied && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 border border-purple-200 px-2 py-0.5 text-[10px] font-bold text-purple-700 uppercase tracking-wider">
-                              🤝 Joint
+                              Joint
                             </span>
                           )}
                         </div>
@@ -692,7 +692,7 @@ export default function ResultsPage() {
                                   className="text-orange-500 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 p-1 rounded transition-colors ml-1"
                                   title="Download Performance Certificate (JPG)"
                                 >
-                                  <Sparkles size={12} />
+                                  <Download size={12} />
                                 </button>
                                 {attendanceStats[summary.student.id] && attendanceStats[summary.student.id].history.length > 0 && (
                                   <div className="flex gap-[2px] ml-1" title={`Monthly Attendance: ${attendanceStats[summary.student.id].percentage}%`}>
@@ -813,7 +813,7 @@ export default function ResultsPage() {
                               <div className="shrink-0 text-right">
                                 {isComplete ? (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-bold text-green-600 border border-green-200">
-                                    <Sparkles size={10} /> Completed
+                                    Completed
                                   </span>
                                 ) : (
                                   <span className="inline-flex items-center rounded-full bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-500 border border-slate-200">
@@ -833,7 +833,7 @@ export default function ResultsPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0f2a5c]/10 shrink-0">
-                          <span className="text-xl">📅</span>
+                          <CalendarDays size={20} className="text-[#0f2a5c]" />
                         </div>
                         <div>
                           <h2 className="text-xl font-bold text-[#0f2a5c]">Attendance Report</h2>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getNotificationText } from '../lib/siteSettings';
-import { Sparkles, BellRing } from 'lucide-react';
+import { BellRing } from 'lucide-react';
 
 const NotificationBar = () => {
   const [text, setText] = useState('');
@@ -38,7 +38,7 @@ const NotificationBar = () => {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
               {text}
             </span>
-            <Sparkles size={16} className="text-[#f5a623] shrink-0" />
+            <span className="text-[#f5a623]/50 shrink-0">&bull;</span>
           </div>
 
           {/* Item 2 (Repeated for Marquee) */}
@@ -50,7 +50,7 @@ const NotificationBar = () => {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
               {text}
             </span>
-            <Sparkles size={16} className="text-[#f5a623] shrink-0" />
+            <span className="text-[#f5a623]/50 shrink-0">&bull;</span>
           </div>
 
         </div>

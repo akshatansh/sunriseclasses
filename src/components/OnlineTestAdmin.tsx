@@ -160,7 +160,7 @@ export default function OnlineTestAdmin() {
         });
       }
       fetchTests();
-      alert('✅ Test successfully duplicated with all questions!');
+      alert('Test successfully duplicated with all questions!');
     } catch (err) {
       console.error(err);
       alert('Error duplicating test');
@@ -395,7 +395,7 @@ export default function OnlineTestAdmin() {
       // Refresh attempts list
       const data = await getTestAttemptsAdmin(currentTest.id);
       setAttempts(data || []);
-      alert(`✅ ${studentName} ka attempt successfully reset ho gaya. Ab wo dobara test de sakte hain.`);
+      alert(`${studentName} ka attempt successfully reset ho gaya. Ab wo dobara test de sakte hain.`);
     } catch (err) {
       console.error(err);
       alert('Error resetting attempt. Please try again.');
@@ -449,7 +449,7 @@ export default function OnlineTestAdmin() {
         setAttempts(data || []);
       }
       setEditScoreAttemptId(null);
-      alert(`✅ Score updated: ${newScore}/${newTotal}`);
+      alert(`Score updated: ${newScore}/${newTotal}`);
     } catch (err: any) {
       alert(`Error: ${err.message}`);
     } finally {
@@ -474,7 +474,7 @@ export default function OnlineTestAdmin() {
       const answeredCount = Object.keys(storedAnswers).length;
 
       if (answeredCount === 0) {
-        alert('⚠️ Is student ke koi answers database mein save nahi hain.');
+        alert('Is student ke koi answers database mein save nahi hain.');
         setSavingScore(false);
         return;
       }
@@ -508,7 +508,7 @@ export default function OnlineTestAdmin() {
         const data = await getTestAttemptsAdmin(currentTest.id);
         setAttempts(data || []);
       }
-      alert(`✅ Score recalculated!\n${att.students?.name}: ${newScore}/${newTotal}\n(${answeredCount} answers found in DB)`);
+      alert(`Score recalculated!\n${att.students?.name}: ${newScore}/${newTotal}\n(${answeredCount} answers found in DB)`);
     } catch (err: any) {
       alert(`Error: ${err.message}`);
     } finally {
@@ -1170,7 +1170,7 @@ Explanation: Arunachal Pradesh is the easternmost state.
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-800 border border-green-200 uppercase tracking-tighter">
-                            ✓ Khud kiya
+                            Khud kiya
                           </span>
                         )}
                       </td>
@@ -1405,7 +1405,7 @@ Explanation: Arunachal Pradesh is the easternmost state.
                           />
                           {/* Zoom hint overlay */}
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
-                            <span className="text-white text-xs font-bold bg-black/50 px-3 py-1.5 rounded-full">🔍 Click to Enlarge</span>
+                            <span className="text-white text-xs font-bold bg-black/50 px-3 py-1.5 rounded-full">Click to Enlarge</span>
                           </div>
                           <div className="absolute inset-0 ring-1 ring-inset ring-black/10"></div>
                         </div>

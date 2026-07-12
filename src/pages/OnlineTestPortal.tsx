@@ -95,6 +95,7 @@ export default function OnlineTestPortal() {
       // Block starting a stopped test
       if (test.is_stopped && !test.is_active) {
         setAttemptedError('Yeh test band kar diya gaya hai. Dobara attempt nahi kar sakte.');
+        setAttemptedError('Yeh test band kar diya gaya hai. Dobara attempt nahi kar sakte.');
         return;
       }
 
@@ -222,7 +223,7 @@ export default function OnlineTestPortal() {
                 onClick={() => setReviewTest(null)}
                 className="p-2 hover:bg-white/10 rounded-full transition-colors"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -301,7 +302,7 @@ export default function OnlineTestPortal() {
                         <AlertTriangle size={20} className="text-yellow-600 shrink-0 mt-0.5" />
                         <div>
                           <p className="text-sm font-bold text-yellow-800">Aapke answers ka data available nahi hai</p>
-                          <p className="text-xs text-yellow-700 mt-1">Yeh test purane version mein diya gaya tha jab answers save nahi hote the. Sirf sahi jawab (✅ Sahi Jawab) dikhaye jayenge. Naye tests mein aapka chuna hua option bhi dikhega.</p>
+                          <p className="text-xs text-yellow-700 mt-1">Yeh test purane version mein diya gaya tha jab answers save nahi hote the. Sirf sahi jawab (Sahi Jawab) dikhaye jayenge. Naye tests mein aapka chuna hua option bhi dikhega.</p>
                         </div>
                       </div>
                     )}
@@ -377,7 +378,7 @@ export default function OnlineTestPortal() {
                                           )}
                                           {isCorrectOpt && (
                                             <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full font-black bg-green-600 text-white">
-                                              ✅ Sahi Jawab
+                                              Sahi Jawab
                                             </span>
                                           )}
                                         </div>
@@ -544,8 +545,8 @@ export default function OnlineTestPortal() {
                       const isPermission = err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError';
                       setCameraCheckError(
                         isPermission
-                          ? '❌ Camera permission deny hai! Browser settings mein camera allow karo, phir dobara try karo.'
-                          : '❌ Camera detect nahi hua! Device mein camera connected hai? Phir dobara try karo.'
+                          ? 'Camera permission deny hai! Browser settings mein camera allow karo, phir dobara try karo.'
+                          : 'Camera detect nahi hua! Device mein camera connected hai? Phir dobara try karo.'
                       );
                       return;
                     }
@@ -792,7 +793,7 @@ export default function OnlineTestPortal() {
                       </div>
                     ) : isStopped ? (
                       <div className="bg-red-50 rounded-md border border-red-100 p-3 text-center">
-                        <p className="text-xs text-red-500 font-bold mb-1">⛔ TEST STOPPED</p>
+                        <p className="text-xs text-red-500 font-bold mb-1">TEST STOPPED</p>
                         <p className="text-sm text-gray-600">Yeh test band kar diya gaya hai. Apne teacher se mile.</p>
                       </div>
                     ) : (

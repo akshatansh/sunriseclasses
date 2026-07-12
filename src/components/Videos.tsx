@@ -262,7 +262,7 @@ export default function Videos() {
             />
           </div>
           <span className="inline-flex items-center gap-2 text-[#f5a623] text-sm font-semibold uppercase tracking-widest">
-            <Sparkles size={14} />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#f5a623] inline-block" />
             Daily Learning
           </span>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0f2a5c] mt-2">Board Exams ke liye Free YouTube Classes</h2>
