@@ -9,16 +9,29 @@ import {
   resetStudentAttempt,
   uploadQuestionImage,
   deleteProctoringLogAdmin, autoDeleteOldProctoringLogs,
-  OnlineTest, OnlineTestQuestion
+  OnlineTest, OnlineTestQuestion,
+  banStudent, unbanStudent, getBannedStudentsAdmin
 } from '../lib/onlineTests';
 
 export default function OnlineTestAdmin() {
   const [tests, setTests] = useState<OnlineTest[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Views: 'list', 'edit-test', 'manage-questions', 'view-attempts', 'view-proctoring', 'live-monitor'
-  const [view, setView] = useState<'list' | 'edit-test' | 'manage-questions' | 'view-attempts' | 'view-proctoring' | 'live-monitor'>('list');
+  // Views: 'list', 'edit-test', 'manage-questions', 'view-attempts', 'view-proctoring', 'live-monitor', 'ban-management'
+  const [view, setView] = useState<'list' | 'edit-test' | 'manage-questions' | 'view-attempts' | 'view-proctoring' | 'live-monitor' | 'ban-management'>('list');
   const [currentTest, setCurrentTest] = useState<Partial<OnlineTest>>({});
+
+  // Ban management states
+  const [bannedStudents, setBannedStudents] = useState<any[]>([]);
+  const [bannedLoading, setBannedLoading] = useState(false);
+  const [selectedStudentForBan, setSelectedStudentForBan] = useState<any>(null);
+  const [banModalOpen, setBanModalOpen] = useState(false);
+  const [banType, setBanType] = useState<'permanent' | 'temporary'>('permanent');
+  const [banReason, setBanReason] = useState('');
+  const [banUntil, setBanUntil] = useState('');
+  const [savingBan, setSavingBan] = useState(false);
+  const [banSearchQuery, setBanSearchQuery] = useState('');
+  const [banFilterClass, setBanFilterClass] = useState('All');
 
   const [questions, setQuestions] = useState<OnlineTestQuestion[]>([]);
   const [attempts, setAttempts] = useState<any[]>([]);
@@ -97,6 +110,26 @@ export default function OnlineTestAdmin() {
     };
   }, [view]);
 
+  // Load student list when ban management view is open
+  useEffect(() => {
+    if (view === 'ban-management') {
+      fetchBannedStudents();
+    }
+  }, [view]);
+
+  const fetchBannedStudents = async () => {
+    setBannedLoading(true);
+    try {
+      const data = await getBannedStudentsAdmin();
+      setBannedStudents(data);
+    } catch (err) {
+      console.error(err);
+      alert('Error fetching students list');
+    } finally {
+      setBannedLoading(false);
+    }
+  };
+
   const fetchTests = async () => {
     setLoading(true);
     try {
@@ -125,6 +158,46 @@ export default function OnlineTestAdmin() {
       alert('Error saving test');
     }
   };
+
+  const handleSaveBan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudentForBan) return;
+    if (banType === 'temporary' && !banUntil) {
+      alert('Kripya expiry date and time select karein temporary ban ke liye.');
+      return;
+    }
+    setSavingBan(true);
+    try {
+      await banStudent(
+        selectedStudentForBan.id,
+        banType,
+        banReason || 'Banned by Administrator',
+        banType === 'temporary' ? new Date(banUntil).toISOString() : undefined
+      );
+      setBanModalOpen(false);
+      setSelectedStudentForBan(null);
+      setBanReason('');
+      setBanUntil('');
+      fetchBannedStudents();
+    } catch (err) {
+      console.error(err);
+      alert('Error banning student');
+    } finally {
+      setSavingBan(false);
+    }
+  };
+
+  const handleUnbanStudent = async (studentId: string) => {
+    if (!window.confirm('Kya aap is student ko unban karna chahte hain?')) return;
+    try {
+      await unbanStudent(studentId);
+      fetchBannedStudents();
+    } catch (err) {
+      console.error(err);
+      alert('Error unbanning student');
+    }
+  };
+
 
   const handleToggleActive = async (test: OnlineTest) => {
     try {
@@ -641,6 +714,12 @@ export default function OnlineTestAdmin() {
 
         {view === 'list' ? (
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setView('ban-management')}
+              className="flex items-center gap-2 bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 text-sm font-medium transition-colors"
+            >
+              <AlertTriangle className="h-4 w-4" /> Ban Management
+            </button>
             <button
               onClick={() => setView('live-monitor')}
               className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm font-medium transition-colors animate-pulse"
@@ -1446,8 +1525,298 @@ Explanation: Arunachal Pradesh is the easternmost state.
             )}
           </div>
         )}
+
+        {view === 'ban-management' && (
+          <div className="space-y-6">
+            {/* Header / Info */}
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-gray-800">Student Ban Management</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Students ko temporarily ya permanently online test dene se block karein.</p>
+              </div>
+              <button
+                onClick={fetchBannedStudents}
+                className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-bold bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${bannedLoading ? 'animate-spin' : ''}`} /> Refresh List
+              </button>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-gray-50 p-4 rounded-xl border border-gray-150">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Student name search..."
+                  value={banSearchQuery}
+                  onChange={(e) => setBanSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="flex items-center gap-1.5">
+                  <Filter className="h-4 w-4 text-gray-400" />
+                  <select
+                    value={banFilterClass}
+                    onChange={(e) => setBanFilterClass(e.target.value)}
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="All">All Classes</option>
+                    {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Student List Table */}
+            {bannedLoading ? (
+              <div className="p-12 text-center text-gray-500 font-medium">Loading student list...</div>
+            ) : (
+              <div className="overflow-x-auto border border-gray-200 rounded-xl bg-white">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Student</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Class</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ban Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Reason / Details</th>
+                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {bannedStudents
+                      .filter(s => {
+                        const matchesClass = banFilterClass === 'All' || s.class_name === banFilterClass;
+                        const matchesSearch = s.name.toLowerCase().includes(banSearchQuery.toLowerCase());
+                        return matchesClass && matchesSearch;
+                      })
+                      .map(s => {
+                        const banType = s.test_ban_type;
+                        const isBanned = banType !== null;
+                        const banUntil = s.test_ban_until;
+                        
+                        let isExpired = false;
+                        if (banType === 'temporary' && banUntil) {
+                          isExpired = new Date(banUntil) <= new Date();
+                        }
+
+                        return (
+                          <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                            {/* Profile Image & Name */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center gap-3">
+                                {s.image ? (
+                                  <img
+                                    src={s.image}
+                                    alt={s.name}
+                                    className="h-10 w-10 rounded-xl object-cover object-top border border-gray-200"
+                                    onError={(e) => { e.currentTarget.src = '/sunrise-logo.png'; }}
+                                  />
+                                ) : (
+                                  <div className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center font-bold text-gray-500">
+                                    {s.name[0]}
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="text-sm font-bold text-gray-900">{s.name}</div>
+                                  <div className="text-[10px] text-gray-400 font-medium">ID: {s.id.slice(-6)}</div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Class */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 uppercase tracking-wide">
+                                {s.class_name}
+                              </span>
+                            </td>
+
+                            {/* Ban Status */}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {!isBanned || isExpired ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-150">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Active (No Ban)
+                                </span>
+                              ) : banType === 'permanent' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-150">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Permanent Ban
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-150">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Temp Ban
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Reason / Details */}
+                            <td className="px-6 py-4">
+                              <div className="text-xs text-gray-700 max-w-xs truncate" title={s.test_ban_reason || ''}>
+                                {s.test_ban_reason || <span className="text-gray-300">-</span>}
+                              </div>
+                              {banType === 'temporary' && banUntil && !isExpired && (
+                                <div className="text-[10px] text-amber-600 font-semibold mt-1">
+                                  Ban runs until: {new Date(banUntil).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                              {isBanned && !isExpired ? (
+                                <button
+                                  onClick={() => handleUnbanStudent(s.id)}
+                                  className="text-xs text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg border border-green-200 font-bold transition-all"
+                                >
+                                  Unban Student
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setSelectedStudentForBan(s);
+                                    setBanModalOpen(true);
+                                  }}
+                                  className="text-xs text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg border border-red-200 font-bold transition-all"
+                                >
+                                  Ban Student
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Ban Modal */}
+            {banModalOpen && selectedStudentForBan && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 backdrop-blur-sm p-4">
+                <div className="relative max-w-md w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-150">
+                  {/* Header */}
+                  <div className="bg-red-50 border-b border-red-100 px-6 py-4 flex items-center justify-between">
+                    <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-red-600 animate-pulse" /> Ban Student Account
+                    </h4>
+                    <button
+                      onClick={() => {
+                        setBanModalOpen(false);
+                        setSelectedStudentForBan(null);
+                      }}
+                      className="text-gray-400 hover:text-gray-700 bg-gray-100 p-1.5 rounded-full transition-all"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveBan} className="p-6 space-y-4">
+                    {/* Student Identity */}
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-2xl">
+                      {selectedStudentForBan.image ? (
+                        <img
+                          src={selectedStudentForBan.image}
+                          alt={selectedStudentForBan.name}
+                          className="h-11 w-11 rounded-xl object-cover object-top"
+                          onError={(e) => { e.currentTarget.src = '/sunrise-logo.png'; }}
+                        />
+                      ) : (
+                        <div className="h-11 w-11 rounded-xl bg-gray-200 flex items-center justify-center font-bold text-gray-500">
+                          {selectedStudentForBan.name[0]}
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-sm font-bold text-gray-900">{selectedStudentForBan.name}</div>
+                        <div className="text-xs text-gray-500">{selectedStudentForBan.class_name}</div>
+                      </div>
+                    </div>
+
+                    {/* Ban Type */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Ban Duration (Type)</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setBanType('permanent')}
+                          className={`py-3 rounded-2xl border font-bold text-sm transition-all ${
+                            banType === 'permanent'
+                              ? 'bg-red-50 text-red-700 border-red-300 shadow-sm'
+                              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                          }`}
+                        >
+                          ⛔ Permanent
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBanType('temporary')}
+                          className={`py-3 rounded-2xl border font-bold text-sm transition-all ${
+                            banType === 'temporary'
+                              ? 'bg-amber-50 text-amber-700 border-amber-300 shadow-sm'
+                              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                          }`}
+                        >
+                          ⏰ Temporary
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Temporary Expiry Date/Time */}
+                    {banType === 'temporary' && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Ban Expire Date & Time</label>
+                        <input
+                          type="datetime-local"
+                          value={banUntil}
+                          onChange={(e) => setBanUntil(e.target.value)}
+                          required
+                          className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                    )}
+
+                    {/* Reason */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Reason for Ban</label>
+                      <textarea
+                        value={banReason}
+                        onChange={(e) => setBanReason(e.target.value)}
+                        placeholder="E.g., Cheating in Class 10 Maths Test, using multiple tabs"
+                        rows={3}
+                        required
+                        className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                      />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBanModalOpen(false);
+                          setSelectedStudentForBan(null);
+                        }}
+                        className="flex-1 bg-gray-100 hover:bg-gray-250 text-gray-700 font-bold py-3.5 rounded-2xl transition-all text-sm"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={savingBan}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-2xl transition-all disabled:opacity-50 text-sm shadow-md"
+                      >
+                        {savingBan ? 'Banning...' : 'Confirm Ban'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
+
 
     {/* ── Lightbox Modal ── */}
     {lightboxLog && (

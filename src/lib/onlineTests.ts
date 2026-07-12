@@ -46,7 +46,7 @@ export interface StudentTestAttempt {
 export async function loginStudentForTest(name: string, className: string, pin: string) {
   const { data, error } = await supabase
     .from('students')
-    .select('id, name, class_name, image')
+    .select('id, name, class_name, image, test_ban_type, test_ban_reason, test_ban_until')
     .ilike('name', `%${name}%`)
     .eq('class_name', className)
     .eq('pin', pin)
@@ -57,6 +57,50 @@ export async function loginStudentForTest(name: string, className: string, pin: 
   }
 
   return data;
+}
+
+// Ban a student from online tests
+export async function banStudent(
+  studentId: string,
+  banType: 'permanent' | 'temporary',
+  reason: string,
+  banUntil?: string // ISO date string, required for temporary
+) {
+  const { error } = await supabase
+    .from('students')
+    .update({
+      test_ban_type: banType,
+      test_ban_reason: reason,
+      test_ban_until: banType === 'temporary' ? banUntil : null,
+    })
+    .eq('id', studentId);
+
+  if (error) throw error;
+}
+
+// Remove ban from a student
+export async function unbanStudent(studentId: string) {
+  const { error } = await supabase
+    .from('students')
+    .update({
+      test_ban_type: null,
+      test_ban_reason: null,
+      test_ban_until: null,
+    })
+    .eq('id', studentId);
+
+  if (error) throw error;
+}
+
+// Admin: fetch all students with their ban status
+export async function getBannedStudentsAdmin() {
+  const { data, error } = await supabase
+    .from('students')
+    .select('id, name, class_name, image, test_ban_type, test_ban_reason, test_ban_until')
+    .order('name', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
 }
 
 export async function verifyStudentPin(studentId: string, pin: string) {

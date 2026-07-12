@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe, Mic, Eye, Lock, Unlock, FileText, AlertTriangle } from 'lucide-react';
-import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, reportTestIssue, OnlineTest, StudentTestAttempt, verifyStudentPin, getTestQuestionsWithAnswers, OnlineTestQuestion } from '../lib/onlineTests';
+import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, reportTestIssue, OnlineTest, StudentTestAttempt, verifyStudentPin, getTestQuestionsWithAnswers, OnlineTestQuestion, unbanStudent } from '../lib/onlineTests';
 import jsPDF from 'jspdf';
 import FaceVerification from '../components/FaceVerification';
+import BanScreen from '../components/BanScreen';
 
 // Lazy load the runner to prevent heavy TFJS imports from crashing the main bundle
 const LiveTestRunner = React.lazy(() => 
@@ -21,6 +22,9 @@ export default function OnlineTestPortal() {
   
   // Face Verification step
   const [showFaceVerify, setShowFaceVerify] = useState(false);
+
+  // Ban state
+  const [banInfo, setBanInfo] = useState<{ type: 'permanent' | 'temporary'; reason: string | null; until: string | null } | null>(null);
 
   // Login Form State
   const [name, setName] = useState('');
@@ -59,6 +63,35 @@ export default function OnlineTestPortal() {
     setIsLoggingIn(true);
     try {
       const studentData = await loginStudentForTest(name.trim(), className, pin);
+
+      // ── Ban Check ─────────────────────────────────────────────────────────
+      const banType = (studentData as any).test_ban_type as 'permanent' | 'temporary' | null;
+      const banReason = (studentData as any).test_ban_reason as string | null;
+      const banUntil = (studentData as any).test_ban_until as string | null;
+
+      if (banType === 'permanent') {
+        // Permanent ban — block immediately
+        setStudent(studentData);
+        setBanInfo({ type: 'permanent', reason: banReason, until: null });
+        setIsLoggingIn(false);
+        return;
+      }
+
+      if (banType === 'temporary' && banUntil) {
+        const expired = new Date(banUntil) <= new Date();
+        if (expired) {
+          // Ban expired — auto-clear it silently
+          await unbanStudent(studentData.id);
+        } else {
+          // Active temporary ban — block
+          setStudent(studentData);
+          setBanInfo({ type: 'temporary', reason: banReason, until: banUntil });
+          setIsLoggingIn(false);
+          return;
+        }
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
       setStudent(studentData);
       setLoginSuccess(true);
       // Show "Welcome" card briefly, then go to Face Verification
@@ -205,6 +238,22 @@ export default function OnlineTestPortal() {
 
 
 
+
+  // Ban Screen — shown immediately after login if student is banned
+  if (banInfo && student) {
+    return (
+      <BanScreen
+        student={student}
+        banInfo={banInfo}
+        onBack={() => {
+          setBanInfo(null);
+          setStudent(null);
+          setName('');
+          setPin('');
+        }}
+      />
+    );
+  }
 
   // Face Verification screen — shown after login, before test portal
   if (showFaceVerify && student) {
