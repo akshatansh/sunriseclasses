@@ -76,7 +76,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     // Listen on a channel specific to this student
     const channel = supabase.channel(`proctoring-stream-${studentId}`, {
       config: {
-        broadcast: { self: false }
+        broadcast: { self: false },
+        presence: { key: studentId }
       }
     });
 
@@ -86,7 +87,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       const { type, sdp, candidate, adminSocketId } = payload.payload || {};
 
       try {
-        if (type === 'offer') {
+        if (type === 'request-stream') {
           if (pc) {
             pc.close();
           }
@@ -117,21 +118,23 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             }
           };
 
-          await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
+          // Create offer and set local description
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
 
-          // Send answer back to the channel
+          // Send offer to admin
           channel.send({
             type: 'broadcast',
             event: 'signal',
             payload: {
-              type: 'answer',
-              sdp: answer.sdp,
+              type: 'offer',
+              sdp: offer.sdp,
               studentId,
               adminSocketId
             }
           });
+        } else if (type === 'answer' && pc) {
+          await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
         } else if (type === 'candidate' && pc) {
           if (candidate) {
             await pc.addIceCandidate(new RTCIceCandidate(candidate));
@@ -147,9 +150,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
     channel
       .on('broadcast', { event: 'signal' }, handleWebRTCMessage)
-      .subscribe((status) => {
+      .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           console.log(`WebRTC proctoring signaling active for student: ${studentId}`);
+          // Track student presence so Admin knows they are online
+          await channel.track({ online: true, studentId, timestamp: Date.now() });
         }
       });
 

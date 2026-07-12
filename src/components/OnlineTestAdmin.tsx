@@ -21,7 +21,8 @@ function VideoGridCell({
   onExpand,
   isDisconnected,
   onDisconnect,
-  onReconnect
+  onReconnect,
+  isOnline
 }: { 
   stream: MediaStream | undefined; 
   studentName: string; 
@@ -31,14 +32,15 @@ function VideoGridCell({
   isDisconnected: boolean;
   onDisconnect: () => void;
   onReconnect: () => void;
+  isOnline: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   
   useEffect(() => {
-    if (videoRef.current && stream && !isDisconnected) {
+    if (videoRef.current && stream && !isDisconnected && isOnline) {
       videoRef.current.srcObject = stream;
     }
-  }, [stream, isDisconnected]);
+  }, [stream, isDisconnected, isOnline]);
 
   if (isDisconnected) {
     return (
@@ -52,6 +54,17 @@ function VideoGridCell({
         >
           Reconnect Video
         </button>
+      </div>
+    );
+  }
+
+  if (!isOnline) {
+    return (
+      <div className="relative bg-slate-950 aspect-video rounded-xl overflow-hidden border border-gray-900 flex flex-col items-center justify-center p-4 shadow-lg text-center animate-in fade-in duration-200">
+        <Camera className="h-6 w-6 text-red-500/80 mb-1.5 animate-pulse" />
+        <p className="text-white text-xs font-bold truncate max-w-full px-2 mb-1">{studentName}</p>
+        <span className="bg-red-950/80 text-red-400 border border-red-900 text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Offline</span>
+        <p className="text-[9px] text-gray-500 mt-2 px-3">Tab closed, locked, ya background mein chala gaya hai.</p>
       </div>
     );
   }
@@ -148,6 +161,7 @@ export default function OnlineTestAdmin() {
   const [mutedMap, setMutedMap] = useState<Record<string, boolean>>({}); // student_id -> isMuted
   const [fullscreenStudentStream, setFullscreenStudentStream] = useState<{ id: string; name: string } | null>(null);
   const [manualDisconnects, setManualDisconnects] = useState<Record<string, boolean>>({});
+  const [presenceMap, setPresenceMap] = useState<Record<string, boolean>>({});
 
   const activeConnectionsRef = useRef<Record<string, { pc: RTCPeerConnection; channel: any }>>({});
   const adminSocketIdRef = useRef(Math.random().toString(36).substring(7));
@@ -297,6 +311,7 @@ export default function OnlineTestAdmin() {
       });
       activeConnectionsRef.current = {};
       setStreams({});
+      setPresenceMap({});
       return;
     }
 
@@ -321,6 +336,11 @@ export default function OnlineTestAdmin() {
           delete next[studentId];
           return next;
         });
+        setPresenceMap(prev => {
+          const next = { ...prev };
+          delete next[studentId];
+          return next;
+        });
       }
     });
 
@@ -333,7 +353,8 @@ export default function OnlineTestAdmin() {
       try {
         const channel = supabase.channel(`proctoring-stream-${studentId}`, {
           config: {
-            broadcast: { self: false }
+            broadcast: { self: false },
+            presence: { key: studentId }
           }
         });
 
@@ -366,14 +387,28 @@ export default function OnlineTestAdmin() {
           }
         };
 
-        // Listen for answers and candidates from student
+        // Listen for offers and candidates from student
         channel.on('broadcast', { event: 'signal' }, async (payload) => {
           const { type, sdp, candidate, studentId: msgStudentId } = payload.payload || {};
           if (msgStudentId !== studentId) return;
 
           try {
-            if (type === 'answer') {
-              await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp }));
+            if (type === 'offer') {
+              await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp }));
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+
+              // Send answer to student
+              channel.send({
+                type: 'broadcast',
+                event: 'signal',
+                payload: {
+                  type: 'answer',
+                  sdp: answer.sdp,
+                  adminSocketId: adminSocketIdRef.current,
+                  studentId
+                }
+              });
             } else if (type === 'candidate') {
               if (candidate) {
                 await pc.addIceCandidate(new RTCIceCandidate(candidate));
@@ -384,20 +419,32 @@ export default function OnlineTestAdmin() {
           }
         });
 
+        // Track student presence state
+        channel
+          .on('presence', { event: 'sync' }, () => {
+            const state = channel.presenceState();
+            const isOnline = Object.keys(state).length > 0;
+            setPresenceMap(prev => ({
+              ...prev,
+              [studentId]: isOnline
+            }));
+          })
+          .on('presence', { event: 'join' }, () => {
+            setPresenceMap(prev => ({ ...prev, [studentId]: true }));
+          })
+          .on('presence', { event: 'leave' }, () => {
+            setPresenceMap(prev => ({ ...prev, [studentId]: false }));
+          });
+
         channel.subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
-            console.log(`Subscribed to signaling for student ${studentId}. Sending offer...`);
-            // Create Offer
-            const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-            await pc.setLocalDescription(offer);
-
-            // Send offer to student
+            console.log(`Subscribed to student channel ${studentId}. Requesting stream...`);
+            // Request stream from student
             channel.send({
               type: 'broadcast',
               event: 'signal',
               payload: {
-                type: 'offer',
-                sdp: offer.sdp,
+                type: 'request-stream',
                 adminSocketId: adminSocketIdRef.current,
                 studentId
               }
@@ -1812,6 +1859,7 @@ Explanation: Arunachal Pradesh is the easternmost state.
                           [studentId]: false
                         }));
                       }}
+                      isOnline={presenceMap[studentId] === true}
                     />
                   );
                 })}
