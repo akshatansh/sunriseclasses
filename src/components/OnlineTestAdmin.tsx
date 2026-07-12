@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download, Camera, AlertTriangle, Clock, RotateCcw, Copy, Search, Filter, FileSpreadsheet, Radio, RefreshCw, Eye, EyeOff, CheckCircle, Wand2 } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download, Camera, AlertTriangle, Clock, RotateCcw, Copy, Search, Filter, FileSpreadsheet, Radio, RefreshCw, Eye, EyeOff, CheckCircle, Wand2, MessageCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
@@ -1367,6 +1367,26 @@ Explanation: Arunachal Pradesh is the easternmost state.
                                   <PlayCircle className="h-4 w-4 animate-pulse" />
                                 </button>
                               )}
+                              {att.students?.parent_phone && (
+                                <button
+                                  onClick={() => {
+                                    const parentPhone = att.students.parent_phone;
+                                    const studentName = att.students.name;
+                                    const testTitle = currentTest.title || 'Online Test';
+                                    const isAutoCheat = att.submission_type === 'auto_cheat';
+                                    
+                                    const text = isAutoCheat
+                                      ? `🔴 Sunrise Classes ALERT: Aapka bachha ${studentName} (${att.students.class_name}) online test "${testTitle}" dete waqt cheating warnings limits exceed karne ke karan system dwara AUTO-SUBMIT kar diya gaya hai. Score: ${att.score}/${att.total_marks} marks. Kripya dhyan rakhein.`
+                                      : `🟢 Sunrise Classes Update: Aapke bachhe ${studentName} (${att.students.class_name}) ne online test "${testTitle}" safalta-purvak complete kar liya hai. Score: ${att.score}/${att.total_marks} marks.`;
+                                    
+                                    window.open(`https://wa.me/91${parentPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                                  }}
+                                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors border border-transparent hover:border-emerald-200"
+                                  title="WhatsApp Parent Report"
+                                >
+                                  <MessageCircle className="h-4 w-4" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleResetAttempt(att.student_id, att.students?.name || 'Unknown')}
                                 className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-md transition-colors border border-transparent hover:border-orange-200"
@@ -1734,27 +1754,43 @@ Explanation: Arunachal Pradesh is the easternmost state.
                               )}
                             </td>
 
-                            {/* Actions */}
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                              {isBanned && !isExpired ? (
-                                <button
-                                  onClick={() => handleUnbanStudent(s.id)}
-                                  className="text-xs text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg border border-green-200 font-bold transition-all"
-                                >
-                                  Unban Student
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => {
-                                    setSelectedStudentForBan(s);
-                                    setBanModalOpen(true);
-                                  }}
-                                  className="text-xs text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg border border-red-200 font-bold transition-all"
-                                >
-                                  Ban Student
-                                </button>
-                              )}
-                            </td>
+                             {/* Actions */}
+                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                               <div className="flex items-center justify-end gap-2">
+                                 {s.parent_phone && (
+                                   <button
+                                     onClick={() => {
+                                       const text = isBanned && !isExpired
+                                         ? `⚠️ Sunrise Classes Alert: Aapke bachhe ${s.name} (${s.class_name}) ko online test portal se ban kar diya gaya hai. Reason: ${s.test_ban_reason || 'N/A'}`
+                                         : `Sunrise Classes Update: Aapke bachhe ${s.name} (${s.class_name}) ke test performance ke baare mein update.`;
+                                       window.open(`https://wa.me/91${s.parent_phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                                     }}
+                                     className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors border border-transparent hover:border-emerald-200"
+                                     title="Notify Parent on WhatsApp"
+                                   >
+                                     <MessageCircle className="h-4 w-4" />
+                                   </button>
+                                 )}
+                                 {isBanned && !isExpired ? (
+                                   <button
+                                     onClick={() => handleUnbanStudent(s.id)}
+                                     className="text-xs text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg border border-green-200 font-bold transition-all"
+                                   >
+                                     Unban Student
+                                   </button>
+                                 ) : (
+                                   <button
+                                     onClick={() => {
+                                       setSelectedStudentForBan(s);
+                                       setBanModalOpen(true);
+                                     }}
+                                     className="text-xs text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg border border-red-200 font-bold transition-all"
+                                   >
+                                     Ban Student
+                                   </button>
+                                 )}
+                               </div>
+                             </td>
                           </tr>
                         );
                       })}
