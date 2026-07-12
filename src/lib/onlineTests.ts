@@ -116,7 +116,7 @@ export async function toggleSilentRecordAdmin(studentId: string, enabled: boolea
 // Upload a silent video proctoring recording for an attempt
 export async function uploadTestVideo(studentId: string, testId: string, videoBlob: Blob) {
   try {
-    const fileName = `recording_${studentId}_${testId}_${Date.now()}.webm`;
+    const fileName = `${studentId}_video_${testId}_${Date.now()}.webm`;
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('proctoring_proofs')
       .upload(fileName, videoBlob, { contentType: 'video/webm' });
