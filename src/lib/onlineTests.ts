@@ -118,13 +118,13 @@ export async function uploadTestVideo(studentId: string, testId: string, videoBl
   try {
     const fileName = `recording_${studentId}_${testId}_${Date.now()}.webm`;
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('proctoring_recordings')
+      .from('proctoring_proofs')
       .upload(fileName, videoBlob, { contentType: 'video/webm' });
 
     if (uploadError) throw uploadError;
 
     const { data: publicUrlData } = supabase.storage
-      .from('proctoring_recordings')
+      .from('proctoring_proofs')
       .getPublicUrl(uploadData.path);
 
     const videoUrl = publicUrlData.publicUrl;
@@ -720,11 +720,19 @@ export async function autoDeleteOldProctoringLogs() {
     if (!videoFetchErr && oldVideos && oldVideos.length > 0) {
       const videoPaths = oldVideos
         .map(v => v.video_url)
-        .filter(url => url && url.includes('/proctoring_recordings/'))
-        .map(url => url.split('/proctoring_recordings/')[1].split('?')[0]);
+        .filter(url => url && (url.includes('/proctoring_recordings/') || url.includes('/proctoring_proofs/')))
+        .map(url => {
+          if (url.includes('/proctoring_recordings/')) {
+            return url.split('/proctoring_recordings/')[1].split('?')[0];
+          } else {
+            return url.split('/proctoring_proofs/')[1].split('?')[0];
+          }
+        });
 
       if (videoPaths.length > 0) {
-        await supabase.storage.from('proctoring_recordings').remove(videoPaths);
+        // Clean from both buckets to be completely safe
+        await supabase.storage.from('proctoring_proofs').remove(videoPaths).catch(() => {});
+        await supabase.storage.from('proctoring_recordings').remove(videoPaths).catch(() => {});
       }
 
       await supabase
