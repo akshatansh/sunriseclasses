@@ -300,13 +300,31 @@ export default function FaceVerification({ studentPhotoUrl, studentName, onSucce
                 )}
 
                 {step === 'ready' && (
-                  <button
-                    onClick={startCountdown}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg text-sm"
-                  >
-                    <Camera className="h-5 w-5" />
-                    Apna Chehra Scan Karo
-                  </button>
+                  <>
+                    <button
+                      onClick={startCountdown}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg text-sm"
+                    >
+                      <Camera className="h-5 w-5" />
+                      Apna Chehra Scan Karo
+                    </button>
+
+                    {/* Camera problem bypass — subtle link */}
+                    <button
+                      onClick={() => {
+                        const confirmed = window.confirm(
+                          'Camera se face verification nahi ho pa rahi hai?\n\n' +
+                          'Aage jaane par aapka test CCTV/manual proctoring ke under hoga.\n' +
+                          'Admin ko notify kiya jaayega.\n\n' +
+                          'Kya aap aage jaana chahte hain?'
+                        );
+                        if (confirmed) onSuccess();
+                      }}
+                      className="w-full mt-3 text-slate-500 text-xs py-2 hover:text-slate-300 transition-colors underline underline-offset-2"
+                    >
+                      Camera thik nahi hai? Yahan click karo
+                    </button>
+                  </>
                 )}
                 {(step === 'capturing' || step === 'verifying') && (
                   <div className="w-full bg-slate-800 text-slate-400 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-sm">
