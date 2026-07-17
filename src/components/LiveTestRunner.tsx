@@ -93,7 +93,21 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           }
 
           pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' },
+              // Free TURN relay — works on firewalled school/mobile networks
+              {
+                urls: 'turn:openrelay.metered.ca:80',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+              },
+              {
+                urls: 'turn:openrelay.metered.ca:443',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+              }
+            ]
           });
 
           // Add active video/audio tracks to the WebRTC connection
@@ -351,21 +365,23 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     let videoBlob: Blob | null = null;
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       try {
+        // Save local references BEFORE async stop — prevents null ref race condition
+        const recorderToStop = mediaRecorderRef.current;
+        const savedMime = recorderToStop.mimeType || 'video/webm';
+        const savedChunksRef = recordedChunksRef;
+
         videoBlob = await new Promise<Blob | null>((resolve) => {
-          if (!mediaRecorderRef.current) {
-            resolve(null);
-            return;
-          }
-          mediaRecorderRef.current.onstop = () => {
-            if (recordedChunksRef.current && recordedChunksRef.current.length > 0) {
-              const mime = mediaRecorderRef.current.mimeType || 'video/webm';
-              const compiled = new Blob(recordedChunksRef.current, { type: mime });
+          recorderToStop.onstop = () => {
+            if (savedChunksRef.current && savedChunksRef.current.length > 0) {
+              const compiled = new Blob(savedChunksRef.current, { type: savedMime });
+              console.log(`Recording ready: ${compiled.size} bytes, MIME: ${savedMime}, chunks: ${savedChunksRef.current.length}`);
               resolve(compiled);
             } else {
+              console.warn('Recording stopped but no chunks collected.');
               resolve(null);
             }
           };
-          mediaRecorderRef.current.stop();
+          recorderToStop.stop();
         });
       } catch (recStopErr) {
         console.error("Error stopping silent recorder:", recStopErr);
@@ -404,30 +420,32 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
       setShowSubmitSummary(false);
 
-      // Build detailed review: fetch correct answers for review section
-      try {
-        const { data: correctQs } = await supabase
-          .from('online_test_questions')
-          .select('id, test_id, question_text, option_a, option_b, option_c, option_d, correct_option, marks, question_image')
-          .eq('test_id', test.id);
-        if (correctQs && correctQs.length > 0) {
-          // Map back using the shuffled order so question numbers match
-          const reviewItems: ReviewItem[] = questions.map(q => {
-            const withAnswer = correctQs.find(cq => cq.id === q.id);
-            if (!withAnswer) return null;
-            const studentAns = answers[q.id] || '';
-            const correctAns = withAnswer.correct_option || '';
-            return {
-              question: withAnswer as OnlineTestQuestion,
-              studentAnswer: studentAns,
-              correctAnswer: correctAns,
-              isCorrect: studentAns === correctAns,
-            };
-          }).filter(Boolean) as ReviewItem[];
-          setDetailedReview(reviewItems);
+      // Build detailed review: fetch correct answers for review section only if allowed by admin
+      if (test.allow_review) {
+        try {
+          const { data: correctQs } = await supabase
+            .from('online_test_questions')
+            .select('id, test_id, question_text, option_a, option_b, option_c, option_d, correct_option, marks, question_image')
+            .eq('test_id', test.id);
+          if (correctQs && correctQs.length > 0) {
+            // Map back using the shuffled order so question numbers match
+            const reviewItems: ReviewItem[] = questions.map(q => {
+              const withAnswer = correctQs.find(cq => cq.id === q.id);
+              if (!withAnswer) return null;
+              const studentAns = answers[q.id] || '';
+              const correctAns = withAnswer.correct_option || '';
+              return {
+                question: withAnswer as OnlineTestQuestion,
+                studentAnswer: studentAns,
+                correctAnswer: correctAns,
+                isCorrect: studentAns === correctAns,
+              };
+            }).filter(Boolean) as ReviewItem[];
+            setDetailedReview(reviewItems);
+          }
+        } catch (reviewErr) {
+          console.warn('Could not load review data', reviewErr);
         }
-      } catch (reviewErr) {
-        console.warn('Could not load review data', reviewErr);
       }
     } catch (err) {
       console.error('Error submitting test:', err);
@@ -901,20 +919,26 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       if (silentRecordEnabled && stream) {
         try {
           recordedChunksRef.current = [];
-          let mimeType = 'video/webm;codecs=vp8';
-          if (!MediaRecorder.isTypeSupported(mimeType)) {
-            mimeType = 'video/webm';
-          }
-          if (!MediaRecorder.isTypeSupported(mimeType)) {
-            mimeType = 'video/mp4';
+          // Determine best supported MIME type (webm on Chrome/Android, mp4 on iOS/Safari)
+          let mimeType = '';
+          const mimeTypes = ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
+          for (const type of mimeTypes) {
+            if (MediaRecorder.isTypeSupported(type)) {
+              mimeType = type;
+              break;
+            }
           }
 
           let recorder: MediaRecorder;
-          if (MediaRecorder.isTypeSupported(mimeType)) {
-            recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 100000 });
+          if (mimeType) {
+            recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 120000 });
           } else {
-            recorder = new MediaRecorder(stream);
+            // Fallback: let browser pick the best format
+            recorder = new MediaRecorder(stream, { videoBitsPerSecond: 120000 });
           }
+
+          // Save actual mimeType NOW — before onstop — to avoid null ref race condition
+          const actualMimeType = recorder.mimeType || mimeType || 'video/webm';
 
           recorder.ondataavailable = (event) => {
             if (event.data && event.data.size > 0) {
@@ -922,9 +946,16 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
             }
           };
 
-          recorder.start(5000);
+          // onstop uses saved actualMimeType — safe even if ref is null later
+          recorder.onstop = () => {
+            // This onstop is just for cleanup logging — finishTest handles actual upload
+            console.log(`Silent recording stopped. Chunks: ${recordedChunksRef.current.length}, MIME: ${actualMimeType}`);
+          };
+
+          // 1000ms interval (was 5000ms) — more chunks = more reliable capture
+          recorder.start(1000);
           mediaRecorderRef.current = recorder;
-          console.log("Silent proctoring video recording started...");
+          console.log(`Silent proctoring video recording started (MIME: ${actualMimeType})...`);
         } catch (recErr) {
           console.error("Failed to start background proctoring recording:", recErr);
         }

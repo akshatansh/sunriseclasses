@@ -116,10 +116,13 @@ export async function toggleSilentRecordAdmin(studentId: string, enabled: boolea
 // Upload a silent video proctoring recording for an attempt
 export async function uploadTestVideo(studentId: string, testId: string, videoBlob: Blob) {
   try {
-    const fileName = `${studentId}_video_${testId}_${Date.now()}.webm`;
+    // Determine actual MIME type — iOS records mp4, Android/Chrome records webm
+    const mimeType = videoBlob.type || 'video/webm';
+    const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+    const fileName = `${studentId}_video_${testId}_${Date.now()}.${ext}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('proctoring_proofs')
-      .upload(fileName, videoBlob, { contentType: 'video/webm' });
+      .upload(fileName, videoBlob, { contentType: mimeType });
 
     if (uploadError) throw uploadError;
 

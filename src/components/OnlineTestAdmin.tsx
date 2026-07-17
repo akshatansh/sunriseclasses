@@ -22,6 +22,7 @@ function VideoGridCell({
   isDisconnected,
   onDisconnect,
   onReconnect,
+  onRetryStream,
   isOnline
 }: { 
   stream: MediaStream | undefined; 
@@ -32,6 +33,7 @@ function VideoGridCell({
   isDisconnected: boolean;
   onDisconnect: () => void;
   onReconnect: () => void;
+  onRetryStream: () => void;
   isOnline: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -39,8 +41,13 @@ function VideoGridCell({
   useEffect(() => {
     if (videoRef.current && stream && !isDisconnected && isOnline) {
       videoRef.current.srcObject = stream;
+      // Explicitly call play() — required by browser autoplay policy
+      videoRef.current.play().catch(() => {
+        // Autoplay blocked — user gesture needed (muted video usually allowed)
+        console.warn('Autoplay blocked for student:', studentName);
+      });
     }
-  }, [stream, isDisconnected, isOnline]);
+  }, [stream, isDisconnected, isOnline, studentName]);
 
   if (isDisconnected) {
     return (
@@ -121,9 +128,15 @@ function VideoGridCell({
         </div>
       </div>
       {!stream && (
-        <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center gap-2">
+        <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center gap-2 p-3">
           <RefreshCw className="h-5 w-5 text-blue-500 animate-spin" />
           <p className="text-slate-400 text-[10px] font-medium tracking-wide">Connecting live stream...</p>
+          <button
+            onClick={onRetryStream}
+            className="mt-1 bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1 rounded-lg text-[9px] transition-all"
+          >
+            Retry Connect
+          </button>
         </div>
       )}
     </div>
@@ -154,6 +167,8 @@ export default function OnlineTestAdmin() {
   const [videoRecordings, setVideoRecordings] = useState<Record<string, string>>({});
   const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
   const [currentVideoStudentName, setCurrentVideoStudentName] = useState<string>('');
+  const [videoError, setVideoError] = useState<boolean>(false);
+  const [videoLoading, setVideoLoading] = useState<boolean>(false);
 
   // WebRTC Live Grid proctoring states & references
   const [liveVideoGridActive, setLiveVideoGridActive] = useState(false);
@@ -359,8 +374,36 @@ export default function OnlineTestAdmin() {
         });
 
         const pc = new RTCPeerConnection({
-          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            // Free TURN relay — works on firewalled school/mobile networks
+            {
+              urls: 'turn:openrelay.metered.ca:80',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            }
+          ]
         });
+
+        // Helper: send request-stream signal (reused in retry)
+        const requestStreamFromStudent = () => {
+          channel.send({
+            type: 'broadcast',
+            event: 'signal',
+            payload: {
+              type: 'request-stream',
+              adminSocketId: adminSocketIdRef.current,
+              studentId
+            }
+          });
+          console.log(`[WebRTC] request-stream sent to student ${studentId}`);
+        };
 
         pc.ontrack = (event) => {
           console.log(`Received WebRTC stream for student ${studentId}`);
@@ -431,6 +474,8 @@ export default function OnlineTestAdmin() {
           })
           .on('presence', { event: 'join' }, () => {
             setPresenceMap(prev => ({ ...prev, [studentId]: true }));
+            // Re-request stream when student comes online (handles reconnect case)
+            setTimeout(requestStreamFromStudent, 300);
           })
           .on('presence', { event: 'leave' }, () => {
             setPresenceMap(prev => ({ ...prev, [studentId]: false }));
@@ -438,22 +483,16 @@ export default function OnlineTestAdmin() {
 
         channel.subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
-            console.log(`Subscribed to student channel ${studentId}. Requesting stream...`);
-            // Request stream from student
-            channel.send({
-              type: 'broadcast',
-              event: 'signal',
-              payload: {
-                type: 'request-stream',
-                adminSocketId: adminSocketIdRef.current,
-                studentId
-              }
-            });
+            console.log(`Subscribed to student channel ${studentId}. Requesting stream in 600ms...`);
+            // ⏱ RACE CONDITION FIX: Wait 600ms before sending request-stream
+            // This gives student's channel time to subscribe and start listening
+            // Without this delay, admin's message arrives before student is ready
+            setTimeout(requestStreamFromStudent, 600);
           }
         });
 
-        // Store references
-        activeConnectionsRef.current[studentId] = { pc, channel };
+        // Store references including requestStream for retry capability
+        activeConnectionsRef.current[studentId] = { pc, channel, requestStream: requestStreamFromStudent };
 
       } catch (err) {
         console.error(`Failed to initiate WebRTC stream for student ${studentId}:`, err);
@@ -1703,6 +1742,8 @@ Explanation: Arunachal Pradesh is the easternmost state.
                               {videoRecordings[att.student_id] && (
                                 <button
                                   onClick={() => {
+                                    setVideoError(false);
+                                    setVideoLoading(true);
                                     setCurrentVideoUrl(videoRecordings[att.student_id]);
                                     setCurrentVideoStudentName(att.students?.name || 'Student');
                                   }}
@@ -1858,6 +1899,12 @@ Explanation: Arunachal Pradesh is the easternmost state.
                           ...prev,
                           [studentId]: false
                         }));
+                      }}
+                      onRetryStream={() => {
+                        const conn = activeConnectionsRef.current[studentId];
+                        if (conn && typeof conn.requestStream === 'function') {
+                          conn.requestStream();
+                        }
                       }}
                       isOnline={presenceMap[studentId] === true}
                     />
@@ -2392,12 +2439,38 @@ Explanation: Arunachal Pradesh is the easternmost state.
           </div>
           {/* Video Player */}
           <div className="bg-black flex items-center justify-center relative aspect-video">
+            {videoLoading && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/80 gap-3">
+                <RefreshCw className="h-7 w-7 text-purple-500 animate-spin" />
+                <p className="text-xs text-gray-400 font-medium">Video buffering...</p>
+              </div>
+            )}
+            
+            {videoError ? (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950 p-6 text-center gap-3">
+                <AlertTriangle className="h-8 w-8 text-amber-500 animate-pulse" />
+                <div>
+                  <p className="text-white text-sm font-bold">Video direct play nahi ho raha hai</p>
+                  <p className="text-xs text-gray-400 mt-1 max-w-md mx-auto font-medium">
+                    Kripya niche diye gaye "Download Video" button par click karke video ko download karein aur locally play karein (MIME browser mismatch issue).
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
             <video
-              src={currentVideoUrl}
               controls
               autoPlay
+              onCanPlay={() => setVideoLoading(false)}
+              onError={() => {
+                setVideoError(true);
+                setVideoLoading(false);
+              }}
               className="w-full h-full object-contain"
-            />
+            >
+              <source src={currentVideoUrl} />
+              Your browser does not support the video tag.
+            </video>
           </div>
           {/* Footer controls/download */}
           <div className="px-6 py-4 bg-slate-800/50 flex justify-between items-center text-xs text-slate-400">

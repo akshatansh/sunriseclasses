@@ -187,6 +187,10 @@ export default function OnlineTestPortal() {
   };
 
   const handleOpenReview = (test: OnlineTest, attempt: StudentTestAttempt) => {
+    if (!test.allow_review) {
+      alert("Review is disabled for this test by the administrator.");
+      return;
+    }
     setReviewTest({ test, attempt });
     setReviewPin('');
     setReviewPinError('');
