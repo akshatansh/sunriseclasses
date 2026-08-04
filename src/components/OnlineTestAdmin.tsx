@@ -2003,12 +2003,12 @@ Explanation: Arunachal Pradesh is the easternmost state.
                             onClick={() => {
                               const msg = prompt(`Enter warning message to send to ${att.students?.name}:`, 'Sit properly and look at the screen!');
                               if (msg) {
-                                const ch = supabase.channel(`admin-signal-${att.student_id}`);
-                                ch.subscribe((st) => {
-                                  if (st === 'SUBSCRIBED') {
-                                    ch.send({ type: 'broadcast', event: 'admin-warning', payload: { message: msg } });
-                                  }
-                                });
+                                const ch = supabase.channel('live-proctoring-grid');
+                                ch.send({
+                                  type: 'broadcast',
+                                  event: 'admin-warning',
+                                  payload: { targetStudentId: att.student_id, message: msg }
+                                }).catch(() => {});
                               }
                             }}
                             className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold rounded border border-amber-200 text-[10px] transition-colors"
@@ -2020,12 +2020,12 @@ Explanation: Arunachal Pradesh is the easternmost state.
                           <button
                             onClick={() => {
                               if (confirm(`Trigger instant 360° Room Scan for ${att.students?.name}?`)) {
-                                const ch = supabase.channel(`admin-signal-${att.student_id}`);
-                                ch.subscribe((st) => {
-                                  if (st === 'SUBSCRIBED') {
-                                    ch.send({ type: 'broadcast', event: 'request-360-scan', payload: {} });
-                                  }
-                                });
+                                const ch = supabase.channel('live-proctoring-grid');
+                                ch.send({
+                                  type: 'broadcast',
+                                  event: 'request-360-scan',
+                                  payload: { targetStudentId: att.student_id }
+                                }).catch(() => {});
                               }
                             }}
                             className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded border border-purple-200 text-[10px] transition-colors"

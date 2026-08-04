@@ -76,7 +76,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const roomScanDoneRef = useRef(false);
   const roomScanCountdownRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ── Silent Fail-Proof Live CCTV Frame Broadcaster ──
+  // ── Silent Fail-Proof Live CCTV Frame Broadcaster & Admin Signal Listener ──
   useEffect(() => {
     if (!studentId || !cameraActive) return;
 
@@ -86,7 +86,25 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     const ctx = canvas.getContext('2d');
 
     const gridChannel = supabase.channel('live-proctoring-grid');
-    gridChannel.subscribe();
+
+    gridChannel
+      .on('broadcast', { event: 'admin-warning' }, (payload) => {
+        const { targetStudentId, message } = payload.payload || {};
+        if (targetStudentId === studentId && message) {
+          setActiveMessage(`⚠️ ADMIN WARNING: ${message}`);
+          setIsWarningFlash(true);
+          setTimeout(() => setIsWarningFlash(false), 5000);
+          setCheatWarnings((prev) => prev + 1);
+        }
+      })
+      .on('broadcast', { event: 'request-360-scan' }, (payload) => {
+        const { targetStudentId } = payload.payload || {};
+        if (targetStudentId === studentId) {
+          setRoomScanPending(true);
+          setRoomScanCountdown(15);
+        }
+      })
+      .subscribe();
 
     const interval = setInterval(() => {
       if (videoRef.current && ctx && videoRef.current.readyState >= 2) {
@@ -108,30 +126,19 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     };
   }, [studentId, cameraActive]);
 
-  // ── Admin Direct Realtime Warning & On-Demand 360 Scan Listener ──
+  // ── Automatic Mandatory 360° Room Scan Trigger (40s after test start) ──
   useEffect(() => {
-    if (!studentId) return;
+    if (!isTestStarted || roomScanDoneRef.current) return;
 
-    const adminMsgChannel = supabase
-      .channel(`admin-signal-${studentId}`)
-      .on('broadcast', { event: 'admin-warning' }, (payload) => {
-        if (payload.payload && payload.payload.message) {
-          setActiveMessage(`⚠️ ADMIN WARNING: ${payload.payload.message}`);
-          setIsWarningFlash(true);
-          setTimeout(() => setIsWarningFlash(false), 4000);
-          setCheatWarnings((prev) => prev + 1);
-        }
-      })
-      .on('broadcast', { event: 'request-360-scan' }, () => {
+    const timer = setTimeout(() => {
+      if (!roomScanDoneRef.current) {
         setRoomScanPending(true);
         setRoomScanCountdown(15);
-      })
-      .subscribe();
+      }
+    }, 40000);
 
-    return () => {
-      supabase.removeChannel(adminMsgChannel);
-    };
-  }, [studentId]);
+    return () => clearTimeout(timer);
+  }, [isTestStarted]);
 
   // ── WebRTC Live Streaming Proctoring Setup ──
   useEffect(() => {
@@ -930,29 +937,23 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     let audioContext: AudioContext | null = null;
     let audioInterval: NodeJS.Timeout;
 
-    // Track test start time — to enforce a grace period before AI can auto-submit
+    // Track test start time
     const testStartTime = Date.now();
-    const MIN_TIME_BEFORE_AUTOSUBMIT_MS = 3 * 60 * 1000; // 3 minutes minimum
-    // Raised threshold: 25 warnings needed before auto-submit (was 10)
-    // This prevents mobile background noise / camera glitches from unfairly submitting
-    const AI_AUTOSUBMIT_THRESHOLD = 25;
+    // Exactly 12 camera warnings threshold for auto-submit
+    const AI_AUTOSUBMIT_THRESHOLD = 12;
 
     const handleWarning = async (msg: string) => {
-      // ✅ FIX: Agar camera kabhi initialize nahi hua, warnings count nahi hongi
-      // Is se camera hardware issue wale students unfairly penalize nahi honge
       if (cameraFailedRef.current) return;
       
       const blob = await captureScreenshot();
       logProctoringEvent(test.id, studentId, msg, blob, 'image');
       setFaceWarnings(prev => {
         const newCount = prev + 1;
-        const timeInTest = Date.now() - testStartTime;
-        // Only auto-submit if: enough time has passed AND enough warnings accumulated
-        if (newCount >= AI_AUTOSUBMIT_THRESHOLD && timeInTest >= MIN_TIME_BEFORE_AUTOSUBMIT_MS) {
-          showSubtleMessage(`Bahut zyada AI warnings! Test submit ho raha hai...`);
-          finishTest('auto_cheat'); // too many AI warnings
+        if (newCount >= AI_AUTOSUBMIT_THRESHOLD) {
+          showSubtleMessage(`12 Camera Warnings Reached! Test auto-submitting...`);
+          finishTest('auto_cheat'); // 12 camera warnings auto-submit
         } else {
-          showSubtleMessage(msg);
+          showSubtleMessage(`${msg} (Warning ${newCount}/12)`);
         }
         return newCount;
       });
