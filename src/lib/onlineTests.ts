@@ -388,6 +388,7 @@ export async function startTestAttempt(studentId: string, testId: string) {
 
   if (existing) return existing;
 
+  // Try full insert with current_question_index
   const { data, error } = await supabase
     .from('online_test_attempts')
     .insert({
@@ -398,13 +399,32 @@ export async function startTestAttempt(studentId: string, testId: string) {
       cheat_warnings: 0,
       is_completed: false,
       current_question_index: 0,
-      started_at: new Date().toISOString() // Track when test actually started
+      started_at: new Date().toISOString()
     })
     .select()
-    .single();
-    
-  if (error) throw error;
-  return data;
+    .maybeSingle();
+
+  if (error) {
+    // Fallback insert without current_question_index if column is missing in schema
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('online_test_attempts')
+      .insert({
+        student_id: studentId,
+        test_id: testId,
+        score: 0,
+        total_marks: 0,
+        cheat_warnings: 0,
+        is_completed: false,
+        started_at: new Date().toISOString()
+      })
+      .select()
+      .maybeSingle();
+
+    if (fallbackError) throw fallbackError;
+    return fallbackData as StudentTestAttempt;
+  }
+
+  return data as StudentTestAttempt;
 }
 
 // Check if the student's test time has already expired on rejoin
