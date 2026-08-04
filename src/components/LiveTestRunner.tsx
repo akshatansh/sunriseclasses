@@ -128,17 +128,36 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     };
   }, [studentId, cameraActive]);
 
-  // ── Automatic Mandatory 360° Room Scan Trigger (12s after test start) ──
+  // ── Unpredictable Random 360° Room Scan Scheduler Engine ──
   useEffect(() => {
-    if (!isTestStarted || roomScanDoneRef.current) return;
+    if (!isTestStarted) return;
 
-    const timer = setTimeout(() => {
-      if (!roomScanDoneRef.current) {
-        setRoomScanPending(true);
-      }
-    }, 12000); // 12 seconds after test start
+    const activeTimers: NodeJS.Timeout[] = [];
 
-    return () => clearTimeout(timer);
+    // 1st Surprise Scan: Randomly between 2 and 5 minutes (120s to 300s)
+    const scan1DelayMs = Math.floor((120 + Math.random() * 180) * 1000);
+    const timer1 = setTimeout(() => {
+      setRoomScanPending(true);
+    }, scan1DelayMs);
+    activeTimers.push(timer1);
+
+    // 2nd Surprise Scan: Randomly between 10 and 13 minutes (600s to 780s)
+    const scan2DelayMs = Math.floor((600 + Math.random() * 180) * 1000);
+    const timer2 = setTimeout(() => {
+      setRoomScanPending(true);
+    }, scan2DelayMs);
+    activeTimers.push(timer2);
+
+    // 3rd Surprise Scan (For long tests 18+ mins): Randomly between 18 and 22 minutes
+    const scan3DelayMs = Math.floor((1080 + Math.random() * 240) * 1000);
+    const timer3 = setTimeout(() => {
+      setRoomScanPending(true);
+    }, scan3DelayMs);
+    activeTimers.push(timer3);
+
+    return () => {
+      activeTimers.forEach(t => clearTimeout(t));
+    };
   }, [isTestStarted]);
 
   // ── WebRTC Live Streaming Proctoring Setup ──
@@ -426,6 +445,14 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     isRetry: boolean = false
   ) => {
     if (submitting || result) return;
+
+    // Mandatory 360 Scan check — EVERY student MUST perform at least 1 scan before manual submit
+    if (!roomScanDoneRef.current && submissionType === 'manual') {
+      setRoomScanPending(true);
+      showSubtleMessage('⚠️ Test submit karne se pehle 360° Room Scan zaroori hai.');
+      return;
+    }
+
     setSubmitting(true);
 
     // Calculate time taken in seconds
