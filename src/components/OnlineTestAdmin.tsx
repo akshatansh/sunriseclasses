@@ -2068,7 +2068,11 @@ Explanation: Arunachal Pradesh is the easternmost state.
                 {proctoringLogs.map(log => (
                   <div key={log.id} className="border border-red-200 rounded-lg overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow">
                     {log.proof_image_url ? (
-                      log.proof_image_url.match(/\.(webm|mp3|mp4|wav|ogg|m4a)(\?.*)?$/i) ? (
+                      log.proof_image_url.match(/\.(webm|mp4|mov)(\?.*)?$/i) ? (
+                        <div className="relative aspect-video bg-black flex items-center justify-center">
+                          <video controls src={log.proof_image_url} className="w-full h-full object-contain" />
+                        </div>
+                      ) : log.proof_image_url.match(/\.(mp3|wav|ogg|m4a)(\?.*)?$/i) ? (
                         <div className="relative aspect-video bg-gray-900 group flex items-center justify-center p-4">
                           <audio controls src={log.proof_image_url} className="w-full" />
                         </div>
@@ -2083,11 +2087,9 @@ Explanation: Arunachal Pradesh is the easternmost state.
                             alt="Proctoring Proof"
                             className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
                           />
-                          {/* Zoom hint overlay */}
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
                             <span className="text-white text-xs font-bold bg-black/50 px-3 py-1.5 rounded-full">Click to Enlarge</span>
                           </div>
-                          <div className="absolute inset-0 ring-1 ring-inset ring-black/10"></div>
                         </div>
                       )
                     ) : (

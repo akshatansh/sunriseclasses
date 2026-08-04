@@ -3,7 +3,7 @@ import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest, logProcto
 import { AlertTriangle, CheckCircle, Clock, ShieldAlert, Camera, CameraOff, RefreshCw, Share2, Award, Download, Smartphone, Users, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import MathRenderer from './MathRenderer';
-import RoomScanModal from './RoomScanModal';
+import { RoomScanModal } from './RoomScanModal';
 import * as tf from '@tensorflow/tfjs';
 import * as blazefaceModel from '@tensorflow-models/blazeface';
 
@@ -2229,11 +2229,15 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       {roomScanPending && !result && (
         <RoomScanModal
           studentName={studentName || 'Student'}
+          className={test.class_name || 'Class'}
           studentId={studentId}
           testId={test.id}
           onComplete={() => {
             setRoomScanPending(false);
             roomScanDoneRef.current = true;
+          }}
+          onRefuse={() => {
+            setRoomScanPending(false);
           }}
         />
       )}

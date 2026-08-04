@@ -30,6 +30,11 @@ export const RoomScanModal: React.FC<RoomScanModalProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
 
+  const [rotationDegrees, setRotationDegrees] = useState(0);
+  const [rotationVerified, setRotationVerified] = useState(false);
+  const lastAlphaRef = useRef<number | null>(null);
+  const totalAlphaDeltaRef = useRef<number>(0);
+
   // 30-second timeout countdown for refusal
   useEffect(() => {
     if (phase !== 'prompt') return;
@@ -45,6 +50,36 @@ export const RoomScanModal: React.FC<RoomScanModalProps> = ({
     }, 1000);
     return () => clearInterval(timer);
   }, [phase, onRefuse]);
+
+  // Track DeviceOrientationEvent for 360° Gyroscope Motion Verification
+  useEffect(() => {
+    if (phase !== 'recording') return;
+
+    totalAlphaDeltaRef.current = 0;
+    lastAlphaRef.current = null;
+
+    const handleOrientation = (e: DeviceOrientationEvent) => {
+      if (e.alpha !== null && e.alpha !== undefined) {
+        if (lastAlphaRef.current !== null) {
+          let diff = Math.abs(e.alpha - lastAlphaRef.current);
+          if (diff > 180) diff = 360 - diff; // wrap-around
+          totalAlphaDeltaRef.current += diff;
+          
+          const degrees = Math.min(360, Math.floor(totalAlphaDeltaRef.current));
+          setRotationDegrees(degrees);
+          if (degrees >= 270) {
+            setRotationVerified(true);
+          }
+        }
+        lastAlphaRef.current = e.alpha;
+      }
+    };
+
+    window.addEventListener('deviceorientation', handleOrientation, true);
+    return () => {
+      window.removeEventListener('deviceorientation', handleOrientation, true);
+    };
+  }, [phase]);
 
   const start360Recording = async () => {
     setErrorMsg('');
@@ -62,7 +97,14 @@ export const RoomScanModal: React.FC<RoomScanModalProps> = ({
         await videoRef.current.play();
       }
 
-      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
+      let mimeType = 'video/webm;codecs=vp8';
+      if (typeof MediaRecorder !== 'undefined' && !MediaRecorder.isTypeSupported(mimeType)) {
+        if (MediaRecorder.isTypeSupported('video/webm')) mimeType = 'video/webm';
+        else if (MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
+        else mimeType = '';
+      }
+
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {
@@ -76,8 +118,9 @@ export const RoomScanModal: React.FC<RoomScanModalProps> = ({
 
       recorder.start(1000);
 
-      // Start 8-second countdown for 360 degree rotation
-      let left = 8;
+      // Start 10-second countdown for 360 degree rotation
+      let left = 10;
+      setCountdown(left);
       const scanTimer = setInterval(() => {
         left -= 1;
         setCountdown(left);
@@ -106,31 +149,28 @@ export const RoomScanModal: React.FC<RoomScanModalProps> = ({
         .from('proctoring_recordings')
         .upload(filePath, blob, { contentType: 'video/webm' });
 
-      if (error) {
-        console.error('Failed to upload 360 scan video:', error);
-        setPhase('completed');
-        onComplete();
-        return;
+      let videoUrl = '';
+      if (!error) {
+        const { data: publicUrlData } = supabase.storage
+          .from('proctoring_recordings')
+          .getPublicUrl(filePath);
+        videoUrl = publicUrlData?.publicUrl || '';
       }
 
-      const { data: publicUrlData } = supabase.storage
-        .from('proctoring_recordings')
-        .getPublicUrl(filePath);
+      const gyroStatus = totalAlphaDeltaRef.current >= 270 ? `Gyro Verified 360° (${rotationDegrees}°)` : `Partial Rotation (${rotationDegrees}°)`;
 
-      const videoUrl = publicUrlData?.publicUrl;
-
-      // Log room scan in database
+      // Log 360 room scan in database for admin panel
       await supabase.from('proctoring_logs').insert({
         student_id: studentId,
         test_id: testId,
-        warning_type: '360_room_scan',
-        proof_image_url: videoUrl,
-      }).catch(() => {});
+        warning_type: `360_room_scan - ${gyroStatus}`,
+        proof_image_url: videoUrl || null,
+      }).catch((e) => console.error('Failed to log proctoring 360 scan:', e));
 
       setPhase('completed');
       setTimeout(() => {
         onComplete(videoUrl);
-      }, 1000);
+      }, 1200);
     } catch (err) {
       console.error('Error uploading 360 room scan:', err);
       setPhase('completed');
@@ -184,9 +224,14 @@ export const RoomScanModal: React.FC<RoomScanModalProps> = ({
               {/* Rotating Guide Ring Overlay */}
               <div className="absolute inset-0 border-4 border-dashed border-amber-400 animate-spin rounded-full pointer-events-none opacity-40 m-4" />
               
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 border border-amber-400/50 shadow-lg">
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/85 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 border border-amber-400/50 shadow-lg whitespace-nowrap">
                 <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
-                Rotate Camera 360° ({countdown}s left)
+                <span>Rotate Camera 360° ({countdown}s)</span>
+                {rotationDegrees > 0 && (
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-black ${rotationVerified ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-black'}`}>
+                    {rotationVerified ? '360° Verified ✓' : `${rotationDegrees}°/360°`}
+                  </span>
+                )}
               </div>
             </>
           )}
