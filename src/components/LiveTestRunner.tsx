@@ -88,6 +88,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
     const gridChannel = supabase.channel('live-proctoring-grid');
 
+    let isSubscribed = false;
+
     gridChannel
       .on('broadcast', { event: 'admin-warning' }, (payload) => {
         const { targetStudentId, message } = payload.payload || {};
@@ -106,10 +108,14 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           setRoomScanPending(true);
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          isSubscribed = true;
+        }
+      });
 
     const interval = setInterval(() => {
-      if (videoRef.current && ctx && videoRef.current.readyState >= 2) {
+      if (isSubscribed && videoRef.current && ctx && videoRef.current.readyState >= 2) {
         try {
           ctx.drawImage(videoRef.current, 0, 0, 240, 180);
           const dataUrl = canvas.toDataURL('image/webp', 0.35); // Silent ~5 KB frame

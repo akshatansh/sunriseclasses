@@ -1908,11 +1908,19 @@ Explanation: Arunachal Pradesh is the easternmost state.
                   const stream = streams[studentId];
                   const isMuted = mutedMap[studentId] !== false; // default to true (muted)
                   
+                  const getLiveFrame = (id: string) => {
+                    if (!id || !liveFrameMap) return undefined;
+                    if (liveFrameMap[id]) return liveFrameMap[id].image;
+                    const cleanId = String(id).toLowerCase().trim();
+                    const foundKey = Object.keys(liveFrameMap).find(k => String(k).toLowerCase().trim() === cleanId);
+                    return foundKey ? liveFrameMap[foundKey].image : undefined;
+                  };
+
                   return (
                     <VideoGridCell
                       key={studentId}
                       stream={stream}
-                      liveFrame={liveFrameMap[studentId]?.image}
+                      liveFrame={getLiveFrame(studentId)}
                       studentName={studentName}
                       studentPhoto={att.students?.image}
                       isMuted={isMuted}
