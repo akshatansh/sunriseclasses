@@ -42,17 +42,36 @@ export interface StudentTestAttempt {
   answers?: Record<string, string>; // Store chosen options for each question ID
 }
 
-// Student Login logic for Test Portal
 export async function loginStudentForTest(name: string, className: string, pin: string) {
+  const cleanName = name.trim();
+  const cleanPin = pin.trim();
+
+  // Try fetching with ban columns first
   const { data, error } = await supabase
     .from('students')
     .select('id, name, class_name, image, test_ban_type, test_ban_reason, test_ban_until, silent_record_enabled, parent_phone')
-    .ilike('name', `%${name}%`)
+    .ilike('name', `%${cleanName}%`)
     .eq('class_name', className)
-    .eq('pin', pin)
-    .single();
+    .eq('pin', cleanPin)
+    .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
+    // Graceful fallback if ban columns are missing in database schema
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('students')
+      .select('id, name, class_name, image, parent_phone')
+      .ilike('name', `%${cleanName}%`)
+      .eq('class_name', className)
+      .eq('pin', cleanPin)
+      .maybeSingle();
+
+    if (fallbackError || !fallbackData) {
+      throw new Error('Invalid credentials. Please check Name, Class and PIN.');
+    }
+    return fallbackData;
+  }
+
+  if (!data) {
     throw new Error('Invalid credentials. Please check Name, Class and PIN.');
   }
 
@@ -124,7 +143,10 @@ export async function uploadTestVideo(studentId: string, testId: string, videoBl
       .from('proctoring_proofs')
       .upload(fileName, videoBlob, { contentType: mimeType });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.warn('Storage limit reached or upload error, skipping video upload:', uploadError);
+      return null;
+    }
 
     const { data: publicUrlData } = supabase.storage
       .from('proctoring_proofs')
@@ -682,15 +704,15 @@ export async function deleteProctoringLogAdmin(logId: string, proofUrl: string |
 
 export async function autoDeleteOldProctoringLogs() {
   try {
-    // 1. Clean up proctoring logs older than 15 days
-    const fifteenDaysAgo = new Date();
-    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
-    const dateStr15 = fifteenDaysAgo.toISOString();
+    // 1. Clean up proctoring logs, images, audio, and videos older than 5 days
+    const fiveDaysAgo = new Date();
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+    const dateStr3 = fiveDaysAgo.toISOString();
 
     const { data: oldLogs, error: fetchError } = await supabase
       .from('proctoring_logs')
       .select('id, proof_image_url')
-      .lt('created_at', dateStr15);
+      .lt('created_at', dateStr3);
 
     if (!fetchError && oldLogs && oldLogs.length > 0) {
       const filePaths = oldLogs
@@ -705,15 +727,13 @@ export async function autoDeleteOldProctoringLogs() {
       await supabase
         .from('proctoring_logs')
         .delete()
-        .lt('created_at', dateStr15);
+        .lt('created_at', dateStr3);
 
       console.log(`Auto-deleted ${oldLogs.length} old proctoring logs.`);
     }
 
-    // 2. Clean up test video recordings older than 10 days
-    const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-    const dateStr10 = tenDaysAgo.toISOString();
+    // 2. Clean up test video recordings older than 3 days
+    const dateStr10 = dateStr3;
 
     const { data: oldVideos, error: videoFetchErr } = await supabase
       .from('test_video_recordings')

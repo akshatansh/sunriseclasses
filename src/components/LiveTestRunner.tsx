@@ -69,6 +69,12 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
 
+  // Room Scan anti-cheat state (periodic 360° camera check)
+  const [roomScanPending, setRoomScanPending] = useState(false);
+  const [roomScanCountdown, setRoomScanCountdown] = useState(10);
+  const roomScanDoneRef = useRef(false);
+  const roomScanCountdownRef = useRef<NodeJS.Timeout | null>(null);
+
   // ── WebRTC Live Streaming Proctoring Setup ──
   useEffect(() => {
     if (!studentId || !cameraActive || !streamRef.current) return;
@@ -565,6 +571,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     if (loading || result || !isTestStarted) return; // Don't tick timer before test starts
 
     const timerId = setInterval(() => {
+      // ⏸ Pause timer during room scan — student shouldn't lose time for security check
+      if (roomScanPending) return;
+
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timerId);
@@ -576,7 +585,56 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [loading, result, isTestStarted, finishTest]);
+  }, [loading, result, isTestStarted, finishTest, roomScanPending]);
+
+  // Anti-Cheat: Random Room Scan — 360° camera verification
+  // Triggers 2 random times during the test to detect group cheating behind camera
+  useEffect(() => {
+    if (!isTestStarted || result || loading) return;
+
+    const totalMs = test.duration_minutes * 60 * 1000;
+
+    // Schedule 2 random room scans between 15-55% and 55-85% of test duration
+    const scan1Delay = Math.random() * (totalMs * 0.4) + totalMs * 0.15;
+    const scan2Delay = Math.random() * (totalMs * 0.3) + totalMs * 0.55;
+
+    const triggerRoomScan = () => {
+      if (result) return; // Don't trigger if test already finished
+      setRoomScanPending(true);
+      roomScanDoneRef.current = false;
+      setRoomScanCountdown(10);
+
+      // Start 10-second countdown
+      let remaining = 10;
+      if (roomScanCountdownRef.current) clearInterval(roomScanCountdownRef.current);
+      roomScanCountdownRef.current = setInterval(() => {
+        remaining -= 1;
+        setRoomScanCountdown(remaining);
+        if (remaining <= 0) {
+          if (roomScanCountdownRef.current) clearInterval(roomScanCountdownRef.current);
+          // Student didn't click "Done" — auto-dismiss but log it as suspicious
+          if (!roomScanDoneRef.current) {
+            logProctoringEvent(
+              test.id,
+              studentId,
+              `[ROOM SCAN SKIPPED] ${studentName}: Student ne room scan nahi kiya (timeout). Sambhavit group cheating.`
+            );
+            setFaceWarnings(prev => prev + 2); // +2 warnings for skipping
+          }
+          setRoomScanPending(false);
+        }
+      }, 1000);
+    };
+
+    const timer1 = setTimeout(triggerRoomScan, scan1Delay);
+    const timer2 = setTimeout(triggerRoomScan, scan2Delay);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      if (roomScanCountdownRef.current) clearInterval(roomScanCountdownRef.current);
+    };
+  }, [isTestStarted, result, loading, test.duration_minutes, test.id, studentId, studentName]);
 
   // Anti-Cheat: Visibility Change (Tab Switch) — Duration Based
   // Short absence (system notification) = 0 warnings
@@ -974,6 +1032,11 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           const dataArray = new Uint8Array(bufferLength);
           
           let noisyCount = 0;
+          // Dead-mic detection: tracks consecutive near-zero audio readings
+          // Headphone wire-cut trick causes mic average to stay at 0 permanently
+          let deadMicReadings = 0;
+          const DEAD_MIC_THRESHOLD = 80; // ~2 minutes at 1.5s interval
+          let deadMicFlagged = false; // Only flag once per test
           
           audioInterval = setInterval(() => {
             if (isOffline || document.hidden) return; // ⛔ Don't check audio when browser is in background
@@ -989,6 +1052,24 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               sum += dataArray[i];
             }
             const average = sum / bufferLength;
+
+            // ── Dead Mic Detection (Headphone Wire-Cut Trick) ──
+            // Real silence in an exam room still shows ~1-3 average (ambient hiss).
+            // Exactly 0 or near-zero for 2+ minutes = dead mic (cut wire / muted)
+            if (average < 0.5) {
+              deadMicReadings++;
+              if (deadMicReadings >= DEAD_MIC_THRESHOLD && !deadMicFlagged) {
+                deadMicFlagged = true;
+                const deadMsg = `[MIC DEAD] ${studentName}: Microphone 2+ min se bilkul silent hai. Headphone wire cut ya mic mute ho sakta hai.`;
+                logProctoringEvent(test.id, studentId, deadMsg, undefined, 'image');
+                setCheatWarnings(prev => prev + 1);
+                showSubtleMessage("⚠️ Microphone signal detect nahi ho raha. Admin ko report kiya gaya.");
+              }
+            } else {
+              // Reset on any real audio signal — mic came back alive
+              deadMicReadings = Math.max(0, deadMicReadings - 5);
+              deadMicFlagged = false;
+            }
             
             // Threshold lowered to 30: sensitive enough for normal talking & whispers, ignores absolute silence
             if (average > 30) {
@@ -1023,6 +1104,21 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               noisyCount = Math.max(0, noisyCount - 1);
             }
           }, 1500); // Check audio every 1.5s
+
+          // ── Headphone Plug Detection (devicechange) ──
+          // When student cuts headphone wire and plugs it in, devicechange fires.
+          // This catches the exact moment the trick is executed.
+          const handleDeviceChange = async () => {
+            const deviceMsg = `[AUDIO DEVICE CHANGE] ${studentName}: Test ke dauran audio device change hua. Headphone plug/unplug detect kiya.`;
+            setCheatWarnings(prev => prev + 1);
+            logProctoringEvent(test.id, studentId, deviceMsg, undefined, 'image');
+            showSubtleMessage("⚠️ Audio device change detected! Admin ko notify kiya gaya.");
+          };
+          navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+
+          // Store cleanup function reference so it's accessible in useEffect cleanup
+          (audioContext as any)._deviceChangeHandler = handleDeviceChange;
+
         } catch(e) {
           console.warn("Audio Context failed to start", e);
         }
@@ -1088,6 +1184,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       clearInterval(detectionInterval);
       clearInterval(audioInterval);
       if (audioContext && audioContext.state !== 'closed') {
+        // Remove devicechange listener before closing audio context
+        if ((audioContext as any)._deviceChangeHandler) {
+          navigator.mediaDevices.removeEventListener('devicechange', (audioContext as any)._deviceChangeHandler);
+        }
         audioContext.close().catch(()=>{});
       }
     };
@@ -2032,6 +2132,60 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 <p className="text-[10px] font-semibold text-gray-300 uppercase tracking-widest leading-tight">Your Camera</p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ROOM SCAN CHALLENGE OVERLAY ── */}
+      {/* Appears randomly 2x during test — timer is paused while this is visible */}
+      {roomScanPending && !result && (
+        <div className="fixed inset-0 z-[500] bg-black/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+          <div className="bg-[#0f172a] rounded-3xl p-8 max-w-sm w-full border-2 border-amber-500 shadow-2xl shadow-amber-500/20">
+            {/* Icon */}
+            <div className="text-5xl mb-4 animate-bounce select-none">📷</div>
+
+            {/* Heading */}
+            <h2 className="text-xl font-black text-white mb-1">Security Room Check</h2>
+            <p className="text-amber-400 font-bold text-sm mb-1">Random Verification</p>
+
+            {/* Instructions */}
+            <p className="text-gray-300 text-sm mb-5 leading-relaxed">
+              Apna phone/camera <span className="text-amber-400 font-bold">slow-slow 360°</span> ghuma kar pura kamra dikhao, phir wapas apne aap par lao.
+              <br />
+              <span className="text-gray-500 text-xs mt-1 block">Yeh ek zaroori security check hai. Timer abhi ruka hua hai.</span>
+            </p>
+
+            {/* Progress bar countdown */}
+            <div className="w-full bg-gray-700 rounded-full h-3 mb-4 overflow-hidden">
+              <div
+                className="bg-amber-500 h-3 rounded-full transition-all duration-1000"
+                style={{ width: `${(roomScanCountdown / 10) * 100}%` }}
+              />
+            </div>
+            <p className="text-gray-400 text-xs mb-5">
+              Auto-dismiss in <span className="text-amber-400 font-black">{roomScanCountdown}s</span>
+            </p>
+
+            {/* Done Button */}
+            <button
+              id="room-scan-done-btn"
+              onClick={async () => {
+                roomScanDoneRef.current = true;
+                if (roomScanCountdownRef.current) clearInterval(roomScanCountdownRef.current);
+                const blob = await captureScreenshot();
+                logProctoringEvent(
+                  test.id,
+                  studentId,
+                  `[ROOM SCAN DONE] ${studentName}: Student ne room scan manually complete kiya.`,
+                  blob,
+                  'image'
+                );
+                setRoomScanPending(false);
+              }}
+              className="w-full bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black py-3 px-6 rounded-2xl transition-all text-base shadow-lg shadow-amber-500/30"
+            >
+              ✅ Room Scan Complete
+            </button>
           </div>
         </div>
       )}

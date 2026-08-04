@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe, Mic, Eye, Lock, Unlock, FileText, AlertTriangle } from 'lucide-react';
-import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, reportTestIssue, OnlineTest, StudentTestAttempt, verifyStudentPin, getTestQuestionsWithAnswers, OnlineTestQuestion, unbanStudent } from '../lib/onlineTests';
+import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, reportTestIssue, OnlineTest, StudentTestAttempt, verifyStudentPin, getTestQuestionsWithAnswers, OnlineTestQuestion, unbanStudent, autoDeleteOldProctoringLogs } from '../lib/onlineTests';
 import jsPDF from 'jspdf';
 import BanScreen from '../components/BanScreen';
 
@@ -43,6 +43,10 @@ export default function OnlineTestPortal() {
   const [testToStart, setTestToStart] = useState<OnlineTest | null>(null);
   const [attempts, setAttempts] = useState<StudentTestAttempt[]>([]);
   const [attemptedError, setAttemptedError] = useState('');
+
+  useEffect(() => {
+    autoDeleteOldProctoringLogs().catch(() => {});
+  }, []);
 
   // Review State
   const [reviewTest, setReviewTest] = useState<{ test: OnlineTest; attempt: StudentTestAttempt } | null>(null);
