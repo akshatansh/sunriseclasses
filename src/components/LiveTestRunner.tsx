@@ -3,6 +3,7 @@ import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest, logProcto
 import { AlertTriangle, CheckCircle, Clock, ShieldAlert, Camera, CameraOff, RefreshCw, Share2, Award, Download, Smartphone, Users, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import MathRenderer from './MathRenderer';
+import RoomScanModal from './RoomScanModal';
 import * as tf from '@tensorflow/tfjs';
 import * as blazefaceModel from '@tensorflow-models/blazeface';
 
@@ -90,7 +91,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     gridChannel
       .on('broadcast', { event: 'admin-warning' }, (payload) => {
         const { targetStudentId, message } = payload.payload || {};
-        if (targetStudentId === studentId && message) {
+        const match = targetStudentId && String(targetStudentId).toLowerCase().trim() === String(studentId).toLowerCase().trim();
+        if (match && message) {
           setActiveMessage(`⚠️ ADMIN WARNING: ${message}`);
           setIsWarningFlash(true);
           setTimeout(() => setIsWarningFlash(false), 5000);
@@ -98,10 +100,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         }
       })
       .on('broadcast', { event: 'request-360-scan' }, (payload) => {
-        const { targetStudentId } = payload.payload || {};
-        if (targetStudentId === studentId) {
+        const targetId = payload.payload?.targetStudentId || payload.payload?.studentId;
+        const match = !targetId || String(targetId).toLowerCase().trim() === String(studentId).toLowerCase().trim();
+        if (match) {
           setRoomScanPending(true);
-          setRoomScanCountdown(15);
         }
       })
       .subscribe();
@@ -126,16 +128,15 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     };
   }, [studentId, cameraActive]);
 
-  // ── Automatic Mandatory 360° Room Scan Trigger (40s after test start) ──
+  // ── Automatic Mandatory 360° Room Scan Trigger (12s after test start) ──
   useEffect(() => {
     if (!isTestStarted || roomScanDoneRef.current) return;
 
     const timer = setTimeout(() => {
       if (!roomScanDoneRef.current) {
         setRoomScanPending(true);
-        setRoomScanCountdown(15);
       }
-    }, 40000);
+    }, 12000); // 12 seconds after test start
 
     return () => clearTimeout(timer);
   }, [isTestStarted]);
@@ -2198,57 +2199,16 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       )}
 
       {/* ── ROOM SCAN CHALLENGE OVERLAY ── */}
-      {/* Appears randomly 2x during test — timer is paused while this is visible */}
       {roomScanPending && !result && (
-        <div className="fixed inset-0 z-[500] bg-black/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
-          <div className="bg-[#0f172a] rounded-3xl p-8 max-w-sm w-full border-2 border-amber-500 shadow-2xl shadow-amber-500/20">
-            {/* Icon */}
-            <div className="text-5xl mb-4 animate-bounce select-none">📷</div>
-
-            {/* Heading */}
-            <h2 className="text-xl font-black text-white mb-1">Security Room Check</h2>
-            <p className="text-amber-400 font-bold text-sm mb-1">Random Verification</p>
-
-            {/* Instructions */}
-            <p className="text-gray-300 text-sm mb-5 leading-relaxed">
-              Apna phone/camera <span className="text-amber-400 font-bold">slow-slow 360°</span> ghuma kar pura kamra dikhao, phir wapas apne aap par lao.
-              <br />
-              <span className="text-gray-500 text-xs mt-1 block">Yeh ek zaroori security check hai. Timer abhi ruka hua hai.</span>
-            </p>
-
-            {/* Progress bar countdown */}
-            <div className="w-full bg-gray-700 rounded-full h-3 mb-4 overflow-hidden">
-              <div
-                className="bg-amber-500 h-3 rounded-full transition-all duration-1000"
-                style={{ width: `${(roomScanCountdown / 10) * 100}%` }}
-              />
-            </div>
-            <p className="text-gray-400 text-xs mb-5">
-              Auto-dismiss in <span className="text-amber-400 font-black">{roomScanCountdown}s</span>
-            </p>
-
-            {/* Done Button */}
-            <button
-              id="room-scan-done-btn"
-              onClick={async () => {
-                roomScanDoneRef.current = true;
-                if (roomScanCountdownRef.current) clearInterval(roomScanCountdownRef.current);
-                const blob = await captureScreenshot();
-                logProctoringEvent(
-                  test.id,
-                  studentId,
-                  `[ROOM SCAN DONE] ${studentName}: Student ne room scan manually complete kiya.`,
-                  blob,
-                  'image'
-                );
-                setRoomScanPending(false);
-              }}
-              className="w-full bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-black py-3 px-6 rounded-2xl transition-all text-base shadow-lg shadow-amber-500/30"
-            >
-              ✅ Room Scan Complete
-            </button>
-          </div>
-        </div>
+        <RoomScanModal
+          studentName={studentName || 'Student'}
+          studentId={studentId}
+          testId={test.id}
+          onComplete={() => {
+            setRoomScanPending(false);
+            roomScanDoneRef.current = true;
+          }}
+        />
       )}
     </div>
   );
