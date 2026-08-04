@@ -43,39 +43,53 @@ export interface StudentTestAttempt {
 }
 
 export async function loginStudentForTest(name: string, className: string, pin: string) {
-  const cleanName = name.trim();
+  const cleanName = name.trim().toLowerCase();
   const cleanPin = pin.trim();
 
-  // Try fetching with ban columns first
-  const { data, error } = await supabase
-    .from('students')
-    .select('id, name, class_name, image, test_ban_type, test_ban_reason, test_ban_until, silent_record_enabled, parent_phone')
-    .ilike('name', `%${cleanName}%`)
-    .eq('class_name', className)
-    .eq('pin', cleanPin)
-    .maybeSingle();
+  if (!cleanName || !cleanPin) {
+    throw new Error('Please enter your Name, select your Class and enter your 4-digit Secret PIN.');
+  }
 
-  if (error) {
-    // Graceful fallback if ban columns are missing in database schema
+  // 1. Query student by exact Class and Secret PIN (guaranteed unique per class)
+  let { data, error } = await supabase
+    .from('students')
+    .select('id, name, class_name, image, test_ban_type, test_ban_reason, test_ban_until, silent_record_enabled, parent_phone, pin')
+    .eq('class_name', className)
+    .eq('pin', cleanPin);
+
+  if (error || !data || data.length === 0) {
+    // Try query without ban columns as fallback if schema differs
     const { data: fallbackData, error: fallbackError } = await supabase
       .from('students')
-      .select('id, name, class_name, image, parent_phone')
-      .ilike('name', `%${cleanName}%`)
+      .select('id, name, class_name, image, parent_phone, pin')
       .eq('class_name', className)
-      .eq('pin', cleanPin)
-      .maybeSingle();
+      .eq('pin', cleanPin);
 
-    if (fallbackError || !fallbackData) {
-      throw new Error('Invalid credentials. Please check Name, Class and PIN.');
+    if (fallbackError || !fallbackData || fallbackData.length === 0) {
+      throw new Error('Invalid credentials. Secret PIN or Class does not match. Please verify your 4-digit PIN.');
     }
-    return fallbackData;
+    data = fallbackData as any;
   }
 
-  if (!data) {
-    throw new Error('Invalid credentials. Please check Name, Class and PIN.');
+  // 2. Verify entered name matches the student's registered name (flexible matching)
+  const matchedStudent = data.find((s: any) => {
+    const dbName = (s.name || '').trim().toLowerCase();
+    const firstEnteredWord = cleanName.split(/\s+/)[0];
+    const firstDbWord = dbName.split(/\s+/)[0];
+
+    return (
+      dbName === cleanName ||
+      dbName.includes(cleanName) ||
+      cleanName.includes(dbName) ||
+      firstDbWord === firstEnteredWord
+    );
+  });
+
+  if (!matchedStudent) {
+    throw new Error(`Name "${name}" does not match registered student name for PIN ${pin}. Please check your spelling.`);
   }
 
-  return data;
+  return matchedStudent;
 }
 
 // Ban a student from online tests
