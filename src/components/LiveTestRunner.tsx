@@ -85,26 +85,26 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     canvas.height = 180;
     const ctx = canvas.getContext('2d');
 
-    const liveChannel = supabase.channel(`live-frame-${studentId}`);
-    liveChannel.subscribe();
+    const gridChannel = supabase.channel('live-proctoring-grid');
+    gridChannel.subscribe();
 
     const interval = setInterval(() => {
       if (videoRef.current && ctx && videoRef.current.readyState >= 2) {
         try {
           ctx.drawImage(videoRef.current, 0, 0, 240, 180);
           const dataUrl = canvas.toDataURL('image/webp', 0.35); // Silent ~5 KB frame
-          liveChannel.send({
+          gridChannel.send({
             type: 'broadcast',
-            event: 'frame',
+            event: 'student-frame',
             payload: { studentId, image: dataUrl, timestamp: Date.now() }
           }).catch(() => {});
         } catch (e) {}
       }
-    }, 2200);
+    }, 2000);
 
     return () => {
       clearInterval(interval);
-      supabase.removeChannel(liveChannel);
+      supabase.removeChannel(gridChannel);
     };
   }, [studentId, cameraActive]);
 

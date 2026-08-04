@@ -17,6 +17,7 @@ function VideoGridCell({
   stream, 
   liveFrame,
   studentName, 
+  studentPhoto,
   isMuted, 
   onToggleMute, 
   onExpand,
@@ -29,6 +30,7 @@ function VideoGridCell({
   stream: MediaStream | undefined; 
   liveFrame?: string;
   studentName: string; 
+  studentPhoto?: string;
   isMuted: boolean; 
   onToggleMute: () => void; 
   onExpand: () => void;
@@ -83,9 +85,17 @@ function VideoGridCell({
         />
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 p-4 text-center">
-          <Camera className="h-6 w-6 text-blue-400 animate-pulse mb-1.5" />
+          {studentPhoto ? (
+            <img src={studentPhoto} alt={studentName} className="w-14 h-14 rounded-full object-cover border-2 border-emerald-500 mb-2 shadow-md" />
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-blue-600 font-black text-white flex items-center justify-center text-lg mb-2 shadow-md">
+              {studentName.charAt(0)}
+            </div>
+          )}
           <p className="text-white text-xs font-bold truncate max-w-full">{studentName}</p>
-          <span className="text-[9px] text-blue-300 font-semibold mt-1">Connecting Live Stream...</span>
+          <span className="text-[9px] text-emerald-400 font-bold mt-1 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" /> Live Active Exam
+          </span>
         </div>
       )}
       {/* Controls Overlay */}
@@ -218,31 +228,25 @@ export default function OnlineTestAdmin() {
 
   // Subscribe to silent background live camera frame snapshots for every active student
   useEffect(() => {
-    if (view !== 'live-monitor' || liveStudents.length === 0) return;
+    if (view !== 'live-monitor') return;
 
-    const activeChannels: any[] = [];
-
-    liveStudents.forEach((att) => {
-      const studentId = att.student_id;
-      const ch = supabase
-        .channel(`live-frame-${studentId}`)
-        .on('broadcast', { event: 'frame' }, (payload) => {
-          if (payload.payload && payload.payload.image) {
-            setLiveFrameMap((prev) => ({
-              ...prev,
-              [studentId]: { image: payload.payload.image, timestamp: Date.now() },
-            }));
-          }
-        })
-        .subscribe();
-
-      activeChannels.push(ch);
-    });
+    const gridChannel = supabase
+      .channel('live-proctoring-grid')
+      .on('broadcast', { event: 'student-frame' }, (payload) => {
+        const { studentId, image } = payload.payload || {};
+        if (studentId && image) {
+          setLiveFrameMap((prev) => ({
+            ...prev,
+            [studentId]: { image, timestamp: Date.now() },
+          }));
+        }
+      })
+      .subscribe();
 
     return () => {
-      activeChannels.forEach((ch) => supabase.removeChannel(ch));
+      supabase.removeChannel(gridChannel);
     };
-  }, [view, liveStudents]);
+  }, [view]);
 
   const fetchLiveStudents = async () => {
     setLiveLoading(true);
@@ -1910,6 +1914,7 @@ Explanation: Arunachal Pradesh is the easternmost state.
                       stream={stream}
                       liveFrame={liveFrameMap[studentId]?.image}
                       studentName={studentName}
+                      studentPhoto={att.students?.image}
                       isMuted={isMuted}
                       onToggleMute={() => {
                         setMutedMap(prev => ({
