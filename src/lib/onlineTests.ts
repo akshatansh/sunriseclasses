@@ -328,7 +328,26 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
     .select()
     .maybeSingle(); // maybeSingle() prevents PGRST116 error when 0 rows match
 
-  if (error) throw error;
+  if (error) {
+    // Basic fallback update if optional columns fail
+    const { data: fallbackUpdate, error: fallbackErr } = await supabase
+      .from('online_test_attempts')
+      .update({
+        score,
+        total_marks,
+        cheat_warnings: attempt.cheat_warnings || 0,
+        is_completed: true,
+        submission_type: attempt.submission_type || 'manual',
+        answers: answers || {},
+      })
+      .eq('student_id', attempt.student_id)
+      .eq('test_id', attempt.test_id)
+      .select()
+      .maybeSingle();
+
+    if (!fallbackErr && fallbackUpdate) return fallbackUpdate as StudentTestAttempt;
+    throw error;
+  }
 
 
 
