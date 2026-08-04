@@ -1986,19 +1986,57 @@ Explanation: Arunachal Pradesh is the easternmost state.
                         </div>
                       </div>
 
-                      {/* Time Info */}
-                      <div className="flex items-center justify-between text-[11px] text-gray-500">
+                      {/* Admin Live Actions */}
+                      <div className="flex items-center justify-between text-[11px] text-gray-500 pt-2 border-t border-gray-100">
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          <span>Started {minutesAgo < 1 ? 'just now' : `${minutesAgo} min ago`}</span>
+                          <span>Started {minutesAgo < 1 ? 'just now' : `${minutesAgo}m ago`}</span>
                         </div>
-                        <button
-                          onClick={() => handleResetAttempt(att.student_id, att.students?.name || 'Unknown')}
-                          className="flex items-center gap-1 text-orange-500 hover:text-orange-700 font-bold transition-colors"
-                          title="Reset attempt so student can retake"
-                        >
-                          <RotateCcw className="h-3 w-3" /> Reset
-                        </button>
+                        
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              const msg = prompt(`Enter warning message to send to ${att.students?.name}:`, 'Sit properly and look at the screen!');
+                              if (msg) {
+                                const ch = supabase.channel(`admin-signal-${att.student_id}`);
+                                ch.subscribe((st) => {
+                                  if (st === 'SUBSCRIBED') {
+                                    ch.send({ type: 'broadcast', event: 'admin-warning', payload: { message: msg } });
+                                  }
+                                });
+                              }
+                            }}
+                            className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold rounded border border-amber-200 text-[10px] transition-colors"
+                            title="Send Warning Message to Student"
+                          >
+                            ⚠️ Warn
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (confirm(`Trigger instant 360° Room Scan for ${att.students?.name}?`)) {
+                                const ch = supabase.channel(`admin-signal-${att.student_id}`);
+                                ch.subscribe((st) => {
+                                  if (st === 'SUBSCRIBED') {
+                                    ch.send({ type: 'broadcast', event: 'request-360-scan', payload: {} });
+                                  }
+                                });
+                              }
+                            }}
+                            className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded border border-purple-200 text-[10px] transition-colors"
+                            title="Request Instant 360 Room Scan"
+                          >
+                            🎥 360 Scan
+                          </button>
+
+                          <button
+                            onClick={() => handleResetAttempt(att.student_id, att.students?.name || 'Unknown')}
+                            className="p-1 text-orange-500 hover:bg-orange-50 rounded font-bold transition-colors"
+                            title="Reset attempt"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );

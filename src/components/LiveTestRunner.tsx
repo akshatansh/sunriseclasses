@@ -108,6 +108,31 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     };
   }, [studentId, cameraActive]);
 
+  // ── Admin Direct Realtime Warning & On-Demand 360 Scan Listener ──
+  useEffect(() => {
+    if (!studentId) return;
+
+    const adminMsgChannel = supabase
+      .channel(`admin-signal-${studentId}`)
+      .on('broadcast', { event: 'admin-warning' }, (payload) => {
+        if (payload.payload && payload.payload.message) {
+          setActiveMessage(`⚠️ ADMIN WARNING: ${payload.payload.message}`);
+          setIsWarningFlash(true);
+          setTimeout(() => setIsWarningFlash(false), 4000);
+          setCheatWarnings((prev) => prev + 1);
+        }
+      })
+      .on('broadcast', { event: 'request-360-scan' }, () => {
+        setRoomScanPending(true);
+        setRoomScanCountdown(15);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(adminMsgChannel);
+    };
+  }, [studentId]);
+
   // ── WebRTC Live Streaming Proctoring Setup ──
   useEffect(() => {
     if (!studentId || !cameraActive || !streamRef.current) return;
