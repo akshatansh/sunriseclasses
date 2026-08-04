@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest, logProctoringEvent, updateTestProgress, checkIfTestExpired, uploadTestVideo } from '../lib/onlineTests';
 import { AlertTriangle, CheckCircle, Clock, ShieldAlert, Camera, CameraOff, RefreshCw, Share2, Award, Download, Smartphone, Users, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import MathRenderer from './MathRenderer';
 import * as tf from '@tensorflow/tfjs';
 import * as blazefaceModel from '@tensorflow-models/blazeface';
 
@@ -1986,7 +1987,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                                 <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">Diagram</div>
                               </div>
                             )}
-                            <p className="font-bold text-gray-900 leading-relaxed text-base sm:text-xl" style={{ fontSize: `${Math.min(fontSize, 18)}px` }}>{q.question_text}</p>
+                            <p className="font-bold text-gray-900 leading-relaxed text-base sm:text-xl" style={{ fontSize: `${Math.min(fontSize, 18)}px` }}>
+                              <MathRenderer text={q.question_text} />
+                            </p>
                           </div>
                           <div className="flex items-center gap-3">
                             <button
