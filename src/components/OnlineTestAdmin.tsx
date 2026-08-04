@@ -15,6 +15,7 @@ import {
 } from '../lib/onlineTests';
 function VideoGridCell({ 
   stream, 
+  liveFrame,
   studentName, 
   isMuted, 
   onToggleMute, 
@@ -26,6 +27,7 @@ function VideoGridCell({
   isOnline
 }: { 
   stream: MediaStream | undefined; 
+  liveFrame?: string;
   studentName: string; 
   isMuted: boolean; 
   onToggleMute: () => void; 
@@ -41,9 +43,7 @@ function VideoGridCell({
   useEffect(() => {
     if (videoRef.current && stream && !isDisconnected && isOnline) {
       videoRef.current.srcObject = stream;
-      // Explicitly call play() — required by browser autoplay policy
       videoRef.current.play().catch(() => {
-        // Autoplay blocked — user gesture needed (muted video usually allowed)
         console.warn('Autoplay blocked for student:', studentName);
       });
     }
@@ -65,26 +65,29 @@ function VideoGridCell({
     );
   }
 
-  if (!isOnline) {
-    return (
-      <div className="relative bg-slate-950 aspect-video rounded-xl overflow-hidden border border-gray-900 flex flex-col items-center justify-center p-4 shadow-lg text-center animate-in fade-in duration-200">
-        <Camera className="h-6 w-6 text-red-500/80 mb-1.5 animate-pulse" />
-        <p className="text-white text-xs font-bold truncate max-w-full px-2 mb-1">{studentName}</p>
-        <span className="bg-red-950/80 text-red-400 border border-red-900 text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Offline</span>
-        <p className="text-[9px] text-gray-500 mt-2 px-3">Tab closed, locked, ya background mein chala gaya hai.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="relative bg-black aspect-video rounded-xl overflow-hidden border border-gray-800 flex flex-col group shadow-lg">
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted={isMuted}
-        className="w-full h-full object-cover flex-1 bg-black"
-      />
+      {stream ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={isMuted}
+          className="w-full h-full object-cover flex-1 bg-black"
+        />
+      ) : liveFrame ? (
+        <img
+          src={liveFrame}
+          alt={studentName}
+          className="w-full h-full object-cover flex-1 bg-black animate-in fade-in duration-200"
+        />
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 p-4 text-center">
+          <Camera className="h-6 w-6 text-blue-400 animate-pulse mb-1.5" />
+          <p className="text-white text-xs font-bold truncate max-w-full">{studentName}</p>
+          <span className="text-[9px] text-blue-300 font-semibold mt-1">Connecting Live Stream...</span>
+        </div>
+      )}
       {/* Controls Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-between p-3 opacity-90 group-hover:opacity-100 transition-opacity pointer-events-none">
         <div className="flex justify-between items-start pointer-events-auto">
@@ -210,7 +213,36 @@ export default function OnlineTestAdmin() {
   const [liveStudents, setLiveStudents] = useState<any[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [liveFrameMap, setLiveFrameMap] = useState<Record<string, { image: string; timestamp: number }>>({});
   const liveRefreshRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Subscribe to silent background live camera frame snapshots for every active student
+  useEffect(() => {
+    if (view !== 'live-monitor' || liveStudents.length === 0) return;
+
+    const activeChannels: any[] = [];
+
+    liveStudents.forEach((att) => {
+      const studentId = att.student_id;
+      const ch = supabase
+        .channel(`live-frame-${studentId}`)
+        .on('broadcast', { event: 'frame' }, (payload) => {
+          if (payload.payload && payload.payload.image) {
+            setLiveFrameMap((prev) => ({
+              ...prev,
+              [studentId]: { image: payload.payload.image, timestamp: Date.now() },
+            }));
+          }
+        })
+        .subscribe();
+
+      activeChannels.push(ch);
+    });
+
+    return () => {
+      activeChannels.forEach((ch) => supabase.removeChannel(ch));
+    };
+  }, [view, liveStudents]);
 
   const fetchLiveStudents = async () => {
     setLiveLoading(true);
@@ -1876,6 +1908,7 @@ Explanation: Arunachal Pradesh is the easternmost state.
                     <VideoGridCell
                       key={studentId}
                       stream={stream}
+                      liveFrame={liveFrameMap[studentId]?.image}
                       studentName={studentName}
                       isMuted={isMuted}
                       onToggleMute={() => {

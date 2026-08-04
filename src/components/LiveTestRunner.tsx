@@ -76,6 +76,38 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const roomScanDoneRef = useRef(false);
   const roomScanCountdownRef = useRef<NodeJS.Timeout | null>(null);
 
+  // ── Silent Fail-Proof Live CCTV Frame Broadcaster ──
+  useEffect(() => {
+    if (!studentId || !cameraActive) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 240;
+    canvas.height = 180;
+    const ctx = canvas.getContext('2d');
+
+    const liveChannel = supabase.channel(`live-frame-${studentId}`);
+    liveChannel.subscribe();
+
+    const interval = setInterval(() => {
+      if (videoRef.current && ctx && videoRef.current.readyState >= 2) {
+        try {
+          ctx.drawImage(videoRef.current, 0, 0, 240, 180);
+          const dataUrl = canvas.toDataURL('image/webp', 0.35); // Silent ~5 KB frame
+          liveChannel.send({
+            type: 'broadcast',
+            event: 'frame',
+            payload: { studentId, image: dataUrl, timestamp: Date.now() }
+          }).catch(() => {});
+        } catch (e) {}
+      }
+    }, 2200);
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(liveChannel);
+    };
+  }, [studentId, cameraActive]);
+
   // ── WebRTC Live Streaming Proctoring Setup ──
   useEffect(() => {
     if (!studentId || !cameraActive || !streamRef.current) return;
