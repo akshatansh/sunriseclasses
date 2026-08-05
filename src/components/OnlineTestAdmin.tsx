@@ -1708,11 +1708,15 @@ Explanation: Arunachal Pradesh is the easternmost state.
                           </span>
                         ) : att.submission_type === 'auto_cheat' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-200 uppercase tracking-tighter">
-                            <AlertTriangle className="h-2.5 w-2.5" /> Auto Submit
+                            <AlertTriangle className="h-2.5 w-2.5" /> Auto Submit (AI)
+                          </span>
+                        ) : att.submission_type === 'test_verify' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 uppercase tracking-tighter">
+                            System Verification
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-800 border border-green-200 uppercase tracking-tighter">
-                            Khud kiya
+                            Manual Submit
                           </span>
                         )}
                       </td>
