@@ -1993,12 +1993,17 @@ Explanation: Arunachal Pradesh is the easternmost state.
                       </div>
 
                       {/* Test Info */}
-                      <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
-                        <p className="text-xs font-bold text-gray-800 truncate">{att.online_tests?.title || 'Test'}</p>
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-[10px] text-gray-500 font-medium">{att.online_tests?.subject}</p>
-                          <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full animate-pulse">
-                            Solving Q.{att.current_question_index || 1}
+                      <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-gray-800 truncate pr-2">{att.online_tests?.title || 'Test'}</p>
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full shrink-0">
+                            Q.{(att.current_question_index ?? 0) + 1} Reached
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-gray-500">
+                          <span>{att.online_tests?.subject || 'General'}</span>
+                          <span className="font-semibold text-gray-700">
+                            ⏱️ Time Spent: {Math.floor((att.time_taken_seconds || 0) / 60)}m {(att.time_taken_seconds || 0) % 60}s
                           </span>
                         </div>
                       </div>
@@ -2029,22 +2034,7 @@ Explanation: Arunachal Pradesh is the easternmost state.
                             ⚠️ Warn
                           </button>
 
-                          <button
-                            onClick={() => {
-                              if (confirm(`Trigger instant 360° Room Scan for ${att.students?.name}?`)) {
-                                const ch = supabase.channel('live-proctoring-grid');
-                                ch.send({
-                                  type: 'broadcast',
-                                  event: 'request-360-scan',
-                                  payload: { targetStudentId: att.student_id }
-                                }).catch(() => {});
-                              }
-                            }}
-                            className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded border border-purple-200 text-[10px] transition-colors"
-                            title="Request Instant 360 Room Scan"
-                          >
-                            🎥 360 Scan
-                          </button>
+
 
                           <button
                             onClick={() => handleResetAttempt(att.student_id, att.students?.name || 'Unknown')}

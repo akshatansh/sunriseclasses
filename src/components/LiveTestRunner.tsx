@@ -3,7 +3,7 @@ import { OnlineTest, OnlineTestQuestion, getTestQuestions, submitTest, logProcto
 import { AlertTriangle, CheckCircle, Clock, ShieldAlert, Camera, CameraOff, RefreshCw, Share2, Award, Download, Smartphone, Users, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import MathRenderer from './MathRenderer';
-import { RoomScanModal } from './RoomScanModal';
+
 import * as tf from '@tensorflow/tfjs';
 import * as blazefaceModel from '@tensorflow-models/blazeface';
 
@@ -71,11 +71,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
 
-  // Room Scan anti-cheat state (periodic 360° camera check)
-  const [roomScanPending, setRoomScanPending] = useState(false);
-  const [roomScanCountdown, setRoomScanCountdown] = useState(10);
-  const roomScanDoneRef = useRef(false);
-  const roomScanCountdownRef = useRef<NodeJS.Timeout | null>(null);
+
 
   // ── Silent Fail-Proof Live CCTV Frame Broadcaster & Admin Signal Listener ──
   useEffect(() => {
@@ -101,13 +97,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           setCheatWarnings((prev) => prev + 1);
         }
       })
-      .on('broadcast', { event: 'request-360-scan' }, (payload) => {
-        const targetId = payload.payload?.targetStudentId || payload.payload?.studentId;
-        const match = !targetId || String(targetId).toLowerCase().trim() === String(studentId).toLowerCase().trim();
-        if (match) {
-          setRoomScanPending(true);
-        }
-      })
+
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           isSubscribed = true;
@@ -134,37 +124,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     };
   }, [studentId, cameraActive]);
 
-  // ── Unpredictable Random 360° Room Scan Scheduler Engine ──
-  useEffect(() => {
-    if (!isTestStarted) return;
 
-    const activeTimers: NodeJS.Timeout[] = [];
-
-    // 1st Surprise Scan: Randomly between 2 and 5 minutes (120s to 300s)
-    const scan1DelayMs = Math.floor((120 + Math.random() * 180) * 1000);
-    const timer1 = setTimeout(() => {
-      setRoomScanPending(true);
-    }, scan1DelayMs);
-    activeTimers.push(timer1);
-
-    // 2nd Surprise Scan: Randomly between 10 and 13 minutes (600s to 780s)
-    const scan2DelayMs = Math.floor((600 + Math.random() * 180) * 1000);
-    const timer2 = setTimeout(() => {
-      setRoomScanPending(true);
-    }, scan2DelayMs);
-    activeTimers.push(timer2);
-
-    // 3rd Surprise Scan (For long tests 18+ mins): Randomly between 18 and 22 minutes
-    const scan3DelayMs = Math.floor((1080 + Math.random() * 240) * 1000);
-    const timer3 = setTimeout(() => {
-      setRoomScanPending(true);
-    }, scan3DelayMs);
-    activeTimers.push(timer3);
-
-    return () => {
-      activeTimers.forEach(t => clearTimeout(t));
-    };
-  }, [isTestStarted]);
 
   // ── WebRTC Live Streaming Proctoring Setup ──
   useEffect(() => {
@@ -452,12 +412,6 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   ) => {
     if (submitting || result) return;
 
-    // Mandatory 360 Scan check — EVERY student MUST perform at least 1 scan before manual submit
-    if (!roomScanDoneRef.current && submissionType === 'manual') {
-      setRoomScanPending(true);
-      showSubtleMessage('⚠️ Test submit karne se pehle 360° Room Scan zaroori hai.');
-      return;
-    }
 
     setSubmitting(true);
 
@@ -670,8 +624,6 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     if (loading || result || !isTestStarted) return; // Don't tick timer before test starts
 
     const timerId = setInterval(() => {
-      // ⏸ Pause timer during room scan — student shouldn't lose time for security check
-      if (roomScanPending) return;
 
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -684,56 +636,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     }, 1000);
 
     return () => clearInterval(timerId);
-  }, [loading, result, isTestStarted, finishTest, roomScanPending]);
+  }, [loading, result, isTestStarted, finishTest]);
 
-  // Anti-Cheat: Random Room Scan — 360° camera verification
-  // Triggers 2 random times during the test to detect group cheating behind camera
-  useEffect(() => {
-    if (!isTestStarted || result || loading) return;
 
-    const totalMs = test.duration_minutes * 60 * 1000;
-
-    // Schedule 2 random room scans between 15-55% and 55-85% of test duration
-    const scan1Delay = Math.random() * (totalMs * 0.4) + totalMs * 0.15;
-    const scan2Delay = Math.random() * (totalMs * 0.3) + totalMs * 0.55;
-
-    const triggerRoomScan = () => {
-      if (result) return; // Don't trigger if test already finished
-      setRoomScanPending(true);
-      roomScanDoneRef.current = false;
-      setRoomScanCountdown(10);
-
-      // Start 10-second countdown
-      let remaining = 10;
-      if (roomScanCountdownRef.current) clearInterval(roomScanCountdownRef.current);
-      roomScanCountdownRef.current = setInterval(() => {
-        remaining -= 1;
-        setRoomScanCountdown(remaining);
-        if (remaining <= 0) {
-          if (roomScanCountdownRef.current) clearInterval(roomScanCountdownRef.current);
-          // Student didn't click "Done" — auto-dismiss but log it as suspicious
-          if (!roomScanDoneRef.current) {
-            logProctoringEvent(
-              test.id,
-              studentId,
-              `[ROOM SCAN SKIPPED] ${studentName}: Student ne room scan nahi kiya (timeout). Sambhavit group cheating.`
-            );
-            setFaceWarnings(prev => prev + 2); // +2 warnings for skipping
-          }
-          setRoomScanPending(false);
-        }
-      }, 1000);
-    };
-
-    const timer1 = setTimeout(triggerRoomScan, scan1Delay);
-    const timer2 = setTimeout(triggerRoomScan, scan2Delay);
-
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      if (roomScanCountdownRef.current) clearInterval(roomScanCountdownRef.current);
-    };
-  }, [isTestStarted, result, loading, test.duration_minutes, test.id, studentId, studentName]);
 
   // Anti-Cheat: Visibility Change (Tab Switch) — Duration Based
   // Short absence (system notification) = 0 warnings
@@ -2018,9 +1923,19 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               </div>
             </div>
 
+            {/* Early Submit Button (Always Available) */}
+            <button
+              onClick={() => setShowSubmitSummary(true)}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-lg shadow-red-600/30 transition-all active:scale-95 border border-red-500 shrink-0"
+              title="Submit Test Early"
+            >
+              <CheckCircle className="h-4 w-4" />
+              <span>Submit Test</span>
+            </button>
+
             <button
               onClick={() => setLanguage(l => l === 'EN' ? 'HI' : 'EN')}
-              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors text-xs font-bold"
+              className="hidden sm:flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors text-xs font-bold"
             >
               <RefreshCw className="h-3 w-3" /> {language === 'EN' ? 'HI' : 'EN'}
             </button>
@@ -2135,8 +2050,17 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                   ← Previous
                 </button>
 
-                <div className="text-gray-400 font-black tracking-widest text-sm">
-                  {currentQuestionIdx + 1} / {questions.length}
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500 font-bold text-xs sm:text-sm">
+                    Q.{currentQuestionIdx + 1}/{questions.length}
+                  </span>
+                  <button
+                    onClick={() => setShowSubmitSummary(true)}
+                    className="px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95 border border-red-500"
+                    title="Submit Test"
+                  >
+                    Submit Test
+                  </button>
                 </div>
 
                 {currentQuestionIdx === questions.length - 1 ? (
@@ -2149,9 +2073,9 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 ) : (
                   <button
                     onClick={() => { setCurrentQuestionIdx(prev => { const next = prev + 1; setMaxQuestionSeen(m => Math.max(m, next)); return next; }); }}
-                    className="px-4 sm:px-10 py-3 sm:py-4 bg-blue-600 text-white rounded-xl sm:rounded-2xl font-black shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-2 text-sm sm:text-base"
+                    className="px-4 sm:px-8 py-3 sm:py-4 bg-blue-600 text-white rounded-xl sm:rounded-2xl font-black shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-2 text-sm sm:text-base"
                   >
-                    Next Question →
+                    Next →
                   </button>
                 )}
               </div>
@@ -2231,22 +2155,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         </div>
       )}
 
-      {/* ── ROOM SCAN CHALLENGE OVERLAY ── */}
-      {roomScanPending && !result && (
-        <RoomScanModal
-          studentName={studentName || 'Student'}
-          className={test.class_name || 'Class'}
-          studentId={studentId}
-          testId={test.id}
-          onComplete={() => {
-            setRoomScanPending(false);
-            roomScanDoneRef.current = true;
-          }}
-          onRefuse={() => {
-            setRoomScanPending(false);
-          }}
-        />
-      )}
+
     </div>
   );
 }
