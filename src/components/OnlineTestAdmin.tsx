@@ -721,16 +721,50 @@ export default function OnlineTestAdmin() {
       // Also handles Hindi word "प्रश्न 1."
       normalizedText = normalizedText.replace(/\n(?=(?:Q(?:uestion)?\s*\d+[\.\)]\s*|प्रश्न\s*\d+[\.\)]\s*|\d+[\.\)]\s+))/gi, '\n\n');
 
-      const blocks = normalizedText.split(/\n\s*\n/);
+      // Auto-insert double newlines after answer/explanation lines before a new question line
+      const rawLines = normalizedText.split('\n');
+      const processedLines: string[] = [];
+
+      for (let i = 0; i < rawLines.length; i++) {
+        const line = rawLines[i];
+        processedLines.push(line);
+        const trimmed = line.trim().toLowerCase();
+        const isAnsLine = /^(?:ans(?:wer)?|उत्तर|correct|right)/i.test(trimmed);
+        const isExpLine = /^(?:exp(?:lanation)?|sol(?:ution)?|व्याख्या|हल|नोट)/i.test(trimmed);
+
+        if (isAnsLine || isExpLine) {
+          if (i + 1 < rawLines.length) {
+            const nextLine = rawLines[i + 1].trim();
+            const nextIsExp = /^(?:exp(?:lanation)?|sol(?:ution)?|व्याख्या|हल|नोट)/i.test(nextLine);
+            if (!nextIsExp && nextLine.length > 0) {
+              processedLines.push('');
+            }
+          }
+        }
+      }
+
+      const blocks = processedLines.join('\n').split(/\n\s*\n/);
       const parsedQuestions: Partial<OnlineTestQuestion>[] = [];
+
+      const optARegex = /^(\([Aa]\)|\[[Aa]\]|[Aa]\s*[\.\:\)\-–—]|\([कअ]\)|\[[कअ]\]|[कअ]\s*[\.\:\)\-–—])\s*/;
+      const optBRegex = /^(\([Bb]\)|\[[Bb]\]|[Bb]\s*[\.\:\)\-–—]|\([खब]\)|\[[खब]\]|[खब]\s*[\.\:\)\-–—])\s*/;
+      const optCRegex = /^(\([Cc]\)|\[[Cc]\]|[Cc]\s*[\.\:\)\-–—]|\([गस]\)|\[[गस]\]|[गस]\s*[\.\:\)\-–—])\s*/;
+      const optDRegex = /^(\([Dd]\)|\[[Dd]\]|[Dd]\s*[\.\:\)\-–—]|\([घद]\)|\[[घद]\]|[घद]\s*[\.\:\)\-–—])\s*/;
+
+      const HINDI_OPT_MAP: Record<string, string> = {
+        'क': 'A', 'अ': 'A', '1': 'A',
+        'ख': 'B', 'ब': 'B', '2': 'B',
+        'ग': 'C', 'स': 'C', '3': 'C',
+        'घ': 'D', 'द': 'D', '4': 'D'
+      };
 
       for (const block of blocks) {
         if (!block.trim()) continue;
         const lines = block.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
         let ansLineIndex = lines.findIndex(l => {
-          const lower = l.toLowerCase();
-          return lower.startsWith('ans') || lower.startsWith('उत्तर');
+          const lower = l.replace(/^[#*_\s]+/, '').toLowerCase();
+          return lower.startsWith('ans') || lower.startsWith('उत्तर') || lower.startsWith('correct') || lower.startsWith('right');
         });
 
         if (ansLineIndex === -1) {
@@ -740,7 +774,7 @@ export default function OnlineTestAdmin() {
           }
         }
 
-        let optAIndex = lines.findIndex(l => l.match(/^[\(]?a[\.\)]?\s*/i));
+        let optAIndex = lines.findIndex(l => optARegex.test(l));
 
         if (ansLineIndex > 0 && optAIndex > 0) {
           let qTextLines = lines.slice(0, optAIndex);
@@ -750,35 +784,53 @@ export default function OnlineTestAdmin() {
           let optA = '', optB = '', optC = '', optD = '';
           let correctOpt = 'A';
 
-          let optBIndex = lines.findIndex(l => l.match(/^[\(]?b[\.\)]?\s*/i));
-          let optCIndex = lines.findIndex(l => l.match(/^[\(]?c[\.\)]?\s*/i));
-          let optDIndex = lines.findIndex(l => l.match(/^[\(]?d[\.\)]?\s*/i));
+          let optBIndex = lines.findIndex(l => optBRegex.test(l));
+          let optCIndex = lines.findIndex(l => optCRegex.test(l));
+          let optDIndex = lines.findIndex(l => optDRegex.test(l));
 
           if (optAIndex !== -1 && optBIndex !== -1) {
-            optA = lines.slice(optAIndex, optBIndex).join('\n').replace(/^[\(]?a[\.\)]?\s*/i, '').trim();
+            optA = lines.slice(optAIndex, optBIndex).join('\n').replace(optARegex, '').trim();
           }
           if (optBIndex !== -1 && optCIndex !== -1) {
-            optB = lines.slice(optBIndex, optCIndex).join('\n').replace(/^[\(]?b[\.\)]?\s*/i, '').trim();
+            optB = lines.slice(optBIndex, optCIndex).join('\n').replace(optBRegex, '').trim();
           }
           if (optCIndex !== -1 && optDIndex !== -1) {
-            optC = lines.slice(optCIndex, optDIndex).join('\n').replace(/^[\(]?c[\.\)]?\s*/i, '').trim();
+            optC = lines.slice(optCIndex, optDIndex).join('\n').replace(optCRegex, '').trim();
           }
           if (optDIndex !== -1 && ansLineIndex !== -1) {
-            optD = lines.slice(optDIndex, ansLineIndex).join('\n').replace(/^[\(]?d[\.\)]?\s*/i, '').trim();
+            optD = lines.slice(optDIndex, ansLineIndex).join('\n').replace(optDRegex, '').trim();
           }
 
-          const ansRaw = lines[ansLineIndex].replace(/^(ans(wer)?|उत्तर)[\:\.\-]?\s*/i, '').trim();
-          const match = ansRaw.match(/^[\[\(]?([A-D])[\]\)]?/i);
+          // Robust answer extraction
+          const ansLine = lines[ansLineIndex];
+          let ansClean = ansLine.replace(/^[#*_\s]*(?:correct\s*(?:ans(?:wer)?|option)?|right\s*(?:ans(?:wer)?|option)?|ans(?:wer)?|उत्तर)[\s\:\.\-–—]*/i, '').trim();
+          ansClean = ansClean.replace(/^[\:\.\-–—\s]+/, '');
+
+          const match = ansClean.match(/^[\[\(]?([A-D])[\]\)\.\:\-–—\s]/i) || ansClean.match(/^[\[\(]?([A-D])[\]\)]?$/i);
           if (match && ['A', 'B', 'C', 'D'].includes(match[1].toUpperCase())) {
             correctOpt = match[1].toUpperCase();
+          } else {
+            const altMatch = ansClean.match(/^[\[\(]?([कखगघअबसद1-4])[\]\)\.\:\-–—\s]/i) || ansClean.match(/^[\[\(]?([कखगघअबसद1-4])[\]\)]?$/i);
+            if (altMatch && HINDI_OPT_MAP[altMatch[1]]) {
+              correctOpt = HINDI_OPT_MAP[altMatch[1]];
+            } else if (optA && optB && optC && optD) {
+              const lowerAns = ansClean.toLowerCase();
+              if (lowerAns === optA.toLowerCase() || lowerAns.startsWith(optA.toLowerCase())) correctOpt = 'A';
+              else if (lowerAns === optB.toLowerCase() || lowerAns.startsWith(optB.toLowerCase())) correctOpt = 'B';
+              else if (lowerAns === optC.toLowerCase() || lowerAns.startsWith(optC.toLowerCase())) correctOpt = 'C';
+              else if (lowerAns === optD.toLowerCase() || lowerAns.startsWith(optD.toLowerCase())) correctOpt = 'D';
+            }
           }
 
           let explanationText = '';
-          const extraTextMatch = ansRaw.match(/^[\[\(]?[A-D][\]\)]?[\s\:\-\.]*(.*)/i);
-          if (extraTextMatch && extraTextMatch[1] && extraTextMatch[1].trim().length > 3) {
-            explanationText = extraTextMatch[1].trim();
-            if (explanationText.startsWith('(') && explanationText.endsWith(')')) {
-              explanationText = explanationText.substring(1, explanationText.length - 1);
+          const remainingAnsText = ansClean.replace(/^[\[\(]?[A-Dकखगघअबसद1-4][\]\)\.\:\-–—\s]*/i, '').trim();
+          if (remainingAnsText.length > 0) {
+            const optText = correctOpt === 'A' ? optA : correctOpt === 'B' ? optB : correctOpt === 'C' ? optC : optD;
+            if (remainingAnsText.trim() !== optText.trim()) {
+              explanationText = remainingAnsText;
+              if (explanationText.startsWith('(') && explanationText.endsWith(')')) {
+                explanationText = explanationText.substring(1, explanationText.length - 1);
+              }
             }
           }
 
