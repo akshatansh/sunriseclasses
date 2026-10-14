@@ -10,6 +10,7 @@ export interface OnlineTest {
   is_stopped: boolean; // true = test stopped, students see result/pending but can't start
   allow_review: boolean; // true = students can see question-answer review + download PDF
   created_at: string;
+  required_attempts?: number | null; // Bihar Board mode: student must attempt exactly this many. NULL = no limit.
 }
 
 export interface OnlineTestQuestion {
@@ -301,6 +302,13 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
 
   if (qError) throw qError;
 
+  // Check if test is in Bihar Board mode (selective required_attempts)
+  const { data: testData } = await supabase
+    .from('online_tests')
+    .select('required_attempts')
+    .eq('id', attempt.test_id!)
+    .maybeSingle();
+
   let score = 0;
   let total_marks = 0;
 
@@ -310,6 +318,13 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
       score += q.marks;
     }
   });
+
+  // Bihar Board Mode: student can only attempt required_attempts questions.
+  // Hence, the exam's total maximum marks is based on required_attempts, not total question count!
+  if (testData?.required_attempts && testData.required_attempts > 0 && questions && questions.length > 0) {
+    const avgMarks = total_marks / questions.length;
+    total_marks = Math.round(testData.required_attempts * avgMarks);
+  }
 
   const { data, error } = await supabase
     .from('online_test_attempts')

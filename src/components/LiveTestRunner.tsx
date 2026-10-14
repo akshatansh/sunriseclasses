@@ -36,6 +36,16 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   const [isDownloading, setIsDownloading] = useState(false); // For JPG download state
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [maxQuestionSeen, setMaxQuestionSeen] = useState(0); // Highest question index student navigated to
+  // Navigator palette filter: 'all' | 'answered' | 'unanswered'
+  const [paletteFilter, setPaletteFilter] = useState<'all' | 'answered' | 'unanswered'>('all');
+  // Strategy Mode: student reads all questions first, then decides which to attempt
+  const [strategyMode, setStrategyMode] = useState(false);
+  const [strategyDone, setStrategyDone] = useState(false); // flips to true when student clicks "Start Answering"
+  // Per-question time tracking (qId → ms spent)
+  const questionTimingsRef = useRef<Record<string, number>>({});
+  const questionFocusTimeRef = useRef<number>(Date.now());
+  // Double-click deselect tracker
+  const doubleClickRef = useRef<Record<string, { option: string; ts: number }>>({});
   const testStartedAtRef = useRef<number | null>(null); // Timestamp when test actually started
   const serverStartedAtRef = useRef<string | null>(null); // Server-side started_at for resume
 
@@ -1191,14 +1201,105 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
     };
   }, [result, loading, finishTest, captureScreenshot, studentId, test.id]);
 
+  // Track time spent on each question
+  const trackQuestionTime = (leavingQId: string) => {
+    const now = Date.now();
+    const spent = now - (questionFocusTimeRef.current || now);
+    questionTimingsRef.current[leavingQId] = (questionTimingsRef.current[leavingQId] || 0) + spent;
+    questionFocusTimeRef.current = now;
+  };
+
   const handleOptionSelect = (qId: string, option: string) => {
-    setAnswers(prev => ({ ...prev, [qId]: option }));
+    const isAlreadyAnswered = !!answers[qId];
+    const isChangingAnswer = isAlreadyAnswered && answers[qId] !== option;
+
+    // Strategy mode: block answering until student clicks "Start Answering"
+    if (strategyMode && !strategyDone) {
+      setActiveMessage('📖 Pehle saare questions padh lo! Phir "Start Answering" button dabao.');
+      if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
+      messageTimeoutRef.current = setTimeout(() => setActiveMessage(null), 3000);
+      return;
+    }
+
+    // Double-click = deselect the CURRENTLY selected option on this question
+    // Single click on a NEW option = change answer
+    if (isAlreadyAnswered) {
+      const lastClick = doubleClickRef.current[qId];
+      const now = Date.now();
+      const isDoubleClick = lastClick && lastClick.option === option && (now - lastClick.ts) < 500;
+
+      if (isDoubleClick) {
+        // Double-click detected → DESELECT
+        delete doubleClickRef.current[qId];
+        setAnswers(prev => {
+          const next = { ...prev };
+          delete next[qId];
+          return next;
+        });
+        setActiveMessage('↩️ Jawab hata diya gaya. Dobara choose karein.');
+        if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
+        messageTimeoutRef.current = setTimeout(() => setActiveMessage(null), 2000);
+        return;
+      }
+
+      // Single click → track for potential double-click, and if different option, change answer
+      doubleClickRef.current[qId] = { option, ts: now };
+
+      if (isChangingAnswer) {
+        setAnswers(prev => ({ ...prev, [qId]: option }));
+        return;
+      }
+      // Single click on same option — first click recorded, wait for second click (deselect)
+      return;
+    }
+
+    // New answer: check Bihar Board limit
+    if (isLimitMode && hasReachedLimit) {
+      setActiveMessage(`🚫 Limit poori! Aapne ${requiredAttempts}/${requiredAttempts} sawaal ban liye. Kisi ek ko DOUBLE-CLICK karke deselect karein, phir naya chunein.`);
+      setIsWarningFlash(true);
+      setTimeout(() => setIsWarningFlash(false), 600);
+      if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
+      messageTimeoutRef.current = setTimeout(() => setActiveMessage(null), 4500);
+      return;
+    }
+
+    // Record first click timestamp for double-click detection on this option
+    doubleClickRef.current[qId] = { option, ts: Date.now() };
+
+    setAnswers(prev => {
+      const next = { ...prev, [qId]: option };
+      const newCount = Object.keys(next).length;
+      if (isLimitMode && requiredAttempts) {
+        if (newCount === requiredAttempts) {
+          setTimeout(() => {
+            setActiveMessage(`✅ Shukriya! Aapne ${requiredAttempts}/${requiredAttempts} sawaal ban liye. Double-click karein kisi answer par deselect karne ke liye.`);
+            if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
+            messageTimeoutRef.current = setTimeout(() => setActiveMessage(null), 6000);
+          }, 50);
+        } else if (newCount >= Math.floor(requiredAttempts * 0.8) && newCount < requiredAttempts) {
+          setTimeout(() => {
+            setActiveMessage(`⚡ ${newCount}/${requiredAttempts} sawaal ban gaye. Sirf ${requiredAttempts - newCount} aur bana sakte hain!`);
+            if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
+            messageTimeoutRef.current = setTimeout(() => setActiveMessage(null), 3000);
+          }, 50);
+        }
+      }
+      return next;
+    });
   };
 
   const answeredCount = Object.keys(answers).length;
   const markedCount = Object.keys(markedForReview).filter(k => markedForReview[k]).length;
   const unansweredCount = questions.length - answeredCount;
   const progressPercent = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0;
+
+  // ── Bihar Board Mode: Required Attempts Logic ──
+  const requiredAttempts = (test as any).required_attempts ?? null;
+  const isLimitMode = requiredAttempts !== null && requiredAttempts > 0;
+  const hasReachedLimit = isLimitMode && answeredCount >= requiredAttempts;
+  const remainingAttempts = isLimitMode ? Math.max(0, requiredAttempts - answeredCount) : null;
+  const attemptProgressPercent = isLimitMode && requiredAttempts > 0 ? Math.min(100, (answeredCount / requiredAttempts) * 100) : 0;
+  const isApproachingLimit = isLimitMode && requiredAttempts > 0 && answeredCount >= Math.floor(requiredAttempts * 0.8) && !hasReachedLimit;
 
   const readQuestion = (text: string) => {
     if ('speechSynthesis' in window) {
@@ -1642,13 +1743,18 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                     <h3 className="text-white font-black text-xl tracking-tight">Answer Review</h3>
                     <p className="text-indigo-200 text-xs mt-0.5">Sirf aapko dikh raha hai — share karne par questions nahi jaayenge</p>
                   </div>
-                  <div className="flex gap-3 text-sm font-bold">
+                  <div className="flex flex-wrap gap-2 text-xs sm:text-sm font-bold">
                     <span className="bg-green-500/20 text-green-300 px-3 py-1 rounded-full border border-green-500/30">
                       {detailedReview.filter(r => r.isCorrect).length} Sahi
                     </span>
                     <span className="bg-red-500/20 text-red-300 px-3 py-1 rounded-full border border-red-500/30">
-                      {detailedReview.filter(r => !r.isCorrect).length} Galat
+                      {detailedReview.filter(r => !r.isCorrect && r.studentAnswer).length} Galat
                     </span>
+                    {detailedReview.some(r => !r.studentAnswer) && (
+                      <span className="bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full border border-yellow-500/30">
+                        {detailedReview.filter(r => !r.studentAnswer).length} Chhoda
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -1730,45 +1836,102 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
   }
 
   if (!isTestStarted) {
+    const doStartTest = (withStrategy: boolean) => {
+      if (withStrategy) setStrategyMode(true);
+      setIsTestStarted(true);
+      testStartedAtRef.current = Date.now();
+      questionFocusTimeRef.current = Date.now();
+      try {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.resume();
+          window.speechSynthesis.cancel();
+          const intro = new SpeechSynthesisUtterance(isLimitMode
+            ? `Test shuru ho gaya hai. Aapko ${requiredAttempts} sawaal attempt karne hain. ${withStrategy ? 'Pehle saare questions padh lo.' : ''} All the best.`
+            : "Test shuru ho gaya hai. All the best.");
+          intro.lang = 'hi-IN';
+          window.speechSynthesis.speak(intro);
+        }
+      } catch (e) {
+        console.warn('Intro speech failed', e);
+      }
+      setTimeout(() => setAntiCheatReady(true), 3000);
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(() => console.warn('Fullscreen denied'));
+      }
+    };
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full text-center">
           <ShieldAlert className="h-16 w-16 text-blue-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Ready to Start?</h2>
-          <p className="text-gray-600 mb-8">
-            The test will open in <b>fullscreen mode</b>. Switching tabs, taking screenshots, or exiting fullscreen will be recorded as cheating.
-          </p>
-          <button
-            onClick={() => {
-              setIsTestStarted(true);
-              testStartedAtRef.current = Date.now(); // Record when test actually started
-              
-              // ✅ Speech synthesis gesture unlock trigger
-              try {
-                if ('speechSynthesis' in window) {
-                  window.speechSynthesis.resume();
-                  window.speechSynthesis.cancel();
-                  const intro = new SpeechSynthesisUtterance("Test shuru ho gaya hai. All the best.");
-                  intro.lang = 'hi-IN';
-                  window.speechSynthesis.speak(intro);
-                }
-              } catch (e) {
-                console.warn('Intro speech failed', e);
-              }
 
-              // Activate anti-cheat only after a 3-second grace period.
-              // This prevents fullscreen transition + camera permission dialogs
-              // from being falsely detected as tab-switch cheating events.
-              setTimeout(() => setAntiCheatReady(true), 3000);
-              const elem = document.documentElement;
-              if (elem.requestFullscreen) {
-                elem.requestFullscreen().catch(() => console.warn('Fullscreen denied'));
-              }
-            }}
-            className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 shadow-xl transition-all"
-          >
-            Start Test Now
-          </button>
+          {/* Bihar Board pattern info */}
+          {isLimitMode ? (
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 mb-5 text-left">
+              <p className="text-sm font-black text-amber-800 mb-3 text-center">⚡ Bihar Board Style Test Pattern</p>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-500 font-black mt-0.5">📋</span>
+                  <p className="text-sm text-amber-800"><strong>Total Questions:</strong> {questions.length}</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-500 font-black mt-0.5">✅</span>
+                  <p className="text-sm text-amber-800"><strong>Aapko attempt karne hain:</strong> <span className="text-red-600 font-black">{requiredAttempts}</span> sawaal</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-500 font-black mt-0.5">🎯</span>
+                  <p className="text-sm text-amber-800">Koi bhi <strong>{requiredAttempts}</strong> sawaal chunein — order koi bhi</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-green-600 font-black mt-0.5">🖱️</span>
+                  <p className="text-sm text-amber-800"><strong>Single click</strong> = Select (green) • <strong>Double click</strong> = Deselect</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-red-500 font-black mt-0.5">🔒</span>
+                  <p className="text-sm text-amber-800">{requiredAttempts} ho jane ke baad <strong>nayi question tick nahi hogi</strong></p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-600 mb-5 text-sm">
+              The test will open in <b>fullscreen mode</b>. Switching tabs, taking screenshots, or exiting fullscreen will be recorded as cheating.
+            </p>
+          )}
+
+          {/* Strategy Mode option — only for Bihar Board limit mode */}
+          {isLimitMode && (
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 mb-5 text-left">
+              <p className="text-xs font-black text-blue-700 mb-3 uppercase tracking-wider">📖 Strategy Mode — Pro Tip</p>
+              <p className="text-sm text-blue-800 mb-3">
+                Pehle <strong>saare {questions.length} questions padh lo</strong>, tab decide karo ki kaunse {requiredAttempts} best lagte hain. Tick karna tab shuru hoga jab tum ready ho jao.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => doStartTest(true)}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-700 shadow transition-all"
+                >
+                  📖 Strategy Mode
+                </button>
+                <button
+                  onClick={() => doStartTest(false)}
+                  className="flex-1 bg-green-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-green-700 shadow transition-all"
+                >
+                  ⚡ Seedha Shuru
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!isLimitMode && (
+            <button
+              onClick={() => doStartTest(false)}
+              className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 shadow-xl transition-all"
+            >
+              Start Test Now
+            </button>
+          )}
         </div>
       </div>
     );
@@ -1827,14 +1990,50 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               <p className="text-gray-600 text-sm sm:text-base font-medium">Aapne <strong className="text-gray-900">{questions.length}</strong> mein se <strong className="text-blue-600">{answeredCount}</strong> sawaal banaye hain. <strong className="text-red-600">{unansweredCount}</strong> sawaal chhut gaye hain.</p>
             </div>
 
+            {/* Bihar Board Limit Status */}
+            {isLimitMode && (
+              <div className={`mb-6 p-4 rounded-2xl border-2 ${
+                answeredCount >= requiredAttempts
+                  ? 'bg-green-50 border-green-200'
+                  : answeredCount >= Math.floor(requiredAttempts * 0.8)
+                  ? 'bg-amber-50 border-amber-200'
+                  : 'bg-red-50 border-red-200'
+              }`}>
+                <p className="text-xs font-black uppercase tracking-widest mb-2 ${
+                  answeredCount >= requiredAttempts ? 'text-green-700' : 'text-amber-700'
+                }">⚡ Bihar Board Mode — Attempt Status</p>
+                <div className="flex items-center justify-between">
+                  <div className="text-center">
+                    <p className="text-2xl font-black text-gray-900">{answeredCount}</p>
+                    <p className="text-[10px] font-bold text-gray-500 uppercase">Banaye</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-black text-blue-600">{requiredAttempts}</p>
+                    <p className="text-[10px] font-bold text-blue-400 uppercase">Required</p>
+                  </div>
+                  <div className="text-center">
+                    <p className={`text-2xl font-black ${answeredCount >= requiredAttempts ? 'text-green-600' : 'text-red-500'}`}>
+                      {answeredCount >= requiredAttempts ? '✅' : `${requiredAttempts - answeredCount} kam`}
+                    </p>
+                    <p className="text-[10px] font-bold text-gray-500 uppercase">Status</p>
+                  </div>
+                </div>
+                {answeredCount < requiredAttempts && (
+                  <p className="text-xs text-red-600 font-bold mt-3 text-center">
+                    ⚠️ Aapne abhi tak sirf {answeredCount} sawaal banaye hain. {requiredAttempts - answeredCount} aur banana chahiye tha. Kya phir bhi submit karein?
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4 mb-8">
               <div className="bg-blue-50 border-2 border-blue-100 p-4 rounded-2xl text-center">
                 <p className="text-3xl font-black text-blue-600">{answeredCount}</p>
                 <p className="text-xs font-black text-blue-500 uppercase tracking-wide mt-1">Ban gaye</p>
               </div>
               <div className="bg-red-50 border-2 border-red-100 p-4 rounded-2xl text-center">
-                <p className="text-3xl font-black text-red-600">{unansweredCount}</p>
-                <p className="text-xs font-black text-red-500 uppercase tracking-wide mt-1">Chhut gaye</p>
+                <p className="text-3xl font-black text-red-600">{isLimitMode ? Math.max(0, requiredAttempts - answeredCount) : unansweredCount}</p>
+                <p className="text-xs font-black text-red-500 uppercase tracking-wide mt-1">{isLimitMode ? 'Limit se kam' : 'Chhut gaye'}</p>
               </div>
             </div>
 
@@ -1875,8 +2074,16 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
       {/* Plain Dedicated Test Navbar */}
       <div className="bg-slate-900 text-white sticky top-0 z-50 shadow-2xl">
+        {/* Progress Bar — attempt budget in limit mode, else standard */}
         <div className="h-1 bg-white/10 w-full overflow-hidden">
-          <div className="h-full bg-yellow-500 transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
+          {isLimitMode ? (
+            <div
+              className={`h-full transition-all duration-500 ${hasReachedLimit ? 'bg-red-500 animate-pulse' : isApproachingLimit ? 'bg-amber-400' : 'bg-green-500'}`}
+              style={{ width: `${attemptProgressPercent}%` }}
+            />
+          ) : (
+            <div className="h-full bg-yellow-500 transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+          )}
         </div>
 
         <div className="max-w-7xl mx-auto px-3 sm:px-4 h-16 sm:h-20 flex items-center justify-between">
@@ -1915,6 +2122,25 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               </div>
             )}
 
+            {/* Bihar Board Attempt Budget Chip */}
+            {isLimitMode && (
+              <div className={`flex flex-col items-center justify-center min-w-[80px] sm:min-w-[110px] px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl border-2 transition-all duration-500 ${
+                hasReachedLimit
+                  ? 'bg-red-500/20 border-red-500 animate-pulse scale-105'
+                  : isApproachingLimit
+                  ? 'bg-amber-500/20 border-amber-400'
+                  : 'bg-green-500/10 border-green-400/40'
+              }`}>
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">Attempt Limit</p>
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-base sm:text-lg font-black font-mono leading-none ${
+                    hasReachedLimit ? 'text-red-400' : isApproachingLimit ? 'text-amber-400' : 'text-green-400'
+                  }`}>{answeredCount}<span className="text-white/30 text-sm">/{requiredAttempts}</span></span>
+                  {hasReachedLimit && <span className="text-red-400 text-[9px] font-black uppercase animate-pulse">FULL</span>}
+                </div>
+              </div>
+            )}
+
             <div className={`flex flex-col items-center justify-center min-w-[80px] sm:min-w-[120px] px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl border-2 transition-all duration-500 ${timeLeft < 300 ? 'bg-red-500/20 border-red-500 animate-pulse scale-105' : 'bg-white/5 border-white/10'}`}>
               <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">Time Remaining</p>
               <div className="flex items-center gap-2">
@@ -1943,6 +2169,30 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         </div>
       </div>
 
+      {/* Strategy Mode Banner */}
+      {strategyMode && !strategyDone && (
+        <div className="bg-blue-700 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">📖</span>
+            <div>
+              <p className="font-black text-sm">Strategy Mode — Saare questions padhein, fir jawab dein</p>
+              <p className="text-blue-200 text-xs">Abhi tick nahi hoga. Ready hone par neeche button dabao.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setStrategyDone(true);
+              setActiveMessage(`🎯 Ab ${requiredAttempts} best sawaalon mein jawab dein!`);
+              if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
+              messageTimeoutRef.current = setTimeout(() => setActiveMessage(null), 4000);
+            }}
+            className="shrink-0 bg-white text-blue-700 px-4 py-2 rounded-xl font-black text-sm hover:bg-blue-50 transition-all active:scale-95 shadow"
+          >
+            ✅ Start Answering
+          </button>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto px-3 sm:px-4 mt-4 sm:mt-6 grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8 pb-32 sm:pb-20">
         <div className="lg:col-span-3 space-y-6">
           {questions.length > 0 && (
@@ -1951,40 +2201,26 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 const q = questions[currentQuestionIdx];
                 const idx = currentQuestionIdx;
                 return (
-                  <div key={q.id} className={`bg-white rounded-2xl shadow-xl border-2 p-4 sm:p-8 ${answers[q.id] ? 'border-blue-500/20' : 'border-gray-100'} relative overflow-hidden`}>
-                    {/* 🔒 Screenshot Watermark — visible if student takes screenshot */}
-                    <div
-                      aria-hidden="true"
-                      style={{
-                        position: 'absolute', inset: 0, zIndex: 1,
-                        pointerEvents: 'none', userSelect: 'none',
-                        overflow: 'hidden',
-                      }}
-                    >
+                  <div key={q.id} className={`bg-white rounded-2xl shadow-xl border-2 p-4 sm:p-8 ${
+                    answers[q.id] ? 'border-green-500/40 bg-green-50/10' : 'border-gray-100'
+                  } relative overflow-hidden transition-colors duration-300`}>
+                    {/* 🔒 Screenshot Watermark */}
+                    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', userSelect: 'none', overflow: 'hidden' }}>
                       {Array.from({ length: 8 }).map((_, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            position: 'absolute',
-                            top: `${(i % 4) * 28 - 5}%`,
-                            left: `${Math.floor(i / 4) * 50 - 10}%`,
-                            transform: 'rotate(-30deg)',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            color: 'rgba(0,0,0,0.06)',
-                            whiteSpace: 'nowrap',
-                            letterSpacing: '1px',
-                            textTransform: 'uppercase',
-                          }}
-                        >
+                        <div key={i} style={{ position: 'absolute', top: `${(i % 4) * 28 - 5}%`, left: `${Math.floor(i / 4) * 50 - 10}%`, transform: 'rotate(-30deg)', fontSize: '11px', fontWeight: 700, color: 'rgba(0,0,0,0.06)', whiteSpace: 'nowrap', letterSpacing: '1px', textTransform: 'uppercase' }}>
                           {studentName} • {studentId.split('-')[0].toUpperCase()} • SUNRISE CLASSES
                         </div>
                       ))}
                     </div>
+
                     <div className="relative z-10 flex flex-col sm:flex-row gap-6">
-                      <div className={`flex-shrink-0 w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-base sm:text-xl font-black shadow-lg ${answers[q.id] ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                      {/* Question number badge */}
+                      <div className={`flex-shrink-0 w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-base sm:text-xl font-black shadow-lg transition-colors ${
+                        answers[q.id] ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'
+                      }`}>
                         {idx + 1}
                       </div>
+
                       <div className="flex-grow">
                         <div className="flex justify-between items-start mb-6">
                           <div className="flex-grow">
@@ -1998,42 +2234,82 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                               <MathRenderer text={q.question_text} />
                             </p>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 ml-4">
                             <button
                               onClick={() => readQuestion(q.question_text)}
-                              className="p-3 text-blue-500 hover:bg-blue-50 rounded-xl transition-all active:scale-90"
+                              className="p-2.5 text-blue-500 hover:bg-blue-50 rounded-xl transition-all active:scale-90"
                               title="Listen to question"
                             >
-                              <RefreshCw className="h-5 w-5 transform rotate-90" />
+                              <RefreshCw className="h-4 w-4 transform rotate-90" />
                             </button>
                             <button
                               onClick={() => setMarkedForReview(prev => ({ ...prev, [q.id]: !prev[q.id] }))}
-                              className={`text-xs font-black px-4 py-2 rounded-xl transition-all ${markedForReview[q.id] ? 'bg-yellow-400 text-white shadow-lg shadow-yellow-400/30' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                              className={`text-xs font-black px-3 py-2 rounded-xl transition-all ${
+                                markedForReview[q.id] ? 'bg-yellow-400 text-white shadow-lg shadow-yellow-400/30' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                              }`}
                             >
-                              {markedForReview[q.id] ? 'MARKED' : 'MARK'}
+                              {markedForReview[q.id] ? '⭐ MARKED' : 'MARK'}
                             </button>
                           </div>
                         </div>
 
+                        {/* Answer Options */}
                         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                           {((q as any)._shuffledOpts || ['A', 'B', 'C', 'D']).map((opt: string, optIndex: number) => {
                             const isSelected = answers[q.id] === opt;
-                            const visualLabel = ['A', 'B', 'C', 'D'][optIndex]; // Display as A,B,C,D regardless of actual option ID
+                            const isNewOption = !answers[q.id];
+                            const isBlockedNew = isLimitMode && hasReachedLimit && isNewOption;
+                            const isStrategyBlocked = strategyMode && !strategyDone;
+                            const visualLabel = ['A', 'B', 'C', 'D'][optIndex];
                             return (
                               <button
                                 key={opt}
                                 onClick={() => handleOptionSelect(q.id, opt)}
-                                className={`text-left px-4 py-4 sm:px-6 sm:py-5 rounded-xl sm:rounded-2xl border-2 transition-all group relative overflow-hidden active:scale-95 ${isSelected ? 'border-blue-600 bg-blue-50/50 shadow-lg shadow-blue-600/10' : 'border-gray-100 hover:border-blue-200 hover:bg-gray-50'}`}
+                                title={
+                                  isStrategyBlocked ? 'Strategy Mode: pehle saare padho, phir Start Answering dabao' :
+                                  isBlockedNew ? `Limit poori. Kisi answer par double-click karke deselect karein.` :
+                                  isSelected ? 'Double-click karein deselect ke liye' : 'Click karein select karne ke liye'
+                                }
+                                className={`text-left px-4 py-4 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border-2 transition-all group relative overflow-hidden active:scale-[0.97] ${
+                                  isSelected
+                                    ? 'border-green-500 bg-green-50 shadow-lg shadow-green-500/20 ring-2 ring-green-400/30'
+                                    : isBlockedNew || isStrategyBlocked
+                                    ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                                    : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md'
+                                }`}
                               >
-                                {isSelected && <div className="absolute top-0 right-0 p-2 text-blue-600"><CheckCircle className="h-5 w-5" /></div>}
-                                <span className={`font-black mr-3 ${isSelected ? 'text-blue-600' : 'text-gray-300'}`}>{visualLabel}.</span>
-                                <span className={`font-semibold ${isSelected ? 'text-gray-900' : 'text-gray-700'}`} style={{ fontSize: `${fontSize - 2}px` }}>
-                                  {q[`option_${opt.toLowerCase()}` as keyof OnlineTestQuestion] as string}
-                                </span>
+                                {/* Selected checkmark */}
+                                {isSelected && (
+                                  <div className="absolute top-2 right-2 text-green-600">
+                                    <CheckCircle className="h-5 w-5" />
+                                  </div>
+                                )}
+                                {/* Lock icon */}
+                                {(isBlockedNew || isStrategyBlocked) && !isSelected && (
+                                  <div className="absolute top-2 right-2 text-gray-400 opacity-60">
+                                    <span className="text-xs">🔒</span>
+                                  </div>
+                                )}
+                                <div className="flex items-start gap-3">
+                                  <span className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-sm font-black transition-colors ${
+                                    isSelected ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'
+                                  }`}>{visualLabel}</span>
+                                  <span className={`font-medium leading-snug flex-grow ${
+                                    isSelected ? 'text-gray-900 font-semibold' : isBlockedNew ? 'text-gray-400' : 'text-gray-700'
+                                  }`} style={{ fontSize: `${Math.max(fontSize - 2, 13)}px` }}>
+                                    {q[`option_${opt.toLowerCase()}` as keyof OnlineTestQuestion] as string}
+                                  </span>
+                                </div>
                               </button>
                             );
                           })}
                         </div>
+                        {/* Deselect hint — shown when this question is answered */}
+                        {answers[q.id] && (
+                          <p className="text-[10px] text-gray-400 mt-2 text-right font-medium">
+                            💡 Jawab badlne ke liye koi doosra option click karein • Hatane ke liye same option dobara click karein
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2084,29 +2360,179 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
         </div>
 
         <div className="hidden lg:block sticky top-24">
-          <div className="bg-white rounded-xl border p-6">
-            <h3 className="text-sm font-bold mb-4 uppercase tracking-wider">{t.navigator}</h3>
+          <div className="bg-white rounded-xl border p-4 sm:p-5">
+            <h3 className="text-sm font-bold uppercase tracking-wider mb-2">{t.navigator}</h3>
+
+            {/* Live score estimate */}
+            {answeredCount > 0 && (
+              <div className="mb-3 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-center">
+                <p className="text-[10px] text-blue-500 font-black uppercase tracking-wider mb-0.5">Live Score Estimate</p>
+                <p className="text-base font-black text-blue-700">
+                  {isLimitMode
+                    ? `${answeredCount}/${requiredAttempts} attempted`
+                    : `${answeredCount}/${questions.length} answered`
+                  }
+                </p>
+              </div>
+            )}
+
+            {/* Bihar Board limit status */}
+            {isLimitMode && (
+              <div className={`text-[10px] font-bold mb-3 px-2 py-1.5 rounded-lg ${
+                hasReachedLimit ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+              }`}>
+                {hasReachedLimit
+                  ? `✅ Limit Poori! ${answeredCount}/${requiredAttempts} — Double-click to deselect`
+                  : `⚡ ${answeredCount}/${requiredAttempts} answered • ${remainingAttempts} left`
+                }
+              </div>
+            )}
+
+            {/* Filter Tabs (only in Bihar Board mode) */}
+            {isLimitMode && (
+              <div className="flex gap-1 mb-3">
+                {(['all', 'answered', 'unanswered'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setPaletteFilter(f)}
+                    className={`flex-1 text-[10px] font-black px-1 py-1.5 rounded-lg border transition-all ${
+                      paletteFilter === f
+                        ? f === 'answered' ? 'bg-green-500 text-white border-green-500'
+                          : f === 'unanswered' ? 'bg-gray-600 text-white border-gray-600'
+                          : 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    {f === 'all' ? `All (${questions.length})` : f === 'answered' ? `✅ ${answeredCount}` : `⬜ ${questions.length - answeredCount}`}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="palette-grid">
-              {questions.map((q, i) => (
-                <button key={q.id} onClick={() => { setCurrentQuestionIdx(i); setMaxQuestionSeen(m => Math.max(m, i)); }} className={`h-10 w-10 rounded-lg text-xs font-bold flex items-center justify-center border-2 transition-all ${currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2' : ''} ${answers[q.id] ? 'bg-blue-600 border-blue-600 text-white shadow-md' : markedForReview[q.id] ? 'bg-yellow-400 border-yellow-400 text-white' : 'bg-white border-gray-200'}`}>{i + 1}</button>
-              ))}
+              {questions.map((q, i) => {
+                const isAnsweredQ = !!answers[q.id];
+                const isLockedNew = isLimitMode && hasReachedLimit && !isAnsweredQ;
+                // Filter
+                if (paletteFilter === 'answered' && !isAnsweredQ) return null;
+                if (paletteFilter === 'unanswered' && isAnsweredQ) return null;
+                return (
+                  <button
+                    key={q.id}
+                    onClick={() => { trackQuestionTime(questions[currentQuestionIdx].id); setCurrentQuestionIdx(i); setMaxQuestionSeen(m => Math.max(m, i)); }}
+                    title={isLockedNew ? `Q${i+1}: Limit poori — double-click karke deselect karo` : `Q${i+1}${isAnsweredQ ? ' ✅' : ''}`}
+                    className={`h-10 w-10 rounded-lg text-xs font-bold flex items-center justify-center border-2 transition-all relative ${
+                      currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2 scale-110' : 'hover:scale-105'
+                    } ${
+                      isAnsweredQ
+                        ? 'bg-green-500 border-green-500 text-white shadow-md'
+                        : markedForReview[q.id]
+                        ? 'bg-yellow-400 border-yellow-400 text-white'
+                        : isLockedNew
+                        ? 'bg-gray-100 border-gray-200 text-gray-400'
+                        : 'bg-white border-gray-200 text-gray-600'
+                    }`}
+                  >
+                    {i + 1}
+                    {isLockedNew && <span className="absolute -top-1 -right-1 text-[7px]">🔒</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Legend */}
+            <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
+                <span className="text-[10px] text-gray-500 font-bold">Answered</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-yellow-400 rounded-sm"></div>
+                <span className="text-[10px] text-gray-500 font-bold">Marked</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-white border-2 border-gray-200 rounded-sm"></div>
+                <span className="text-[10px] text-gray-500 font-bold">Unanswered</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <button onClick={() => setShowPalette(true)} className="lg:hidden fixed bottom-4 left-4 z-40 bg-gray-900 text-white p-3 rounded-full shadow-2xl flex items-center gap-2 text-sm">
-        <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
-        Nav
+      <button onClick={() => setShowPalette(true)} className="lg:hidden fixed bottom-20 left-3 z-40 bg-gray-900 text-white px-3 py-2.5 rounded-full shadow-2xl flex items-center gap-2 text-xs font-bold">
+        <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+        Nav {isLimitMode ? `${answeredCount}/${requiredAttempts}` : `${answeredCount}/${questions.length}`}
       </button>
       {showPalette && (
         <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm lg:hidden p-4">
-          <div className="bg-white rounded-2xl p-6 mt-10 max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6"><h3 className="font-bold">{t.jump}</h3><button onClick={() => setShowPalette(false)}>&times;</button></div>
+          <div className="bg-white rounded-2xl p-5 mt-8 max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-black text-base">{t.jump}</h3>
+              <button onClick={() => setShowPalette(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            {isLimitMode && (
+              <div className={`text-xs font-bold mb-3 px-3 py-2 rounded-xl text-center ${
+                hasReachedLimit ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+              }`}>
+                {hasReachedLimit
+                  ? `✅ Limit Poori! ${answeredCount}/${requiredAttempts} — Double-click to deselect`
+                  : `⚡ ${answeredCount}/${requiredAttempts} done • ${remainingAttempts} remaining`
+                }
+              </div>
+            )}
+            {/* Filter Tabs - mobile */}
+            {isLimitMode && (
+              <div className="flex gap-1.5 mb-3">
+                {(['all', 'answered', 'unanswered'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setPaletteFilter(f)}
+                    className={`flex-1 text-[11px] font-black py-2 rounded-xl border transition-all ${
+                      paletteFilter === f
+                        ? f === 'answered' ? 'bg-green-500 text-white border-green-500'
+                          : f === 'unanswered' ? 'bg-gray-600 text-white border-gray-600'
+                          : 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-50 text-gray-500 border-gray-200'
+                    }`}
+                  >
+                    {f === 'all' ? `All (${questions.length})` : f === 'answered' ? `✅ ${answeredCount}` : `⬜ ${questions.length - answeredCount}`}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="palette-grid">
-              {questions.map((q, i) => (
-                <button key={q.id} onClick={() => { setCurrentQuestionIdx(i); setMaxQuestionSeen(m => Math.max(m, i)); setShowPalette(false); }} className={`h-12 w-12 rounded-xl text-sm font-bold flex items-center justify-center border-2 ${currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2' : ''} ${answers[q.id] ? 'bg-blue-600 border-blue-600 text-white' : markedForReview[q.id] ? 'bg-yellow-400 border-yellow-400 text-white' : 'bg-white border-gray-200'}`}>{i + 1}</button>
-              ))}
+              {questions.map((q, i) => {
+                const isAnsweredQ = !!answers[q.id];
+                const isLockedNew = isLimitMode && hasReachedLimit && !isAnsweredQ;
+                if (paletteFilter === 'answered' && !isAnsweredQ) return null;
+                if (paletteFilter === 'unanswered' && isAnsweredQ) return null;
+                return (
+                  <button
+                    key={q.id}
+                    onClick={() => { trackQuestionTime(questions[currentQuestionIdx].id); setCurrentQuestionIdx(i); setMaxQuestionSeen(m => Math.max(m, i)); setShowPalette(false); }}
+                    className={`h-12 w-12 rounded-xl text-sm font-bold flex items-center justify-center border-2 relative ${
+                      currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2' : ''
+                    } ${
+                      isAnsweredQ
+                        ? 'bg-green-500 border-green-500 text-white shadow-sm'
+                        : markedForReview[q.id]
+                        ? 'bg-yellow-400 border-yellow-400 text-white'
+                        : isLockedNew
+                        ? 'bg-gray-100 border-gray-200 text-gray-400 opacity-70'
+                        : 'bg-white border-gray-200 text-gray-600'
+                    }`}
+                  >
+                    {i + 1}
+                    {isLockedNew && <span className="absolute -top-1 -right-1 text-[8px]">🔒</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Legend mobile */}
+            <div className="mt-4 pt-3 border-t border-gray-100 flex gap-4">
+              <span className="flex items-center gap-1.5 text-[11px] text-gray-500"><span className="w-3 h-3 bg-green-500 rounded-sm inline-block"></span>Answered</span>
+              <span className="flex items-center gap-1.5 text-[11px] text-gray-500"><span className="w-3 h-3 bg-yellow-400 rounded-sm inline-block"></span>Marked</span>
+              <span className="flex items-center gap-1.5 text-[11px] text-gray-500"><span className="w-3 h-3 border-2 border-gray-300 rounded-sm inline-block"></span>Empty</span>
             </div>
           </div>
         </div>

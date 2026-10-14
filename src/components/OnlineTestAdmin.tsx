@@ -653,7 +653,8 @@ export default function OnlineTestAdmin() {
         class_name: test.class_name,
         subject: test.subject,
         duration_minutes: test.duration_minutes,
-        is_active: false
+        is_active: false,
+        required_attempts: test.required_attempts ?? null,
       });
 
       const originalQuestions = await getQuestionsAdmin(test.id);
@@ -1243,7 +1244,7 @@ export default function OnlineTestAdmin() {
             </button>
             <button
               onClick={() => {
-                setCurrentTest({ title: '', class_name: 'Class 10', subject: '', duration_minutes: 30, is_active: false });
+                setCurrentTest({ title: '', class_name: 'Class 10', subject: '', duration_minutes: 30, is_active: false, required_attempts: undefined });
                 setView('edit-test');
               }}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm font-medium transition-colors"
@@ -1307,6 +1308,11 @@ export default function OnlineTestAdmin() {
                           <div className="text-sm font-bold text-gray-900">{test.title}</div>
                           <div className="text-[10px] flex items-center gap-1 text-gray-500 font-medium">
                             <Clock className="h-3 w-3" /> {test.duration_minutes} mins
+                            {test.required_attempts && (
+                              <span className="ml-1 inline-flex items-center gap-0.5 bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide">
+                                ⚡ {test.required_attempts} attempt
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -1429,6 +1435,51 @@ export default function OnlineTestAdmin() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Duration (Minutes)</label>
               <input type="number" min="1" required value={currentTest.duration_minutes || 30} onChange={e => setCurrentTest({ ...currentTest, duration_minutes: parseInt(e.target.value) })} className="w-full px-3 py-2 border rounded-md" />
             </div>
+
+            {/* ── Bihar Board Mode: Required Attempts ── */}
+            <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">⚡</span>
+                <label className="block text-sm font-bold text-amber-800">Bihar Board Mode — Required Attempts (Optional)</label>
+              </div>
+              <p className="text-xs text-amber-700 mb-3">
+                Agar aap chahte hain ki student sirf kuch specific questions attempt kare (e.g. 100 mein se 50), toh yahan number set karein.
+                <strong> Khaali chhod dein</strong> = sab questions attempt ho sakte hain (default behavior).
+              </p>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min="1"
+                  max="9999"
+                  placeholder="e.g. 50"
+                  value={currentTest.required_attempts ?? ''}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setCurrentTest({
+                      ...currentTest,
+                      required_attempts: val === '' ? null : parseInt(val)
+                    });
+                  }}
+                  className="w-32 px-3 py-2 border-2 border-amber-300 rounded-md bg-white text-sm font-bold focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                />
+                <span className="text-sm text-amber-700 font-medium">questions banana zaroori hoga</span>
+                {currentTest.required_attempts && (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentTest({ ...currentTest, required_attempts: null })}
+                    className="ml-auto text-xs text-red-500 hover:text-red-700 font-bold underline"
+                  >
+                    ✕ Hatao
+                  </button>
+                )}
+              </div>
+              {currentTest.required_attempts && (
+                <p className="text-xs text-amber-600 mt-2 font-semibold">
+                  ✅ Active: Students koi bhi {currentTest.required_attempts} questions attempt kar sakte hain. Zyada nahi.
+                </p>
+              )}
+            </div>
+
             <div className="pt-4 flex justify-end gap-3 border-t mt-6">
               <button type="button" onClick={() => setView('list')} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
               <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2">
@@ -1730,7 +1781,7 @@ Explanation: Arunachal Pradesh is the easternmost state.
                         {att.last_question_seen ? (
                           <div className="flex items-center gap-1">
                             <span className="text-sm font-bold text-purple-700">{att.last_question_seen}</span>
-                            <span className="text-xs text-gray-400">/ {att.total_marks > 0 ? att.total_marks : '?'} Q</span>
+                            <span className="text-xs text-gray-400">/ {questions.length > 0 ? questions.length : (att.total_marks > 0 ? att.total_marks : '?')} Q</span>
                           </div>
                         ) : (
                           <span className="text-gray-400 text-xs">—</span>
