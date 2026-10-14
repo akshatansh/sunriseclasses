@@ -1,3 +1,5 @@
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { OnlineTest, OnlineTestQuestion, StudentTestAttempt } from './onlineTests';
 
 export interface RevisionQuestionItem {
@@ -20,6 +22,9 @@ export interface PDFExportOptions {
   items: RevisionQuestionItem[];
   onProgress?: (progressPercent: number, message: string) => void;
 }
+
+const INSTITUTE = 'SUNRISE CLASSES & ACADEMY';
+const ADDRESS = 'Champanagar, Purnia, Bihar - 854201 | Mob: 9973152070';
 
 // ── Subject Categorization and Exact User Ordering ──────────────────────────
 // 1. Math  2. Sanskrit  3. Hindi  4. Science  5. Social Science  6. Others
@@ -74,21 +79,40 @@ function escapeHtml(text?: string | null): string {
     .replace(/'/g, '&#039;');
 }
 
-// Helper to format basic math superscripts (e.g., x^2 -> x<sup>2</sup>)
+// Format math equations with proper superscripts
 function formatMathText(text?: string | null): string {
   if (!text) return '';
-  let safe = escapeHtml(text);
-  // Convert basic x^2, x^3 etc to superscripts if not already formatted
-  safe = safe.replace(/\^([0-9a-zA-Z+-]+)/g, '<sup>$1</sup>');
-  return safe;
+  let formatted = escapeHtml(text);
+  formatted = formatted.replace(/\^2\b/g, '<sup>2</sup>');
+  formatted = formatted.replace(/\^3\b/g, '<sup>3</sup>');
+  formatted = formatted.replace(/\^([0-9a-zA-Z+-]+)/g, '<sup>$1</sup>');
+  formatted = formatted.replace(/\n/g, '<br/>');
+  return formatted;
+}
+
+// Pre-load sunrise logo as Base64 to prevent any CORS/network delays during canvas render
+async function getLogoBase64(): Promise<string | null> {
+  try {
+    const res = await fetch('/sunrise-logo.png');
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
 }
 
 /**
- * Generates an authentic, high-resolution A4 printable document with:
- * - Proper Hindi (Devanagari) & Sanskrit fonts (no broken characters like (? . M ...))
- * - Exact subject ordering: Math -> Sanskrit -> Hindi -> Science -> Social Science
- * - Clean question cards with options, correct answer, student answer, and solutions
- * - Automatically triggers the browser's "Save as PDF / Print" dialog
+ * Generates and directly downloads a high-definition PDF file to the user's phone or computer.
+ * - Zero print pop-up ("Save as PDF" dialog avoided).
+ * - 100% crystal clear Hindi & Sanskrit font rendering (Google Fonts Noto Sans Devanagari).
+ * - Strict subject-wise hierarchy (Math -> Sanskrit -> Hindi -> Science -> SST -> Others).
+ * - Page-by-page rendering to maintain low memory usage on mobile devices.
  */
 export async function generateRevisionBankPDF(options: PDFExportOptions): Promise<void> {
   const {
@@ -105,619 +129,439 @@ export async function generateRevisionBankPDF(options: PDFExportOptions): Promis
     throw new Error('No questions to export');
   }
 
-  onProgress?.(10, 'Organizing questions subject-wise (Math, Sanskrit, Hindi, Science, Social Science)...');
+  onProgress?.(5, 'Preparing document layout...');
 
-  // Sort items in the exact subject order
+  // Sort items strictly by user's subject priority
   const sortedItems = sortItemsBySubjectHierarchy(items);
 
-  // Group by Subject Category
-  const subjectGroups = new Map<string, { label: string; priority: number; items: RevisionQuestionItem[] }>();
+  // Pre-load logo
+  const logoBase64 = await getLogoBase64();
 
-  sortedItems.forEach(item => {
-    const cat = getSubjectCategory(item.test.subject || '');
-    if (!subjectGroups.has(cat.key)) {
-      subjectGroups.set(cat.key, { label: cat.label, priority: cat.priority, items: [] });
-    }
-    subjectGroups.get(cat.key)!.items.push(item);
-  });
+  // Create an offscreen staging container with fixed A4 width (794px)
+  const stage = document.createElement('div');
+  stage.id = 'pdf-render-stage';
+  stage.style.cssText = `
+    position: fixed;
+    left: -9999px;
+    top: 0;
+    width: 794px;
+    background: #ffffff;
+    font-family: 'Noto Sans Devanagari', 'Poppins', 'Inter', -apple-system, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    z-index: -9999;
+  `;
+  document.body.appendChild(stage);
 
-  // Calculate statistics
+  // Constants for standard A4 page at 96 DPI
+  const PAGE_WIDTH_PX = 794;
+  const PAGE_HEIGHT_PX = 1123;
+  const P1_MAX_CONTENT_H = 885;  // Space available on Page 1 after main header & student card
+  const P2_MAX_CONTENT_H = 1010; // Space available on Page 2+ after slim header
+
+  // Summary counts
   const totalQ = sortedItems.length;
   const correctQ = sortedItems.filter(i => i.status === 'correct').length;
   const incorrectQ = sortedItems.filter(i => i.status === 'incorrect').length;
   const absentQ = sortedItems.filter(i => i.status === 'absent' || i.status === 'unattempted').length;
 
-  onProgress?.(30, 'Generating high-resolution print document...');
+  interface PlannedPage {
+    pageNumber: number;
+    element: HTMLDivElement;
+    contentContainer: HTMLDivElement;
+    footerEl: HTMLDivElement;
+  }
 
-  // Build HTML
-  let html = `<!DOCTYPE html>
-<html lang="hi">
-<head>
-  <meta charset="UTF-8">
-  <title>Sunrise Classes - ${escapeHtml(studentName)} - ${escapeHtml(title)}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    body {
-      font-family: 'Inter', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #f8fafc;
-      color: #0f172a;
-      line-height: 1.5;
-      font-size: 13px;
-    }
-    
-    /* Top Action Bar (hidden in print) */
-    .top-action-bar {
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-      background: #0f2a5c;
-      color: #ffffff;
-      padding: 12px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    .top-action-bar h2 {
-      font-size: 15px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .print-btn {
-      background: #f5a623;
-      color: #0f2a5c;
-      font-weight: 800;
-      font-size: 13px;
-      padding: 8px 20px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      transition: all 0.2s;
-    }
-    .print-btn:hover {
-      background: #e69818;
-      transform: translateY(-1px);
-    }
-    .close-btn {
-      background: rgba(255,255,255,0.15);
-      color: #ffffff;
-      font-weight: 600;
-      font-size: 12px;
-      padding: 8px 14px;
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 8px;
-      cursor: pointer;
-      margin-left: 10px;
-    }
+  const pages: PlannedPage[] = [];
 
-    /* Print Document Container */
-    .document-page {
-      max-width: 210mm;
-      margin: 20px auto;
-      background: #ffffff;
-      padding: 16mm 16mm 20mm 16mm;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-      border-radius: 4px;
+  // Helper to create a new blank A4 page container
+  const createPage = (isFirstPage: boolean): PlannedPage => {
+    const pageNum = pages.length + 1;
+    const pageEl = document.createElement('div');
+    pageEl.className = 'pdf-page';
+    pageEl.style.cssText = `
+      width: ${PAGE_WIDTH_PX}px;
+      height: ${PAGE_HEIGHT_PX}px;
       position: relative;
-    }
+      background: #ffffff;
+      box-sizing: border-box;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 20px;
+    `;
 
-    /* Watermark */
-    .watermark {
-      position: fixed;
-      top: 50%;
+    // Watermark
+    const watermark = document.createElement('div');
+    watermark.style.cssText = `
+      position: absolute;
+      top: 52%;
       left: 50%;
       transform: translate(-50%, -50%) rotate(-35deg);
       font-size: 64px;
-      font-weight: 900;
-      color: rgba(15, 42, 92, 0.04);
-      white-space: nowrap;
+      font-weight: 800;
+      color: #0f2a5c;
+      opacity: 0.05;
       pointer-events: none;
+      white-space: nowrap;
+      letter-spacing: 6px;
+      user-select: none;
       z-index: 0;
-      text-transform: uppercase;
-      letter-spacing: 4px;
-    }
+    `;
+    watermark.innerText = 'SUNRISE CLASSES';
+    pageEl.appendChild(watermark);
 
-    /* Header Banner */
-    .header-banner {
-      background: #0f2a5c;
-      border-bottom: 3px solid #f5a623;
-      border-radius: 12px;
-      padding: 18px 24px;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
-      position: relative;
-      z-index: 1;
-    }
-    .institute-title {
-      font-size: 20px;
-      font-weight: 900;
-      color: #f5a623;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      font-family: 'Poppins', sans-serif;
-    }
-    .institute-meta {
-      font-size: 11px;
-      color: #e2e8f0;
-      margin-top: 2px;
-    }
-    .header-badge {
-      background: rgba(245, 166, 35, 0.15);
-      border: 1px solid #f5a623;
-      color: #f5a623;
-      font-size: 11px;
-      font-weight: 800;
-      padding: 6px 12px;
-      border-radius: 8px;
-      text-transform: uppercase;
-      text-align: right;
-    }
+    // Header
+    const headerWrapper = document.createElement('div');
+    headerWrapper.style.cssText = 'position: relative; z-index: 1; flex-shrink: 0;';
 
-    /* Student Info Box */
-    .student-info-card {
-      background: #f8fafc;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
-      padding: 12px 18px;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 22px;
-      font-size: 12px;
-      position: relative;
-      z-index: 1;
-    }
-    .info-group {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .info-item strong {
-      color: #475569;
-      font-weight: 600;
-    }
-    .info-item span {
-      color: #0f172a;
-      font-weight: 700;
-    }
-    .summary-pills {
-      display: flex;
-      gap: 8px;
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .pill-correct {
-      background: #dcfce7;
-      color: #15803d;
-      padding: 3px 8px;
-      border-radius: 6px;
-      border: 1px solid #bbf7d0;
-    }
-    .pill-incorrect {
-      background: #fee2e2;
-      color: #b91c1c;
-      padding: 3px 8px;
-      border-radius: 6px;
-      border: 1px solid #fecaca;
-    }
-    .pill-absent {
-      background: #fef3c7;
-      color: #b45309;
-      padding: 3px 8px;
-      border-radius: 6px;
-      border: 1px solid #fde68a;
-    }
+    if (isFirstPage) {
+      // Large Page 1 Banner
+      const logoHtml = logoBase64 
+        ? `<img src="${logoBase64}" style="width: 52px; height: 52px; object-fit: contain; border-radius: 8px; background: #ffffff; padding: 2px;" alt="Logo" />`
+        : `<div style="width: 48px; height: 48px; border-radius: 8px; background: #f5a623; color: #0f2a5c; font-weight: 900; display: flex; align-items: center; justify-content: center; font-size: 20px;">SC</div>`;
 
-    /* Subject Section Header */
-    .subject-section {
-      margin-top: 28px;
-      margin-bottom: 16px;
-      position: relative;
-      z-index: 1;
-    }
-    .subject-title-bar {
-      background: linear-gradient(135deg, #0f2a5c 0%, #1e3a8a 100%);
-      color: #ffffff;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-left: 6px solid #f5a623;
-    }
-    .subject-count {
-      font-size: 12px;
-      background: rgba(255,255,255,0.2);
-      padding: 2px 10px;
-      border-radius: 20px;
-      font-weight: 600;
-    }
-
-    /* Test Sub-header */
-    .test-header-bar {
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
-      border-left: 4px solid #3b82f6;
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 700;
-      color: #1e293b;
-      margin: 14px 0 10px 0;
-    }
-
-    /* Question Card */
-    .question-card {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      margin-bottom: 14px;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-      page-break-inside: avoid;
-      break-inside: avoid;
-      position: relative;
-      z-index: 1;
-    }
-    .card-top {
-      background: #f8fafc;
-      border-bottom: 1px solid #e2e8f0;
-      padding: 6px 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 11px;
-    }
-    .q-number-badge {
-      background: #0f2a5c;
-      color: #ffffff;
-      font-weight: 800;
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 4px;
-    }
-    .card-body {
-      padding: 12px 16px;
-    }
-    .question-text {
-      font-size: 14px;
-      font-weight: 700;
-      color: #0f172a;
-      margin-bottom: 12px;
-      line-height: 1.6;
-    }
-    
-    /* Options Grid */
-    .options-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    .option-cell {
-      padding: 8px 12px;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
-      background: #f8fafc;
-      font-size: 12.5px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .option-label {
-      width: 22px;
-      height: 22px;
-      border-radius: 5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 11px;
-      background: #e2e8f0;
-      color: #475569;
-      flex-shrink: 0;
-    }
-    
-    /* Highlight States */
-    .opt-correct {
-      border: 1.5px solid #22c55e !important;
-      background: #f0fdf4 !important;
-      color: #14532d !important;
-      font-weight: 700;
-    }
-    .opt-correct .option-label {
-      background: #16a34a !important;
-      color: #ffffff !important;
-    }
-    
-    .opt-incorrect {
-      border: 1.5px solid #ef4444 !important;
-      background: #fef2f2 !important;
-      color: #7f1d1d !important;
-      font-weight: 700;
-    }
-    .opt-incorrect .option-label {
-      background: #dc2626 !important;
-      color: #ffffff !important;
-    }
-
-    /* Result Strip */
-    .result-strip {
-      background: #f8fafc;
-      border-top: 1px solid #f1f5f9;
-      padding: 6px 14px;
-      font-size: 11.5px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .tag-correct {
-      color: #16a34a;
-      font-weight: 800;
-    }
-    .tag-incorrect {
-      color: #dc2626;
-      font-weight: 800;
-    }
-    .tag-absent {
-      color: #b45309;
-      font-weight: 800;
-    }
-
-    /* Solution Box */
-    .solution-box {
-      margin-top: 8px;
-      background: #eff6ff;
-      border-left: 3px solid #3b82f6;
-      border-radius: 6px;
-      padding: 8px 12px;
-      font-size: 11.5px;
-      color: #1e40af;
-      line-height: 1.5;
-    }
-    .solution-box strong {
-      color: #1d4ed8;
-      display: block;
-      margin-bottom: 2px;
-    }
-
-    /* Print Styles */
-    @media print {
-      body {
-        background: #ffffff !important;
-      }
-      .no-print {
-        display: none !important;
-      }
-      .document-page {
-        max-width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        box-shadow: none !important;
-      }
-      .subject-section {
-        page-break-before: auto;
-      }
-      .question-card {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-      }
-      @page {
-        size: A4 portrait;
-        margin: 12mm 14mm 14mm 14mm;
-      }
-    }
-  </style>
-</head>
-<body>
-  <!-- Floating Action Bar for Web View -->
-  <div class="top-action-bar no-print">
-    <h2>
-      Sunrise Classes — Print & Save PDF Preview
-    </h2>
-    <div>
-      <button class="print-btn" onclick="window.print()">
-        Print / Save as PDF
-      </button>
-      <button class="close-btn" onclick="window.close()">
-        Close
-      </button>
-    </div>
-  </div>
-
-  <div class="document-page">
-    <div class="watermark">SUNRISE CLASSES</div>
-
-    <!-- Header Banner -->
-    <div class="header-banner">
-      <div>
-        <div class="institute-title">SUNRISE CLASSES & ACADEMY</div>
-        <div class="institute-meta">Champanagar, Purnia, Bihar - 854201 • Mob: 9973152070</div>
-        <div class="institute-meta" style="color: #93c5fd; font-weight: 700; margin-top: 4px;">
-          ${escapeHtml(title)} • Class: ${escapeHtml(className)}
-        </div>
-      </div>
-      <div class="header-badge">
-        <div>Official Revision</div>
-        <div style="font-size: 9px; opacity: 0.8; margin-top: 2px;">Sunrise Question Bank</div>
-      </div>
-    </div>
-
-    <!-- Student Info Card -->
-    <div class="student-info-card">
-      <div class="info-group">
-        <div class="info-item"><strong>Student:</strong> <span>${escapeHtml(studentName)}</span></div>
-        <div class="info-item"><strong>Class:</strong> <span>${escapeHtml(className)}</span></div>
-        ${studentPin ? `<div class="info-item"><strong>Roll/PIN:</strong> <span>${escapeHtml(studentPin)}</span></div>` : ''}
-        <div class="info-item"><strong>Scope:</strong> <span>${escapeHtml(filterLabel)}</span></div>
-        <div class="info-item"><strong>Total Questions:</strong> <span>${totalQ}</span></div>
-      </div>
-      <div class="summary-pills">
-        <span class="pill-correct">Correct: ${correctQ}</span>
-        <span class="pill-incorrect">Incorrect: ${incorrectQ}</span>
-        <span class="pill-absent">Not Attempted: ${absentQ}</span>
-      </div>
-    </div>
-`;
-
-  // Render Questions Grouped by Subject in strict order:
-  // Math (1) -> Sanskrit (2) -> Hindi (3) -> Science (4) -> Social Science (5) -> Others (6)
-  const sortedSubjects = Array.from(subjectGroups.values()).sort((a, b) => a.priority - b.priority);
-
-  let globalQuestionCounter = 1;
-
-  for (const group of sortedSubjects) {
-    html += `
-    <!-- Subject Section: ${escapeHtml(group.label)} -->
-    <div class="subject-section">
-      <div class="subject-title-bar">
-        <span>SUBJECT: ${escapeHtml(group.label)}</span>
-        <span class="subject-count">${group.items.length} Questions</span>
-      </div>
-    </div>
-`;
-
-    // Group items inside this subject by test title
-    let currentTest = '';
-
-    for (const item of group.items) {
-      const q = item.question;
-      const test = item.test;
-
-      if (test.title !== currentTest) {
-        currentTest = test.title;
-        html += `
-      <div class="test-header-bar">
-        Test: ${escapeHtml(test.title)}
-      </div>
-`;
-      }
-
-      const qNum = globalQuestionCounter++;
-      const isCorrect = item.status === 'correct';
-      const isIncorrect = item.status === 'incorrect';
-      const isAbsent = item.status === 'absent' || item.status === 'unattempted';
-
-      const studentAns = item.studentAnswer?.trim().toUpperCase();
-      const correctAns = q.correct_option?.trim().toUpperCase();
-
-      html += `
-      <div class="question-card">
-        <div class="card-top">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="q-number-badge">Q${qNum}</span>
-            <span style="color: #64748b; font-weight: 600;">${escapeHtml(test.title)}</span>
-          </div>
-          <span style="color: #64748b; font-weight: 600;">Marks: ${q.marks || 1}</span>
-        </div>
-
-        <div class="card-body">
-          <div class="question-text">${formatMathText(q.question_text)}</div>
-
-          ${q.question_image ? `<div style="margin-bottom: 10px;"><img src="${escapeHtml(q.question_image)}" style="max-height: 180px; max-width: 100%; border-radius: 6px; border: 1px solid #cbd5e1;" alt="Diagram" /></div>` : ''}
-
-          <div class="options-grid">
-            <!-- Option A -->
-            <div class="option-cell ${correctAns === 'A' ? 'opt-correct' : studentAns === 'A' ? 'opt-incorrect' : ''}">
-              <span class="option-label">A</span>
-              <span>${formatMathText(q.option_a)}</span>
-            </div>
-
-            <!-- Option B -->
-            <div class="option-cell ${correctAns === 'B' ? 'opt-correct' : studentAns === 'B' ? 'opt-incorrect' : ''}">
-              <span class="option-label">B</span>
-              <span>${formatMathText(q.option_b)}</span>
-            </div>
-
-            <!-- Option C -->
-            <div class="option-cell ${correctAns === 'C' ? 'opt-correct' : studentAns === 'C' ? 'opt-incorrect' : ''}">
-              <span class="option-label">C</span>
-              <span>${formatMathText(q.option_c)}</span>
-            </div>
-
-            <!-- Option D -->
-            <div class="option-cell ${correctAns === 'D' ? 'opt-correct' : studentAns === 'D' ? 'opt-incorrect' : ''}">
-              <span class="option-label">D</span>
-              <span>${formatMathText(q.option_d)}</span>
+      headerWrapper.innerHTML = `
+        <div style="background: #0f2a5c; padding: 14px 20px 12px 20px; display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            ${logoHtml}
+            <div>
+              <div style="font-size: 19px; font-weight: 800; color: #f5a623; letter-spacing: 0.5px; line-height: 1.2;">
+                ${INSTITUTE}
+              </div>
+              <div style="font-size: 10px; color: #e2e8f0; margin-top: 3px;">
+                ${ADDRESS}
+              </div>
             </div>
           </div>
-
-          ${q.explanation ? `
-          <div class="solution-box">
-            <strong>Solution / Explanation:</strong>
-            ${formatMathText(q.explanation)}
-          </div>` : ''}
+          <div style="text-align: right;">
+            <div style="display: inline-block; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); padding: 4px 10px; border-radius: 4px; font-size: 10px; font-weight: 700; color: #ffffff;">
+              CLASS ${className.toUpperCase()}
+            </div>
+            <div style="font-size: 11px; font-weight: 700; color: #93c5fd; margin-top: 4px;">
+              ${escapeHtml(title)}
+            </div>
+          </div>
         </div>
+        <div style="height: 3px; background: linear-gradient(90deg, #f5a623, #fbbf24);"></div>
 
-        <div class="result-strip">
+        <!-- Student & Test Summary Card -->
+        <div style="margin: 10px 18px 6px 18px; padding: 10px 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
           <div>
-            ${isCorrect ? `<span class="tag-correct">CORRECT: Option ${correctAns} (Your Answer: Option ${studentAns})</span>` : ''}
-            ${isIncorrect ? `<span class="tag-incorrect">INCORRECT: Your Answer Option ${studentAns || '—'} | Correct Answer: Option ${correctAns}</span>` : ''}
-            ${isAbsent ? `<span class="tag-absent">NOT ATTEMPTED: Correct Answer Option ${correctAns}</span>` : ''}
+            <div style="font-size: 13px; font-weight: 700; color: #0f172a;">
+              Student: <span style="color: #1e3a8a;">${escapeHtml(studentName)}</span>
+              ${studentPin ? `<span style="font-size: 11px; color: #64748b; font-weight: 500; margin-left: 8px;">(Roll/PIN: ${escapeHtml(studentPin)})</span>` : ''}
+            </div>
+            <div style="color: #475569; margin-top: 3px;">
+              Scope: <strong>${escapeHtml(filterLabel)}</strong> • Date: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </div>
           </div>
-          <div style="font-size: 10.5px; color: #94a3b8;">Sunrise Classes</div>
+          <div style="display: flex; gap: 8px;">
+            <div style="background: #ffffff; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 4px; text-align: center;">
+              <div style="font-size: 9px; color: #64748b; font-weight: 600;">TOTAL</div>
+              <div style="font-size: 13px; font-weight: 800; color: #0f172a;">${totalQ}</div>
+            </div>
+            <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 4px 10px; border-radius: 4px; text-align: center;">
+              <div style="font-size: 9px; color: #16a34a; font-weight: 700;">SAHI</div>
+              <div style="font-size: 13px; font-weight: 800; color: #15803d;">${correctQ}</div>
+            </div>
+            <div style="background: #fef2f2; border: 1px solid #fca5a5; padding: 4px 10px; border-radius: 4px; text-align: center;">
+              <div style="font-size: 9px; color: #dc2626; font-weight: 700;">GALAT</div>
+              <div style="font-size: 13px; font-weight: 800; color: #b91c1c;">${incorrectQ}</div>
+            </div>
+            <div style="background: #fefce8; border: 1px solid #fde047; padding: 4px 10px; border-radius: 4px; text-align: center;">
+              <div style="font-size: 9px; color: #ca8a04; font-weight: 700;">ABSENT</div>
+              <div style="font-size: 13px; font-weight: 800; color: #a16207;">${absentQ}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      // Slim Header for Page 2+
+      headerWrapper.innerHTML = `
+        <div style="background: #0f2a5c; padding: 8px 18px; display: flex; align-items: center; justify-content: space-between;">
+          <div style="font-size: 11px; font-weight: 800; color: #f5a623; letter-spacing: 0.5px;">
+            ${INSTITUTE}
+          </div>
+          <div style="font-size: 10px; color: #e2e8f0; font-weight: 600;">
+            ${escapeHtml(title)} • Class ${className}
+          </div>
+        </div>
+        <div style="height: 2px; background: #f5a623;"></div>
+      `;
+    }
+
+    pageEl.appendChild(headerWrapper);
+
+    // Content container where questions will be inserted
+    const contentContainer = document.createElement('div');
+    contentContainer.style.cssText = `
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      padding: 6px 18px 34px 18px;
+      box-sizing: border-box;
+    `;
+    pageEl.appendChild(contentContainer);
+
+    // Footer container
+    const footerEl = document.createElement('div');
+    footerEl.style.cssText = `
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 28px;
+      background: #ffffff;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 18px;
+      font-size: 9.5px;
+      color: #64748b;
+      z-index: 2;
+    `;
+    footerEl.innerHTML = `
+      <div>SUNRISE CLASSES & ACADEMY • Champanagar, Purnia</div>
+      <div class="page-num-placeholder">Page ${pageNum}</div>
+    `;
+    pageEl.appendChild(footerEl);
+
+    stage.appendChild(pageEl);
+
+    const plannedPage = {
+      pageNumber: pageNum,
+      element: pageEl,
+      contentContainer,
+      footerEl
+    };
+    pages.push(plannedPage);
+    return plannedPage;
+  };
+
+  // Helper to create subject banner element
+  const createSubjectBanner = (subjectLabel: string, testTitle?: string): HTMLDivElement => {
+    const banner = document.createElement('div');
+    banner.style.cssText = `
+      margin: 8px 0 6px 0;
+      padding: 6px 12px;
+      background: linear-gradient(90deg, #1e3a8a, #2563eb);
+      color: #ffffff;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    `;
+    banner.innerHTML = `
+      <div style="font-size: 11.5px; font-weight: 800; letter-spacing: 0.3px; display: flex; align-items: center; gap: 6px;">
+        <span style="display: inline-block; width: 6px; height: 6px; background: #f5a623; border-radius: 50%;"></span>
+        ${escapeHtml(subjectLabel.toUpperCase())}
+      </div>
+      ${testTitle ? `<div style="font-size: 9.5px; opacity: 0.9; font-weight: 500;">Test: ${escapeHtml(testTitle)}</div>` : ''}
+    `;
+    return banner;
+  };
+
+  // Helper to create question card element
+  const createQuestionCard = (item: RevisionQuestionItem, displayIdx: number): HTMLDivElement => {
+    const q = item.question;
+    const isCorrect = item.status === 'correct';
+    const isIncorrect = item.status === 'incorrect';
+    const isAbsent = item.status === 'absent' || item.status === 'unattempted';
+
+    const card = document.createElement('div');
+    card.style.cssText = `
+      margin-bottom: 7px;
+      padding: 7px 10px;
+      background: #ffffff;
+      border: 1px solid ${isCorrect ? '#86efac' : isIncorrect ? '#fca5a5' : '#cbd5e1'};
+      border-radius: 5px;
+      box-sizing: border-box;
+    `;
+
+    // Render option items
+    const renderOptionHtml = (key: 'A' | 'B' | 'C' | 'D', text?: string | null) => {
+      const isCorrectOption = q.correct_option?.trim().toUpperCase() === key;
+      const isStudentOption = item.studentAnswer?.trim().toUpperCase() === key;
+
+      let borderCol = '#e2e8f0';
+      let bgCol = '#f8fafc';
+      let textCol = '#334155';
+      let tagBadge = '';
+
+      if (isCorrectOption) {
+        borderCol = '#16a34a';
+        bgCol = '#f0fdf4';
+        textCol = '#15803d';
+        tagBadge = `<span style="background: #16a34a; color: #fff; font-size: 7.5px; padding: 1px 4px; border-radius: 3px; font-weight: 700; margin-left: 4px;">SAHI</span>`;
+      } else if (isStudentOption && !isCorrectOption) {
+        borderCol = '#dc2626';
+        bgCol = '#fef2f2';
+        textCol = '#b91c1c';
+        tagBadge = `<span style="background: #dc2626; color: #fff; font-size: 7.5px; padding: 1px 4px; border-radius: 3px; font-weight: 700; margin-left: 4px;">AAPKA</span>`;
+      }
+
+      return `
+        <div style="flex: 1; min-width: 45%; padding: 4px 6px; background: ${bgCol}; border: 1px solid ${borderCol}; border-radius: 4px; font-size: 10px; color: ${textCol}; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <strong>(${key})</strong> ${formatMathText(text || '—')}
+          </div>
+          ${tagBadge}
+        </div>
+      `;
+    };
+
+    // Status bar text
+    let statusText = '';
+    if (isCorrect) {
+      statusText = `<span style="color: #15803d; font-weight: 700;">SAHI JAWAB: Option ${q.correct_option} (Aapka Jawab: Option ${item.studentAnswer})</span>`;
+    } else if (isIncorrect) {
+      statusText = `<span style="color: #b91c1c; font-weight: 700;">GALAT JAWAB: Aapka Jawab Option ${item.studentAnswer || '—'}  |  Sahi Jawab: Option ${q.correct_option}</span>`;
+    } else {
+      statusText = `<span style="color: #a16207; font-weight: 700;">ABSENT / UNATTEMPTED: Sahi Jawab Option ${q.correct_option}</span>`;
+    }
+
+    card.innerHTML = `
+      <div style="display: flex; gap: 8px; align-items: flex-start;">
+        <span style="background: #0f2a5c; color: #ffffff; font-size: 9.5px; font-weight: 800; padding: 2px 6px; border-radius: 3px; flex-shrink: 0; margin-top: 1px;">
+          Q${displayIdx}.
+        </span>
+        <div style="font-size: 11px; font-weight: 700; color: #0f172a; line-height: 1.35; flex: 1;">
+          ${formatMathText(q.question_text)}
         </div>
       </div>
-`;
+
+      <!-- Options 2x2 Grid -->
+      <div style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; gap: 6px;">
+          ${renderOptionHtml('A', q.option_a)}
+          ${renderOptionHtml('B', q.option_b)}
+        </div>
+        <div style="display: flex; gap: 6px;">
+          ${renderOptionHtml('C', q.option_c)}
+          ${renderOptionHtml('D', q.option_d)}
+        </div>
+      </div>
+
+      <!-- Status Bar -->
+      <div style="margin-top: 5px; padding-top: 4px; border-top: 1px dashed #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 9px;">
+        <div>${statusText}</div>
+        <div style="color: #64748b; font-weight: 600;">Marks: ${q.marks || 1}</div>
+      </div>
+
+      <!-- Explanation Box (if any) -->
+      ${q.explanation ? `
+        <div style="margin-top: 4px; padding: 4px 6px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 3px; font-size: 9px; color: #0369a1; line-height: 1.3;">
+          <strong>Solution:</strong> ${formatMathText(q.explanation)}
+        </div>
+      ` : ''}
+    `;
+
+    return card;
+  };
+
+  // ── Layout Phase: Place questions dynamically into A4 pages ─────────────────
+  let currentPage = createPage(true);
+  let currentSubjectKey = '';
+
+  for (let idx = 0; idx < sortedItems.length; idx++) {
+    const item = sortedItems[idx];
+    const cat = getSubjectCategory(item.test.subject || '');
+    const isFirstPage = currentPage.pageNumber === 1;
+    const maxHeight = isFirstPage ? P1_MAX_CONTENT_H : P2_MAX_CONTENT_H;
+
+    // Check if new subject started
+    let subjectBanner: HTMLDivElement | null = null;
+    if (cat.key !== currentSubjectKey) {
+      currentSubjectKey = cat.key;
+      subjectBanner = createSubjectBanner(cat.label, item.test.title);
+    }
+
+    const card = createQuestionCard(item, idx + 1);
+
+    // Tentatively append banner and card to test height
+    if (subjectBanner) {
+      currentPage.contentContainer.appendChild(subjectBanner);
+    }
+    currentPage.contentContainer.appendChild(card);
+
+    // If height exceeds max allowed and page already has previous elements, push to new page
+    if (currentPage.contentContainer.offsetHeight > maxHeight && currentPage.contentContainer.children.length > (subjectBanner ? 2 : 1)) {
+      // Remove from current page
+      currentPage.contentContainer.removeChild(card);
+      if (subjectBanner) {
+        currentPage.contentContainer.removeChild(subjectBanner);
+      }
+
+      // Create next page
+      currentPage = createPage(false);
+
+      // Add to new page
+      if (subjectBanner) {
+        currentPage.contentContainer.appendChild(subjectBanner);
+      }
+      currentPage.contentContainer.appendChild(card);
     }
   }
 
-  html += `
-    <div style="text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8;">
-      Sunrise Classes & Academy • Champanagar, Purnia, Bihar - 854201 • Mob: 9973152070
-    </div>
-  </div>
+  // Update total page numbers in footers
+  const totalPages = pages.length;
+  pages.forEach(p => {
+    const numEl = p.footerEl.querySelector('.page-num-placeholder');
+    if (numEl) {
+      numEl.textContent = `Page ${p.pageNumber} of ${totalPages}`;
+    }
+  });
 
-  <script>
-    // Automatically trigger Print dialog once document is loaded
-    window.onload = function() {
-      setTimeout(function() {
-        window.print();
-      }, 600);
-    };
-  </script>
-</body>
-</html>`;
+  onProgress?.(15, `Prepared ${totalPages} pages. Generating PDF file...`);
 
-  onProgress?.(80, 'Opening print document in browser...');
+  // ── Render Phase: Convert each page element to canvas and build PDF ─────────
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
 
-  // Open in new tab/window for crystal clear browser print-to-PDF
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    onProgress?.(100, 'Ready! Print / Save as PDF dialog opened.');
-  } else {
-    // If popup blocked, create a temporary downloadable HTML blob
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Sunrise_${studentName.replace(/\s+/g, '_')}_Revision_Bank.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    onProgress?.(100, 'Popup blocked. HTML file downloaded. Open it and press Ctrl+P (or Cmd+P) to Save as PDF.');
+  for (let pIdx = 0; pIdx < pages.length; pIdx++) {
+    const p = pages[pIdx];
+    const pct = Math.round(15 + (pIdx / pages.length) * 80);
+    onProgress?.(pct, `Processing Page ${pIdx + 1} of ${totalPages}...`);
+
+    // Render using html2canvas with scale 1.5 for ultra-sharp text and fast performance
+    const canvas = await html2canvas(p.element, {
+      scale: 1.5,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowWidth: PAGE_WIDTH_PX,
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.85);
+
+    if (pIdx > 0) {
+      doc.addPage();
+    }
+    // A4 dimensions in mm: 210 x 297
+    doc.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+
+    // Free memory by detaching page element
+    p.element.remove();
   }
+
+  // Clean up offscreen stage
+  stage.remove();
+
+  onProgress?.(98, 'Directly downloading PDF file to device...');
+
+  // Build clean, safe filename
+  const cleanStudent = studentName.replace(/\s+/g, '_');
+  const cleanFilter = filterLabel.replace(/[^a-zA-Z0-9]/g, '_');
+  const filename = `Sunrise_${cleanStudent}_${className.replace(/\s+/g, '')}_${cleanFilter}.pdf`;
+
+  // Direct download to phone / computer
+  doc.save(filename);
+
+  onProgress?.(100, 'Download complete!');
 }
