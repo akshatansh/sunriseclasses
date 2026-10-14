@@ -258,6 +258,44 @@ export async function getTestQuestionsWithAnswers(testId: string) {
   return data as OnlineTestQuestion[];
 }
 
+// Fetch all past/completed tests for a class for Revision Vault
+export async function getAllClassTestsForRevision(className: string) {
+  const { data, error } = await supabase
+    .from('online_tests')
+    .select('*')
+    .eq('class_name', className)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data || []) as OnlineTest[];
+}
+
+// Fetch all questions with answers for a list of test IDs (supports batching up to hundreds)
+export async function getRevisionQuestionsForTests(testIds: string[]) {
+  if (!testIds || testIds.length === 0) return [];
+  
+  // Supabase IN filter chunks of 50 to prevent URL length limits
+  const CHUNK_SIZE = 50;
+  let allQuestions: OnlineTestQuestion[] = [];
+
+  for (let i = 0; i < testIds.length; i += CHUNK_SIZE) {
+    const chunk = testIds.slice(i, i + CHUNK_SIZE);
+    const { data, error } = await supabase
+      .from('online_test_questions')
+      .select('*')
+      .in('test_id', chunk)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    if (data) {
+      allQuestions = allQuestions.concat(data as OnlineTestQuestion[]);
+    }
+  }
+
+  return allQuestions;
+}
+
+
 export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: Record<string, string>) {
   // Check if student is banned before allowing submission
   const { data: student } = await supabase

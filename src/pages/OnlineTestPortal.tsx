@@ -3,6 +3,7 @@ import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Ca
 import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, reportTestIssue, OnlineTest, StudentTestAttempt, verifyStudentPin, getTestQuestionsWithAnswers, OnlineTestQuestion, unbanStudent, autoDeleteOldProctoringLogs } from '../lib/onlineTests';
 import jsPDF from 'jspdf';
 import BanScreen from '../components/BanScreen';
+import StudentRevisionVault from '../components/StudentRevisionVault';
 
 // Lazy load the runner to prevent heavy TFJS imports from crashing the main bundle
 const LiveTestRunner = React.lazy(() => 
@@ -18,6 +19,7 @@ const LiveTestRunner = React.lazy(() =>
 export default function OnlineTestPortal() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [student, setStudent] = useState<{ id: string; name: string; class_name: string; image?: string } | null>(null);
+  const [activePortalTab, setActivePortalTab] = useState<'tests' | 'revision'>('tests');
   
 
 
@@ -668,7 +670,7 @@ export default function OnlineTestPortal() {
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className={`${isLoggedIn && activePortalTab === 'revision' ? 'max-w-6xl' : 'max-w-4xl'} mx-auto px-4 sm:px-6 lg:px-8 transition-all duration-300`}>
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold text-gray-900 mb-4 flex items-center justify-center gap-3">
           <BookOpen className="h-8 w-8 text-blue-600" />
@@ -769,107 +771,147 @@ export default function OnlineTestPortal() {
             </button>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <Timer className="h-5 w-5 text-green-600" /> 
-              Available Tests
-            </h3>
-            <button 
-              onClick={() => setShowReportForm(true)}
-              className="px-4 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-black border border-red-100 hover:bg-red-100 transition-colors flex items-center gap-2"
+          {/* Main Portal Navigation Tabs */}
+          <div className="flex border-b border-gray-200 mb-6 gap-2 overflow-x-auto">
+            <button
+              onClick={() => setActivePortalTab('tests')}
+              className={`pb-3 px-4 text-sm font-black flex items-center gap-2 border-b-2 whitespace-nowrap transition-all ${
+                activePortalTab === 'tests'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
             >
-              <ShieldAlert className="h-3.5 w-3.5" />
-              REPORT TECHNICAL ISSUE
+              <Timer className="h-4 w-4" />
+              Available Tests ({tests.length})
+            </button>
+
+            <button
+              onClick={() => setActivePortalTab('revision')}
+              className={`pb-3 px-4 text-sm font-black flex items-center gap-2 border-b-2 whitespace-nowrap transition-all ${
+                activePortalTab === 'revision'
+                  ? 'border-amber-500 text-amber-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <BookOpen className="h-4 w-4 text-amber-500" />
+              Revision & Question Bank
+              <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-full ml-1 uppercase">
+                New
+              </span>
             </button>
           </div>
-          
-          {attemptedError && (
-            <div className="mb-4 p-3 bg-yellow-50 text-yellow-800 rounded-md border border-yellow-200">
-              {attemptedError}
-            </div>
-          )}
 
-          {loadingTests ? (
-            <p className="text-center py-8 text-gray-500">Loading tests...</p>
-          ) : tests.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              <p className="text-gray-500">No active tests available for your class right now.</p>
-            </div>
+          {activePortalTab === 'revision' ? (
+            <StudentRevisionVault
+              student={student!}
+              studentAttempts={attempts}
+              onBackToTests={() => setActivePortalTab('tests')}
+            />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {(tests || []).map(test => {
-                const attempt = (attempts || []).find(a => a && a.test_id === test.id && a.is_completed === true);
-                const isCompleted = !!attempt;
-                const isStopped = test.is_stopped && !test.is_active;
+            <>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Timer className="h-5 w-5 text-green-600" /> 
+                  Available Tests
+                </h3>
+                <button 
+                  onClick={() => setShowReportForm(true)}
+                  className="px-4 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-black border border-red-100 hover:bg-red-100 transition-colors flex items-center gap-2"
+                >
+                  <ShieldAlert className="h-3.5 w-3.5" />
+                  REPORT TECHNICAL ISSUE
+                </button>
+              </div>
+              
+              {attemptedError && (
+                <div className="mb-4 p-3 bg-yellow-50 text-yellow-800 rounded-md border border-yellow-200">
+                  {attemptedError}
+                </div>
+              )}
 
-                return (
-                  <div key={test.id} className={`border rounded-lg p-5 transition-shadow ${
-                    isCompleted ? 'bg-green-50/50 border-green-200' 
-                    : isStopped ? 'bg-red-50/30 border-red-200'
-                    : 'bg-blue-50/30 border-gray-200 hover:shadow-md'
-                  }`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-bold text-lg text-gray-900">{test.title}</h4>
-                      {isCompleted ? (
-                        <span className="flex items-center gap-1 bg-green-100 text-green-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                          <CheckCircle className="h-3.5 w-3.5" /> Completed
-                        </span>
-                      ) : isStopped ? (
-                        <span className="flex items-center gap-1 bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                          <Timer className="h-3.5 w-3.5" /> Pending
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 bg-yellow-100 text-yellow-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                          <Clock className="h-3.5 w-3.5" /> Pending
-                        </span>
-                      )}
-                    </div>
-                    
-                    <p className="text-sm text-gray-600 mb-4">Subject: {test.subject} • Time: {test.duration_minutes} mins</p>
-                    
-                    {isCompleted ? (
-                      <div className="space-y-3">
-                        <div className="bg-white rounded-md border border-green-100 p-3 text-center">
-                          <p className="text-xs text-gray-500 font-semibold mb-1">YOUR SCORE</p>
-                          <p className="text-2xl font-bold text-green-600">{attempt.score} <span className="text-sm text-green-400">/ {attempt.total_marks}</span></p>
+              {loadingTests ? (
+                <p className="text-center py-8 text-gray-500">Loading tests...</p>
+              ) : tests.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                  <p className="text-gray-500">No active tests available for your class right now.</p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {(tests || []).map(test => {
+                    const attempt = (attempts || []).find(a => a && a.test_id === test.id && a.is_completed === true);
+                    const isCompleted = !!attempt;
+                    const isStopped = test.is_stopped && !test.is_active;
+
+                    return (
+                      <div key={test.id} className={`border rounded-lg p-5 transition-shadow ${
+                        isCompleted ? 'bg-green-50/50 border-green-200' 
+                        : isStopped ? 'bg-red-50/30 border-red-200'
+                        : 'bg-blue-50/30 border-gray-200 hover:shadow-md'
+                      }`}>
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-bold text-lg text-gray-900">{test.title}</h4>
+                          {isCompleted ? (
+                            <span className="flex items-center gap-1 bg-green-100 text-green-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                              <CheckCircle className="h-3.5 w-3.5" /> Completed
+                            </span>
+                          ) : isStopped ? (
+                            <span className="flex items-center gap-1 bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                              <Timer className="h-3.5 w-3.5" /> Pending
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 bg-yellow-100 text-yellow-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                              <Clock className="h-3.5 w-3.5" /> Pending
+                            </span>
+                          )}
                         </div>
                         
-                           <button 
-                             onClick={() => handleOpenReview(test, attempt)}
-                             disabled={!test.allow_review}
-                             className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all w-full ${
-                               test.allow_review 
-                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700' 
-                                 : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
-                             }`}
-                             title={test.allow_review ? 'Detailed Answer Review' : 'Review is disabled by Admin'}
-                           >
-                             <Eye size={14} />
-                             {test.allow_review ? 'Review Answers' : 'Review Locked'}
-                           </button>
+                        <p className="text-sm text-gray-600 mb-4">Subject: {test.subject} • Time: {test.duration_minutes} mins</p>
                         
-                        {!test.allow_review && (
-                          <p className="text-[10px] text-gray-400 text-center italic">Review will be enabled after results are verified.</p>
+                        {isCompleted ? (
+                          <div className="space-y-3">
+                            <div className="bg-white rounded-md border border-green-100 p-3 text-center">
+                              <p className="text-xs text-gray-500 font-semibold mb-1">YOUR SCORE</p>
+                              <p className="text-2xl font-bold text-green-600">{attempt.score} <span className="text-sm text-green-400">/ {attempt.total_marks}</span></p>
+                            </div>
+                            
+                            <button 
+                              onClick={() => handleOpenReview(test, attempt)}
+                              disabled={!test.allow_review}
+                              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all w-full ${
+                                test.allow_review 
+                                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700' 
+                                  : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                              }`}
+                              title={test.allow_review ? 'Detailed Answer Review' : 'Review is disabled by Admin'}
+                            >
+                              <Eye size={14} />
+                              {test.allow_review ? 'Review Answers' : 'Review Locked'}
+                            </button>
+                            
+                            {!test.allow_review && (
+                              <p className="text-[10px] text-gray-400 text-center italic">Review will be enabled after results are verified.</p>
+                            )}
+                          </div>
+                        ) : isStopped ? (
+                          <div className="bg-red-50 rounded-md border border-red-100 p-3 text-center">
+                            <p className="text-xs text-red-500 font-bold mb-1">TEST STOPPED</p>
+                            <p className="text-sm text-gray-600">Yeh test band kar diya gaya hai. Apne teacher se mile.</p>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleStartTest(test)}
+                            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors font-bold"
+                          >
+                            <PlayCircle className="h-5 w-5" />
+                            Start Test Now
+                          </button>
                         )}
                       </div>
-                    ) : isStopped ? (
-                      <div className="bg-red-50 rounded-md border border-red-100 p-3 text-center">
-                        <p className="text-xs text-red-500 font-bold mb-1">TEST STOPPED</p>
-                        <p className="text-sm text-gray-600">Yeh test band kar diya gaya hai. Apne teacher se mile.</p>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleStartTest(test)}
-                        className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors font-bold"
-                      >
-                        <PlayCircle className="h-5 w-5" />
-                        Start Test Now
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
