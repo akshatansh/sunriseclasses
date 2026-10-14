@@ -169,11 +169,11 @@ export async function generateRevisionBankPDF(options: PDFExportOptions): Promis
   doc.setFont('helvetica', 'bold');
   doc.text(`Summary: `, col2X, y + 18);
   doc.setTextColor(...GREEN);
-  doc.text(`✓ ${correctQ} Sahi`, col2X + 18, y + 18);
+  doc.text(`Correct: ${correctQ}`, col2X + 18, y + 18);
   doc.setTextColor(...RED);
-  doc.text(`✗ ${incorrectQ} Galat`, col2X + 38, y + 18);
+  doc.text(`Incorrect: ${incorrectQ}`, col2X + 42, y + 18);
   doc.setTextColor(...GRAY);
-  doc.text(`⚠️ ${absentQ} Absent`, col2X + 58, y + 18);
+  doc.text(`Absent: ${absentQ}`, col2X + 68, y + 18);
 
   y += 30;
 
@@ -213,7 +213,7 @@ export async function generateRevisionBankPDF(options: PDFExportOptions): Promis
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
       doc.setTextColor(...NAVY);
-      doc.text(`📚 TEST: ${test.title} • [${test.subject || className}]`, margin + 4, y + 5.5);
+      doc.text(`TEST: ${test.title} • [${test.subject || className}]`, margin + 4, y + 5.5);
 
       y += 12;
     }
@@ -336,15 +336,15 @@ export async function generateRevisionBankPDF(options: PDFExportOptions): Promis
     if (item.status === 'correct') {
       doc.setTextColor(...GREEN);
       doc.setFont('helvetica', 'bold');
-      doc.text(`✓ SAHI JAWAB: Option ${q.correct_option} (Aapka Jawab: Option ${item.studentAnswer})`, margin + 4, innerY + 4.5);
+      doc.text(`CORRECT: Option ${q.correct_option} (Your Answer: Option ${item.studentAnswer})`, margin + 4, innerY + 4.5);
     } else if (item.status === 'incorrect') {
       doc.setTextColor(...RED);
       doc.setFont('helvetica', 'bold');
-      doc.text(`✗ GALAT JAWAB: Aapka Jawab Option ${item.studentAnswer || '—'}  |  Sahi Jawab: Option ${q.correct_option}`, margin + 4, innerY + 4.5);
+      doc.text(`INCORRECT: Your Answer Option ${item.studentAnswer || '—'}  |  Correct Answer: Option ${q.correct_option}`, margin + 4, innerY + 4.5);
     } else if (item.status === 'absent') {
       doc.setTextColor(180, 83, 9);
       doc.setFont('helvetica', 'bold');
-      doc.text(`⚠️ ABSENT TEST: Sahi Jawab Option ${q.correct_option}`, margin + 4, innerY + 4.5);
+      doc.text(`NOT ATTEMPTED: Correct Answer Option ${q.correct_option}`, margin + 4, innerY + 4.5);
     } else {
       doc.setTextColor(...GRAY);
       doc.setFont('helvetica', 'bold');

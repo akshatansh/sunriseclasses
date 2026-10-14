@@ -1310,7 +1310,7 @@ export default function OnlineTestAdmin() {
                             <Clock className="h-3 w-3" /> {test.duration_minutes} mins
                             {test.required_attempts && (
                               <span className="ml-1 inline-flex items-center gap-0.5 bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide">
-                                ⚡ {test.required_attempts} attempt
+                                {test.required_attempts} required attempts
                               </span>
                             )}
                           </div>
@@ -1439,7 +1439,6 @@ export default function OnlineTestAdmin() {
             {/* ── Bihar Board Mode: Required Attempts ── */}
             <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">⚡</span>
                 <label className="block text-sm font-bold text-amber-800">Bihar Board Mode — Required Attempts (Optional)</label>
               </div>
               <p className="text-xs text-amber-700 mb-3">
@@ -1469,13 +1468,13 @@ export default function OnlineTestAdmin() {
                     onClick={() => setCurrentTest({ ...currentTest, required_attempts: null })}
                     className="ml-auto text-xs text-red-500 hover:text-red-700 font-bold underline"
                   >
-                    ✕ Hatao
+                    Hatao
                   </button>
                 )}
               </div>
               {currentTest.required_attempts && (
                 <p className="text-xs text-amber-600 mt-2 font-semibold">
-                  ✅ Active: Students koi bhi {currentTest.required_attempts} questions attempt kar sakte hain. Zyada nahi.
+                  Active: Students koi bhi {currentTest.required_attempts} questions attempt kar sakte hain. Zyada nahi.
                 </p>
               )}
             </div>

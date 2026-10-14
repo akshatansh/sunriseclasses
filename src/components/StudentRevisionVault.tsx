@@ -14,7 +14,6 @@ import {
   ChevronDown, 
   Eye, 
   X,
-  Sparkles,
   BookMarked,
   Printer,
   Calendar
@@ -322,8 +321,8 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-                <Sparkles className="h-3 w-3" /> Question Vault & Revision
+              <span className="bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                Question Vault & Revision
               </span>
               <span className="bg-white/10 text-white/80 text-xs font-bold px-2 py-0.5 rounded-full">
                 {student.class_name}
@@ -344,7 +343,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
                 onClick={onBackToTests}
                 className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors flex items-center gap-2"
               >
-                ← Wapas Live Tests
+                Wapas Live Tests
               </button>
             )}
 
@@ -391,7 +390,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
                 : 'bg-white/5 hover:bg-white/10'
             }`}
           >
-            <p className="text-[10px] uppercase tracking-wider font-bold text-red-300">❌ Galat Hue</p>
+            <p className="text-[10px] uppercase tracking-wider font-bold text-red-300">Galat Jawab</p>
             <p className="text-2xl font-black text-red-400 mt-0.5">{stats.incorrect}</p>
             <p className="text-[10px] text-red-300 font-medium mt-0.5">Sudharne yogya</p>
           </button>
@@ -404,7 +403,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
                 : 'bg-white/5 hover:bg-white/10'
             }`}
           >
-            <p className="text-[10px] uppercase tracking-wider font-bold text-amber-300">⚠️ Absent / Missed</p>
+            <p className="text-[10px] uppercase tracking-wider font-bold text-amber-300">Absent / Missed</p>
             <p className="text-2xl font-black text-amber-400 mt-0.5">{stats.absent}</p>
             <p className="text-[10px] text-amber-200 font-medium mt-0.5">Chhoote hue test</p>
           </button>
@@ -417,7 +416,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
                 : 'bg-white/5 hover:bg-white/10'
             }`}
           >
-            <p className="text-[10px] uppercase tracking-wider font-bold text-green-300">✅ Sahi Hue</p>
+            <p className="text-[10px] uppercase tracking-wider font-bold text-green-300">Sahi Jawab</p>
             <p className="text-2xl font-black text-green-400 mt-0.5">{stats.correct}</p>
             <p className="text-[10px] text-green-200 font-medium mt-0.5">Shandar taiyyari</p>
           </button>
@@ -430,7 +429,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
                 : 'bg-white/5 hover:bg-white/10'
             }`}
           >
-            <p className="text-[10px] uppercase tracking-wider font-bold text-yellow-300">⭐ Starred</p>
+            <p className="text-[10px] uppercase tracking-wider font-bold text-yellow-300">Starred</p>
             <p className="text-2xl font-black text-yellow-400 mt-0.5">{stats.starred}</p>
             <p className="text-[10px] text-yellow-200 font-medium mt-0.5">Khaas sawaal</p>
           </button>
@@ -468,12 +467,12 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
               onChange={e => setSelectedTestId(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm font-bold text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             >
-              <option value="all">📚 Saare Tests (Master Bank - {tests.length} Tests)</option>
+              <option value="all">Saare Tests (Master Bank - {tests.length} Tests)</option>
               {tests.map(t => {
                 const isAttempted = attemptsByTestId.has(t.id);
                 return (
                   <option key={t.id} value={t.id}>
-                    {isAttempted ? '✅' : '⚠️'} {t.title} ({t.subject || 'All'})
+                    [{isAttempted ? 'Attempted' : 'Absent'}] {t.title} ({t.subject || 'All'})
                   </option>
                 );
               })}
@@ -487,7 +486,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
               onChange={e => setSelectedSubject(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm font-bold text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             >
-              <option value="all">🎯 Sabhi Subjects</option>
+              <option value="all">Sabhi Subjects</option>
               {subjects.map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -520,7 +519,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
                 : 'bg-red-50 text-red-700 hover:bg-red-100'
             }`}
           >
-            ❌ Sirf Galat ({stats.incorrect})
+            Sirf Galat ({stats.incorrect})
           </button>
 
           <button
@@ -531,7 +530,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
                 : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
             }`}
           >
-            ⚠️ Chhoot Gaye/Absent ({stats.absent})
+            Absent / Missed ({stats.absent})
           </button>
 
           <button
@@ -542,7 +541,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
                 : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100'
             }`}
           >
-            ⭐ Starred ({stats.starred})
+            Starred ({stats.starred})
           </button>
 
           <button
@@ -553,7 +552,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
                 : 'bg-green-50 text-green-700 hover:bg-green-100'
             }`}
           >
-            ✅ Sahi ({stats.correct})
+            Sahi ({stats.correct})
           </button>
 
           <span className="ml-auto text-xs font-bold text-gray-500">
@@ -688,7 +687,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
                     </span>
 
                     <span className="text-xs font-bold text-gray-700 bg-white px-2.5 py-1 rounded-lg border border-gray-200">
-                      📚 {test.title}
+                      {test.title}
                     </span>
 
                     {test.subject && (
@@ -714,13 +713,13 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
 
                     {isAbsent && (
                       <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200">
-                        ⚠️ Test Missed / Absent
+                        Test Missed / Absent
                       </span>
                     )}
 
                     {isUnattempted && !isAbsent && (
                       <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-xs font-bold px-2.5 py-1 rounded-full border border-gray-200">
-                        ⚪ Not Attempted
+                        Not Attempted
                       </span>
                     )}
 
@@ -842,7 +841,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
                   {!isAttempted && !revealedAnswers[q.id] && (
                     <div className="flex items-center justify-between p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs">
                       <span className="text-amber-800 font-medium">
-                        💡 Yeh test aapka miss ho gaya tha. Pehle khud option choose karein, phir answer check karein!
+                        Yeh test aapka miss ho gaya tha. Pehle khud option choose karein, phir answer check karein.
                       </span>
                       <button
                         onClick={() => setRevealedAnswers(prev => ({ ...prev, [q.id]: true }))}
@@ -858,7 +857,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
                     <div className="mt-4 p-4 rounded-xl bg-blue-50/70 border border-blue-200 text-blue-900">
                       <div className="flex items-start gap-2">
                         <span className="p-1 rounded-md bg-blue-200 text-blue-800 text-xs font-bold shrink-0">
-                          💡 Solution
+                          Solution
                         </span>
                         <div>
                           <p className="text-xs font-bold text-blue-950 mb-1">Detailed Explanation:</p>
@@ -957,7 +956,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
               >
                 <div>
                   <p className="text-sm font-black text-blue-900 flex items-center gap-1.5">
-                    🎯 Current View PDF ({filteredItems.length} Sawaal)
+                    Current View PDF ({filteredItems.length} Sawaal)
                   </p>
                   <p className="text-xs text-blue-700 mt-1">
                     Aapne jo filter screen par lagaya hai (Status, Subject, Search), theek wahi PDF mein download hoga.
@@ -973,7 +972,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
               >
                 <div>
                   <p className="text-sm font-black text-gray-900 group-hover:text-purple-900 flex items-center gap-1.5">
-                    📚 Complete Master Question Bank ({tests.length} Tests • {questionItems.length} Sawaal)
+                    Complete Master Question Bank ({tests.length} Tests • {questionItems.length} Sawaal)
                   </p>
                   <p className="text-xs text-gray-500 group-hover:text-purple-700 mt-1">
                     Class {student.class_name} ke saare past tests ka ek saath complete solved question bank.
@@ -990,7 +989,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
               >
                 <div>
                   <p className="text-sm font-black text-red-900 flex items-center gap-1.5">
-                    ❌ Galti Notebook (Sirf Galat Hue Sawaal - {stats.incorrect})
+                    Galti Notebook (Sirf Galat Hue Sawaal - {stats.incorrect})
                   </p>
                   <p className="text-xs text-red-700 mt-1">
                     Exam se pehle sirf apni galtiyon ko revise karne ke liye best option!
@@ -1007,7 +1006,7 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
               >
                 <div>
                   <p className="text-sm font-black text-amber-900 flex items-center gap-1.5">
-                    ⚠️ Missed / Absent Sawaal ({stats.absent})
+                    Missed / Absent Sawaal ({stats.absent})
                   </p>
                   <p className="text-xs text-amber-700 mt-1">
                     Jo tests bache ne attend nahi kiye the unke saare solved questions.

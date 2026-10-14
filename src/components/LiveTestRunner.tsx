@@ -1215,7 +1215,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
     // Strategy mode: block answering until student clicks "Start Answering"
     if (strategyMode && !strategyDone) {
-      setActiveMessage('📖 Pehle saare questions padh lo! Phir "Start Answering" button dabao.');
+      setActiveMessage('Pehle saare questions padh lo! Phir "Start Answering" button dabao.');
       if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
       messageTimeoutRef.current = setTimeout(() => setActiveMessage(null), 3000);
       return;
@@ -1236,7 +1236,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           delete next[qId];
           return next;
         });
-        setActiveMessage('↩️ Jawab hata diya gaya. Dobara choose karein.');
+        setActiveMessage('Jawab hata diya gaya. Dobara choose karein.');
         if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
         messageTimeoutRef.current = setTimeout(() => setActiveMessage(null), 2000);
         return;
@@ -1255,7 +1255,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
 
     // New answer: check Bihar Board limit
     if (isLimitMode && hasReachedLimit) {
-      setActiveMessage(`🚫 Limit poori! Aapne ${requiredAttempts}/${requiredAttempts} sawaal ban liye. Kisi ek ko DOUBLE-CLICK karke deselect karein, phir naya chunein.`);
+      setActiveMessage(`Limit poori! Aapne ${requiredAttempts}/${requiredAttempts} sawaal chun liye hain. Kisi ek par double-click karke deselect karein, phir naya chunein.`);
       setIsWarningFlash(true);
       setTimeout(() => setIsWarningFlash(false), 600);
       if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
@@ -1272,13 +1272,13 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       if (isLimitMode && requiredAttempts) {
         if (newCount === requiredAttempts) {
           setTimeout(() => {
-            setActiveMessage(`✅ Shukriya! Aapne ${requiredAttempts}/${requiredAttempts} sawaal ban liye. Double-click karein kisi answer par deselect karne ke liye.`);
+            setActiveMessage(`Aapne ${requiredAttempts}/${requiredAttempts} sawaal chun liye hain. Double-click karein kisi answer par deselect karne ke liye.`);
             if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
             messageTimeoutRef.current = setTimeout(() => setActiveMessage(null), 6000);
           }, 50);
         } else if (newCount >= Math.floor(requiredAttempts * 0.8) && newCount < requiredAttempts) {
           setTimeout(() => {
-            setActiveMessage(`⚡ ${newCount}/${requiredAttempts} sawaal ban gaye. Sirf ${requiredAttempts - newCount} aur bana sakte hain!`);
+            setActiveMessage(`${newCount}/${requiredAttempts} sawaal chun liye. Sirf ${requiredAttempts - newCount} aur bana sakte hain.`);
             if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
             messageTimeoutRef.current = setTimeout(() => setActiveMessage(null), 3000);
           }, 50);
@@ -1870,27 +1870,27 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           {/* Bihar Board pattern info */}
           {isLimitMode ? (
             <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 mb-5 text-left">
-              <p className="text-sm font-black text-amber-800 mb-3 text-center">⚡ Bihar Board Style Test Pattern</p>
+              <p className="text-sm font-black text-amber-800 mb-3 text-center">Bihar Board Style Test Pattern</p>
               <div className="space-y-2">
                 <div className="flex items-start gap-2">
-                  <span className="text-amber-500 font-black mt-0.5">📋</span>
+                  <span className="text-amber-600 font-bold">•</span>
                   <p className="text-sm text-amber-800"><strong>Total Questions:</strong> {questions.length}</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-amber-500 font-black mt-0.5">✅</span>
+                  <span className="text-amber-600 font-bold">•</span>
                   <p className="text-sm text-amber-800"><strong>Aapko attempt karne hain:</strong> <span className="text-red-600 font-black">{requiredAttempts}</span> sawaal</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-amber-500 font-black mt-0.5">🎯</span>
+                  <span className="text-amber-600 font-bold">•</span>
                   <p className="text-sm text-amber-800">Koi bhi <strong>{requiredAttempts}</strong> sawaal chunein — order koi bhi</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-green-600 font-black mt-0.5">🖱️</span>
+                  <span className="text-amber-600 font-bold">•</span>
                   <p className="text-sm text-amber-800"><strong>Single click</strong> = Select (green) • <strong>Double click</strong> = Deselect</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-red-500 font-black mt-0.5">🔒</span>
-                  <p className="text-sm text-amber-800">{requiredAttempts} ho jane ke baad <strong>nayi question tick nahi hogi</strong></p>
+                  <span className="text-amber-600 font-bold">•</span>
+                  <p className="text-sm text-amber-800">{requiredAttempts} ho jane ke baad nayi question tick nahi hogi</p>
                 </div>
               </div>
             </div>
@@ -1903,22 +1903,22 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
           {/* Strategy Mode option — only for Bihar Board limit mode */}
           {isLimitMode && (
             <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 mb-5 text-left">
-              <p className="text-xs font-black text-blue-700 mb-3 uppercase tracking-wider">📖 Strategy Mode — Pro Tip</p>
+              <p className="text-xs font-black text-blue-700 mb-3 uppercase tracking-wider">Strategy Mode — Recommended</p>
               <p className="text-sm text-blue-800 mb-3">
-                Pehle <strong>saare {questions.length} questions padh lo</strong>, tab decide karo ki kaunse {requiredAttempts} best lagte hain. Tick karna tab shuru hoga jab tum ready ho jao.
+                Pehle saare {questions.length} questions padh lo, tab decide karo ki kaunse {requiredAttempts} best lagte hain. Tick karna tab shuru hoga jab aap ready honge.
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => doStartTest(true)}
                   className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-700 shadow transition-all"
                 >
-                  📖 Strategy Mode
+                  Strategy Mode
                 </button>
                 <button
                   onClick={() => doStartTest(false)}
                   className="flex-1 bg-green-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-green-700 shadow transition-all"
                 >
-                  ⚡ Seedha Shuru
+                  Direct Start
                 </button>
               </div>
             </div>
@@ -2001,7 +2001,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
               }`}>
                 <p className="text-xs font-black uppercase tracking-widest mb-2 ${
                   answeredCount >= requiredAttempts ? 'text-green-700' : 'text-amber-700'
-                }">⚡ Bihar Board Mode — Attempt Status</p>
+                }">Bihar Board Mode — Attempt Status</p>
                 <div className="flex items-center justify-between">
                   <div className="text-center">
                     <p className="text-2xl font-black text-gray-900">{answeredCount}</p>
@@ -2013,14 +2013,14 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                   </div>
                   <div className="text-center">
                     <p className={`text-2xl font-black ${answeredCount >= requiredAttempts ? 'text-green-600' : 'text-red-500'}`}>
-                      {answeredCount >= requiredAttempts ? '✅' : `${requiredAttempts - answeredCount} kam`}
+                      {answeredCount >= requiredAttempts ? 'Done' : `${requiredAttempts - answeredCount} baaki`}
                     </p>
                     <p className="text-[10px] font-bold text-gray-500 uppercase">Status</p>
                   </div>
                 </div>
                 {answeredCount < requiredAttempts && (
                   <p className="text-xs text-red-600 font-bold mt-3 text-center">
-                    ⚠️ Aapne abhi tak sirf {answeredCount} sawaal banaye hain. {requiredAttempts - answeredCount} aur banana chahiye tha. Kya phir bhi submit karein?
+                    Aapne abhi tak sirf {answeredCount} sawaal banaye hain. {requiredAttempts - answeredCount} aur banana chahiye tha. Kya phir bhi submit karein?
                   </p>
                 )}
               </div>
@@ -2172,23 +2172,20 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
       {/* Strategy Mode Banner */}
       {strategyMode && !strategyDone && (
         <div className="bg-blue-700 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-lg">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">📖</span>
-            <div>
-              <p className="font-black text-sm">Strategy Mode — Saare questions padhein, fir jawab dein</p>
-              <p className="text-blue-200 text-xs">Abhi tick nahi hoga. Ready hone par neeche button dabao.</p>
-            </div>
+          <div>
+            <p className="font-black text-sm">Strategy Mode — Saare questions padhein, fir jawab dein</p>
+            <p className="text-blue-200 text-xs">Abhi tick nahi hoga. Ready hone par button dabayein.</p>
           </div>
           <button
             onClick={() => {
               setStrategyDone(true);
-              setActiveMessage(`🎯 Ab ${requiredAttempts} best sawaalon mein jawab dein!`);
+              setActiveMessage(`Ab ${requiredAttempts} sawaalon mein jawab dein.`);
               if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
               messageTimeoutRef.current = setTimeout(() => setActiveMessage(null), 4000);
             }}
             className="shrink-0 bg-white text-blue-700 px-4 py-2 rounded-xl font-black text-sm hover:bg-blue-50 transition-all active:scale-95 shadow"
           >
-            ✅ Start Answering
+            Start Answering
           </button>
         </div>
       )}
@@ -2204,7 +2201,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                   <div key={q.id} className={`bg-white rounded-2xl shadow-xl border-2 p-4 sm:p-8 ${
                     answers[q.id] ? 'border-green-500/40 bg-green-50/10' : 'border-gray-100'
                   } relative overflow-hidden transition-colors duration-300`}>
-                    {/* 🔒 Screenshot Watermark */}
+                    {/* Screenshot Watermark */}
                     <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', userSelect: 'none', overflow: 'hidden' }}>
                       {Array.from({ length: 8 }).map((_, i) => (
                         <div key={i} style={{ position: 'absolute', top: `${(i % 4) * 28 - 5}%`, left: `${Math.floor(i / 4) * 50 - 10}%`, transform: 'rotate(-30deg)', fontSize: '11px', fontWeight: 700, color: 'rgba(0,0,0,0.06)', whiteSpace: 'nowrap', letterSpacing: '1px', textTransform: 'uppercase' }}>
@@ -2248,7 +2245,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                                 markedForReview[q.id] ? 'bg-yellow-400 text-white shadow-lg shadow-yellow-400/30' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
                               }`}
                             >
-                              {markedForReview[q.id] ? '⭐ MARKED' : 'MARK'}
+                              {markedForReview[q.id] ? 'MARKED' : 'MARK'}
                             </button>
                           </div>
                         </div>
@@ -2284,10 +2281,10 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                                     <CheckCircle className="h-5 w-5" />
                                   </div>
                                 )}
-                                {/* Lock icon */}
+                                {/* Lock text */}
                                 {(isBlockedNew || isStrategyBlocked) && !isSelected && (
-                                  <div className="absolute top-2 right-2 text-gray-400 opacity-60">
-                                    <span className="text-xs">🔒</span>
+                                  <div className="absolute top-2 right-2">
+                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider bg-gray-200/80 px-1.5 py-0.5 rounded">Locked</span>
                                   </div>
                                 )}
                                 <div className="flex items-start gap-3">
@@ -2307,7 +2304,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                         {/* Deselect hint — shown when this question is answered */}
                         {answers[q.id] && (
                           <p className="text-[10px] text-gray-400 mt-2 text-right font-medium">
-                            💡 Jawab badlne ke liye koi doosra option click karein • Hatane ke liye same option dobara click karein
+                            Jawab badalne ke liye koi doosra option click karein • Hatane ke liye same option dobara click karein
                           </p>
                         )}
                       </div>
@@ -2382,8 +2379,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 hasReachedLimit ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
               }`}>
                 {hasReachedLimit
-                  ? `✅ Limit Poori! ${answeredCount}/${requiredAttempts} — Double-click to deselect`
-                  : `⚡ ${answeredCount}/${requiredAttempts} answered • ${remainingAttempts} left`
+                  ? `Limit Poori! ${answeredCount}/${requiredAttempts} — Double-click to deselect`
+                  : `${answeredCount}/${requiredAttempts} answered • ${remainingAttempts} left`
                 }
               </div>
             )}
@@ -2403,7 +2400,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                         : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
                     }`}
                   >
-                    {f === 'all' ? `All (${questions.length})` : f === 'answered' ? `✅ ${answeredCount}` : `⬜ ${questions.length - answeredCount}`}
+                    {f === 'all' ? `All (${questions.length})` : f === 'answered' ? `Answered (${answeredCount})` : `Unanswered (${questions.length - answeredCount})`}
                   </button>
                 ))}
               </div>
@@ -2420,7 +2417,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                   <button
                     key={q.id}
                     onClick={() => { trackQuestionTime(questions[currentQuestionIdx].id); setCurrentQuestionIdx(i); setMaxQuestionSeen(m => Math.max(m, i)); }}
-                    title={isLockedNew ? `Q${i+1}: Limit poori — double-click karke deselect karo` : `Q${i+1}${isAnsweredQ ? ' ✅' : ''}`}
+                    title={isLockedNew ? `Q${i+1}: Limit poori — double-click karke deselect karo` : `Q${i+1}${isAnsweredQ ? ' (Answered)' : ''}`}
                     className={`h-10 w-10 rounded-lg text-xs font-bold flex items-center justify-center border-2 transition-all relative ${
                       currentQuestionIdx === i ? 'ring-2 ring-blue-600 ring-offset-2 scale-110' : 'hover:scale-105'
                     } ${
@@ -2434,7 +2431,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                     }`}
                   >
                     {i + 1}
-                    {isLockedNew && <span className="absolute -top-1 -right-1 text-[7px]">🔒</span>}
+                    {isLockedNew && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-gray-400"></span>}
                   </button>
                 );
               })}
@@ -2475,8 +2472,8 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                 hasReachedLimit ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
               }`}>
                 {hasReachedLimit
-                  ? `✅ Limit Poori! ${answeredCount}/${requiredAttempts} — Double-click to deselect`
-                  : `⚡ ${answeredCount}/${requiredAttempts} done • ${remainingAttempts} remaining`
+                  ? `Limit Poori! ${answeredCount}/${requiredAttempts} — Double-click to deselect`
+                  : `${answeredCount}/${requiredAttempts} done • ${remainingAttempts} remaining`
                 }
               </div>
             )}
@@ -2495,7 +2492,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                         : 'bg-gray-50 text-gray-500 border-gray-200'
                     }`}
                   >
-                    {f === 'all' ? `All (${questions.length})` : f === 'answered' ? `✅ ${answeredCount}` : `⬜ ${questions.length - answeredCount}`}
+                    {f === 'all' ? `All (${questions.length})` : f === 'answered' ? `Answered (${answeredCount})` : `Unanswered (${questions.length - answeredCount})`}
                   </button>
                 ))}
               </div>
@@ -2523,7 +2520,7 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                     }`}
                   >
                     {i + 1}
-                    {isLockedNew && <span className="absolute -top-1 -right-1 text-[8px]">🔒</span>}
+                    {isLockedNew && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-gray-400"></span>}
                   </button>
                 );
               })}
