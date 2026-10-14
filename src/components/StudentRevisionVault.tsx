@@ -27,7 +27,9 @@ import {
 } from '../lib/onlineTests';
 import { 
   generateRevisionBankPDF, 
-  RevisionQuestionItem 
+  RevisionQuestionItem,
+  sortItemsBySubjectHierarchy,
+  getSubjectCategory 
 } from '../lib/revisionPdfGenerator';
 
 interface Props {
@@ -135,18 +137,23 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
     return map;
   }, [studentAttempts]);
 
-  // Extract distinct subjects
+  // Extract distinct subjects sorted by hierarchy priority
   const subjects = useMemo(() => {
     const set = new Set<string>();
     tests.forEach(t => {
       if (t.subject) set.add(t.subject.trim());
     });
-    return Array.from(set).sort();
+    return Array.from(set).sort((a, b) => {
+      const pA = getSubjectCategory(a).priority;
+      const pB = getSubjectCategory(b).priority;
+      if (pA !== pB) return pA - pB;
+      return a.localeCompare(b);
+    });
   }, [tests]);
 
-  // Build unified list of QuestionItems with attempt and status metadata
+  // Build unified list of QuestionItems with attempt and status metadata, sorted by subject hierarchy
   const questionItems: RevisionQuestionItem[] = useMemo(() => {
-    return allQuestions.map(q => {
+    const rawItems: RevisionQuestionItem[] = allQuestions.map(q => {
       const test = testsById.get(q.test_id) || {
         id: q.test_id,
         title: 'Online Test',
@@ -186,6 +193,8 @@ export default function StudentRevisionVault({ student, studentAttempts, onBackT
         isStarred
       };
     });
+
+    return sortItemsBySubjectHierarchy(rawItems);
   }, [allQuestions, testsById, attemptsByTestId, starredIds, student.class_name]);
 
   // Global counts for stat cards

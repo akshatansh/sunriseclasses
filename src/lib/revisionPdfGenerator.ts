@@ -1,5 +1,3 @@
-import jsPDF from 'jspdf';
-import { drawWatermark, drawPDFFooter } from './pdfUtils';
 import { OnlineTest, OnlineTestQuestion, StudentTestAttempt } from './onlineTests';
 
 export interface RevisionQuestionItem {
@@ -23,22 +21,81 @@ export interface PDFExportOptions {
   onProgress?: (progressPercent: number, message: string) => void;
 }
 
-const INSTITUTE = 'SUNRISE CLASSES & ACADEMY';
-const ADDRESS = 'Champanagar, Purnia, Bihar - 854201 | Mob: 9973152070';
-const NAVY: [number, number, number] = [15, 42, 92];
-const GOLD: [number, number, number] = [245, 166, 35];
-const GREEN: [number, number, number] = [22, 163, 74];
-const RED: [number, number, number] = [220, 38, 38];
-const GRAY: [number, number, number] = [100, 116, 139];
-const LIGHT_BG: [number, number, number] = [248, 250, 252];
+// ── Subject Categorization and Exact User Ordering ──────────────────────────
+// 1. Math  2. Sanskrit  3. Hindi  4. Science  5. Social Science  6. Others
+export function getSubjectCategory(rawSubject: string): { key: string; label: string; priority: number } {
+  const s = (rawSubject || '').trim().toLowerCase();
+  if (s.includes('math')) {
+    return { key: 'math', label: 'Mathematics (गणित)', priority: 1 };
+  }
+  if (s.includes('sanskrit')) {
+    return { key: 'sanskrit', label: 'Sanskrit (संस्कृत)', priority: 2 };
+  }
+  if (s.includes('hindi')) {
+    return { key: 'hindi', label: 'Hindi (हिन्दी)', priority: 3 };
+  }
+  if (s.includes('sci')) {
+    return { key: 'science', label: 'Science (विज्ञान)', priority: 4 };
+  }
+  if (s.includes('hist') || s.includes('geog') || s.includes('civic') || s.includes('econ') || s.includes('social') || s.includes('sst')) {
+    return { key: 'social_science', label: 'Social Science (सामाजिक विज्ञान)', priority: 5 };
+  }
+  return { key: 'other', label: rawSubject ? rawSubject.trim() : 'General', priority: 6 };
+}
 
+// Sort items according to the requested subject hierarchy:
+// Math -> Sanskrit -> Hindi -> Science -> Social Science -> Others
+export function sortItemsBySubjectHierarchy(items: RevisionQuestionItem[]): RevisionQuestionItem[] {
+  return [...items].sort((a, b) => {
+    const catA = getSubjectCategory(a.test.subject || '');
+    const catB = getSubjectCategory(b.test.subject || '');
+
+    if (catA.priority !== catB.priority) {
+      return catA.priority - catB.priority;
+    }
+
+    // Within same subject, sort by test title
+    const testCmp = (a.test.title || '').localeCompare(b.test.title || '');
+    if (testCmp !== 0) return testCmp;
+
+    // Within same test, sort by question order
+    return (a.question.created_at || '').localeCompare(b.question.created_at || '');
+  });
+}
+
+// Helper to escape HTML characters
+function escapeHtml(text?: string | null): string {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Helper to format basic math superscripts (e.g., x^2 -> x<sup>2</sup>)
+function formatMathText(text?: string | null): string {
+  if (!text) return '';
+  let safe = escapeHtml(text);
+  // Convert basic x^2, x^3 etc to superscripts if not already formatted
+  safe = safe.replace(/\^([0-9a-zA-Z+-]+)/g, '<sup>$1</sup>');
+  return safe;
+}
+
+/**
+ * Generates an authentic, high-resolution A4 printable document with:
+ * - Proper Hindi (Devanagari) & Sanskrit fonts (no broken characters like (? . M ...))
+ * - Exact subject ordering: Math -> Sanskrit -> Hindi -> Science -> Social Science
+ * - Clean question cards with options, correct answer, student answer, and solutions
+ * - Automatically triggers the browser's "Save as PDF / Print" dialog
+ */
 export async function generateRevisionBankPDF(options: PDFExportOptions): Promise<void> {
   const {
     studentName,
     className,
     studentPin,
     title = 'STUDENT REVISION & QUESTION BANK',
-    subtitle,
     filterLabel = 'All Questions',
     items,
     onProgress,
@@ -48,348 +105,619 @@ export async function generateRevisionBankPDF(options: PDFExportOptions): Promis
     throw new Error('No questions to export');
   }
 
-  onProgress?.(5, 'Preparing document...');
+  onProgress?.(10, 'Organizing questions subject-wise (Math, Sanskrit, Hindi, Science, Social Science)...');
 
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
+  // Sort items in the exact subject order
+  const sortedItems = sortItemsBySubjectHierarchy(items);
+
+  // Group by Subject Category
+  const subjectGroups = new Map<string, { label: string; priority: number; items: RevisionQuestionItem[] }>();
+
+  sortedItems.forEach(item => {
+    const cat = getSubjectCategory(item.test.subject || '');
+    if (!subjectGroups.has(cat.key)) {
+      subjectGroups.set(cat.key, { label: cat.label, priority: cat.priority, items: [] });
+    }
+    subjectGroups.get(cat.key)!.items.push(item);
   });
 
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const margin = 14;
-  const contentW = pageW - margin * 2;
-  const footerMargin = 16;
+  // Calculate statistics
+  const totalQ = sortedItems.length;
+  const correctQ = sortedItems.filter(i => i.status === 'correct').length;
+  const incorrectQ = sortedItems.filter(i => i.status === 'incorrect').length;
+  const absentQ = sortedItems.filter(i => i.status === 'absent' || i.status === 'unattempted').length;
 
-  // Helper to draw branded header on new pages
-  const drawPageHeader = (pageNum: number) => {
-    // Top bar
-    doc.setFillColor(...NAVY);
-    doc.rect(0, 0, pageW, 14, 'F');
-    doc.setFillColor(...GOLD);
-    doc.rect(0, 13, pageW, 1, 'F');
+  onProgress?.(30, 'Generating high-resolution print document...');
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text(INSTITUTE, margin, 9);
-
-    doc.setTextColor(210, 230, 255);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.text(`${title} • ${className}`, pageW - margin, 9, { align: 'right' });
-  };
-
-  // ── First Page Cover / Header Banner ───────────────────────────────────
-  // Large Navy Banner on Page 1
-  const bannerH = 34;
-  doc.setFillColor(...NAVY);
-  doc.rect(0, 0, pageW, bannerH, 'F');
-  doc.setFillColor(...GOLD);
-  doc.rect(0, bannerH - 2, pageW, 2, 'F');
-
-  // Try loading logo
-  try {
-    const logoRes = await fetch('/sunrise-logo.png');
-    if (logoRes.ok) {
-      const blob = await logoRes.blob();
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
-      doc.addImage(base64, 'PNG', margin, 5, 24, 24);
+  // Build HTML
+  let html = `<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <title>Sunrise Classes - ${escapeHtml(studentName)} - ${escapeHtml(title)}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
-  } catch (_) {
-    // fallback cleanly without logo
-  }
-
-  doc.setTextColor(...GOLD);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.text(INSTITUTE, pageW / 2 + 10, 11, { align: 'center' });
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.text(ADDRESS, pageW / 2 + 10, 18, { align: 'center' });
-
-  doc.setTextColor(190, 225, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text(title, pageW / 2 + 10, 26, { align: 'center' });
-
-  let y = bannerH + 6;
-
-  // ── Student Info & Filter Summary Card ─────────────────────────────────
-  doc.setFillColor(...LIGHT_BG);
-  doc.setDrawColor(226, 232, 240);
-  doc.setLineWidth(0.4);
-  doc.roundedRect(margin, y, contentW, 24, 2, 2, 'FD');
-
-  doc.setFontSize(8);
-  doc.setTextColor(30, 41, 59);
-
-  // Col 1: Student info
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Student: `, margin + 4, y + 6);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${studentName} (${className})`, margin + 20, y + 6);
-
-  if (studentPin) {
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Roll/PIN: `, margin + 4, y + 12);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${studentPin}`, margin + 20, y + 12);
-  }
-
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Printed On: `, margin + 4, y + 18);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`, margin + 20, y + 18);
-
-  // Col 2: Summary stats
-  const totalQ = items.length;
-  const correctQ = items.filter(i => i.status === 'correct').length;
-  const incorrectQ = items.filter(i => i.status === 'incorrect').length;
-  const absentQ = items.filter(i => i.status === 'absent').length;
-
-  const col2X = margin + contentW / 2 + 10;
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Filter Scope: `, col2X, y + 6);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${filterLabel}`, col2X + 22, y + 6);
-
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Total Sawaal: `, col2X, y + 12);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${totalQ} Questions`, col2X + 22, y + 12);
-
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Summary: `, col2X, y + 18);
-  doc.setTextColor(...GREEN);
-  doc.text(`Correct: ${correctQ}`, col2X + 18, y + 18);
-  doc.setTextColor(...RED);
-  doc.text(`Incorrect: ${incorrectQ}`, col2X + 42, y + 18);
-  doc.setTextColor(...GRAY);
-  doc.text(`Absent: ${absentQ}`, col2X + 68, y + 18);
-
-  y += 30;
-
-  // ── Render Questions ───────────────────────────────────────────────────
-  let currentTestTitle = '';
-
-  for (let idx = 0; idx < items.length; idx++) {
-    const item = items[idx];
-    const q = item.question;
-    const test = item.test;
-
-    // Report progress periodically
-    if (idx % 15 === 0 || idx === items.length - 1) {
-      const pct = Math.round(10 + (idx / items.length) * 85);
-      onProgress?.(pct, `Formatting Question ${idx + 1} of ${items.length}...`);
-      // Allow UI thread to breathe
-      await new Promise(r => setTimeout(r, 2));
+    body {
+      font-family: 'Inter', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      line-height: 1.5;
+      font-size: 13px;
+    }
+    
+    /* Top Action Bar (hidden in print) */
+    .top-action-bar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: #0f2a5c;
+      color: #ffffff;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .top-action-bar h2 {
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .print-btn {
+      background: #f5a623;
+      color: #0f2a5c;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 8px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      transition: all 0.2s;
+    }
+    .print-btn:hover {
+      background: #e69818;
+      transform: translateY(-1px);
+    }
+    .close-btn {
+      background: rgba(255,255,255,0.15);
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 12px;
+      padding: 8px 14px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      cursor: pointer;
+      margin-left: 10px;
     }
 
-    // Check if test changed, draw section header
-    const isNewTest = test.title !== currentTestTitle;
-    if (isNewTest) {
-      currentTestTitle = test.title;
+    /* Print Document Container */
+    .document-page {
+      max-width: 210mm;
+      margin: 20px auto;
+      background: #ffffff;
+      padding: 16mm 16mm 20mm 16mm;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      border-radius: 4px;
+      position: relative;
+    }
 
-      // Check space for test banner (needs ~14mm)
-      if (y + 16 > pageH - footerMargin) {
-        doc.addPage();
-        drawPageHeader(doc.getNumberOfPages());
-        y = 20;
+    /* Watermark */
+    .watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-35deg);
+      font-size: 64px;
+      font-weight: 900;
+      color: rgba(15, 42, 92, 0.04);
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 0;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+    }
+
+    /* Header Banner */
+    .header-banner {
+      background: #0f2a5c;
+      border-bottom: 3px solid #f5a623;
+      border-radius: 12px;
+      padding: 18px 24px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
+    }
+    .institute-title {
+      font-size: 20px;
+      font-weight: 900;
+      color: #f5a623;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-family: 'Poppins', sans-serif;
+    }
+    .institute-meta {
+      font-size: 11px;
+      color: #e2e8f0;
+      margin-top: 2px;
+    }
+    .header-badge {
+      background: rgba(245, 166, 35, 0.15);
+      border: 1px solid #f5a623;
+      color: #f5a623;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 6px 12px;
+      border-radius: 8px;
+      text-transform: uppercase;
+      text-align: right;
+    }
+
+    /* Student Info Box */
+    .student-info-card {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 12px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 22px;
+      font-size: 12px;
+      position: relative;
+      z-index: 1;
+    }
+    .info-group {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .info-item strong {
+      color: #475569;
+      font-weight: 600;
+    }
+    .info-item span {
+      color: #0f172a;
+      font-weight: 700;
+    }
+    .summary-pills {
+      display: flex;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .pill-correct {
+      background: #dcfce7;
+      color: #15803d;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid #bbf7d0;
+    }
+    .pill-incorrect {
+      background: #fee2e2;
+      color: #b91c1c;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid #fecaca;
+    }
+    .pill-absent {
+      background: #fef3c7;
+      color: #b45309;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid #fde68a;
+    }
+
+    /* Subject Section Header */
+    .subject-section {
+      margin-top: 28px;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
+    }
+    .subject-title-bar {
+      background: linear-gradient(135deg, #0f2a5c 0%, #1e3a8a 100%);
+      color: #ffffff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-left: 6px solid #f5a623;
+    }
+    .subject-count {
+      font-size: 12px;
+      background: rgba(255,255,255,0.2);
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    /* Test Sub-header */
+    .test-header-bar {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #3b82f6;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 14px 0 10px 0;
+    }
+
+    /* Question Card */
+    .question-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      margin-bottom: 14px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      page-break-inside: avoid;
+      break-inside: avoid;
+      position: relative;
+      z-index: 1;
+    }
+    .card-top {
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 6px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+    }
+    .q-number-badge {
+      background: #0f2a5c;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .card-body {
+      padding: 12px 16px;
+    }
+    .question-text {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 12px;
+      line-height: 1.6;
+    }
+    
+    /* Options Grid */
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .option-cell {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      font-size: 12.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .option-label {
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 11px;
+      background: #e2e8f0;
+      color: #475569;
+      flex-shrink: 0;
+    }
+    
+    /* Highlight States */
+    .opt-correct {
+      border: 1.5px solid #22c55e !important;
+      background: #f0fdf4 !important;
+      color: #14532d !important;
+      font-weight: 700;
+    }
+    .opt-correct .option-label {
+      background: #16a34a !important;
+      color: #ffffff !important;
+    }
+    
+    .opt-incorrect {
+      border: 1.5px solid #ef4444 !important;
+      background: #fef2f2 !important;
+      color: #7f1d1d !important;
+      font-weight: 700;
+    }
+    .opt-incorrect .option-label {
+      background: #dc2626 !important;
+      color: #ffffff !important;
+    }
+
+    /* Result Strip */
+    .result-strip {
+      background: #f8fafc;
+      border-top: 1px solid #f1f5f9;
+      padding: 6px 14px;
+      font-size: 11.5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .tag-correct {
+      color: #16a34a;
+      font-weight: 800;
+    }
+    .tag-incorrect {
+      color: #dc2626;
+      font-weight: 800;
+    }
+    .tag-absent {
+      color: #b45309;
+      font-weight: 800;
+    }
+
+    /* Solution Box */
+    .solution-box {
+      margin-top: 8px;
+      background: #eff6ff;
+      border-left: 3px solid #3b82f6;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 11.5px;
+      color: #1e40af;
+      line-height: 1.5;
+    }
+    .solution-box strong {
+      color: #1d4ed8;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background: #ffffff !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .document-page {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+      }
+      .subject-section {
+        page-break-before: auto;
+      }
+      .question-card {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 12mm 14mm 14mm 14mm;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Floating Action Bar for Web View -->
+  <div class="top-action-bar no-print">
+    <h2>
+      Sunrise Classes — Print & Save PDF Preview
+    </h2>
+    <div>
+      <button class="print-btn" onclick="window.print()">
+        Print / Save as PDF
+      </button>
+      <button class="close-btn" onclick="window.close()">
+        Close
+      </button>
+    </div>
+  </div>
+
+  <div class="document-page">
+    <div class="watermark">SUNRISE CLASSES</div>
+
+    <!-- Header Banner -->
+    <div class="header-banner">
+      <div>
+        <div class="institute-title">SUNRISE CLASSES & ACADEMY</div>
+        <div class="institute-meta">Champanagar, Purnia, Bihar - 854201 • Mob: 9973152070</div>
+        <div class="institute-meta" style="color: #93c5fd; font-weight: 700; margin-top: 4px;">
+          ${escapeHtml(title)} • Class: ${escapeHtml(className)}
+        </div>
+      </div>
+      <div class="header-badge">
+        <div>Official Revision</div>
+        <div style="font-size: 9px; opacity: 0.8; margin-top: 2px;">Sunrise Question Bank</div>
+      </div>
+    </div>
+
+    <!-- Student Info Card -->
+    <div class="student-info-card">
+      <div class="info-group">
+        <div class="info-item"><strong>Student:</strong> <span>${escapeHtml(studentName)}</span></div>
+        <div class="info-item"><strong>Class:</strong> <span>${escapeHtml(className)}</span></div>
+        ${studentPin ? `<div class="info-item"><strong>Roll/PIN:</strong> <span>${escapeHtml(studentPin)}</span></div>` : ''}
+        <div class="info-item"><strong>Scope:</strong> <span>${escapeHtml(filterLabel)}</span></div>
+        <div class="info-item"><strong>Total Questions:</strong> <span>${totalQ}</span></div>
+      </div>
+      <div class="summary-pills">
+        <span class="pill-correct">Correct: ${correctQ}</span>
+        <span class="pill-incorrect">Incorrect: ${incorrectQ}</span>
+        <span class="pill-absent">Not Attempted: ${absentQ}</span>
+      </div>
+    </div>
+`;
+
+  // Render Questions Grouped by Subject in strict order:
+  // Math (1) -> Sanskrit (2) -> Hindi (3) -> Science (4) -> Social Science (5) -> Others (6)
+  const sortedSubjects = Array.from(subjectGroups.values()).sort((a, b) => a.priority - b.priority);
+
+  let globalQuestionCounter = 1;
+
+  for (const group of sortedSubjects) {
+    html += `
+    <!-- Subject Section: ${escapeHtml(group.label)} -->
+    <div class="subject-section">
+      <div class="subject-title-bar">
+        <span>SUBJECT: ${escapeHtml(group.label)}</span>
+        <span class="subject-count">${group.items.length} Questions</span>
+      </div>
+    </div>
+`;
+
+    // Group items inside this subject by test title
+    let currentTest = '';
+
+    for (const item of group.items) {
+      const q = item.question;
+      const test = item.test;
+
+      if (test.title !== currentTest) {
+        currentTest = test.title;
+        html += `
+      <div class="test-header-bar">
+        Test: ${escapeHtml(test.title)}
+      </div>
+`;
       }
 
-      doc.setFillColor(239, 246, 255);
-      doc.setDrawColor(191, 219, 254);
-      doc.setLineWidth(0.3);
-      doc.roundedRect(margin, y, contentW, 8, 1.5, 1.5, 'FD');
+      const qNum = globalQuestionCounter++;
+      const isCorrect = item.status === 'correct';
+      const isIncorrect = item.status === 'incorrect';
+      const isAbsent = item.status === 'absent' || item.status === 'unattempted';
 
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
-      doc.setTextColor(...NAVY);
-      doc.text(`TEST: ${test.title} • [${test.subject || className}]`, margin + 4, y + 5.5);
+      const studentAns = item.studentAnswer?.trim().toUpperCase();
+      const correctAns = q.correct_option?.trim().toUpperCase();
 
-      y += 12;
+      html += `
+      <div class="question-card">
+        <div class="card-top">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="q-number-badge">Q${qNum}</span>
+            <span style="color: #64748b; font-weight: 600;">${escapeHtml(test.title)}</span>
+          </div>
+          <span style="color: #64748b; font-weight: 600;">Marks: ${q.marks || 1}</span>
+        </div>
+
+        <div class="card-body">
+          <div class="question-text">${formatMathText(q.question_text)}</div>
+
+          ${q.question_image ? `<div style="margin-bottom: 10px;"><img src="${escapeHtml(q.question_image)}" style="max-height: 180px; max-width: 100%; border-radius: 6px; border: 1px solid #cbd5e1;" alt="Diagram" /></div>` : ''}
+
+          <div class="options-grid">
+            <!-- Option A -->
+            <div class="option-cell ${correctAns === 'A' ? 'opt-correct' : studentAns === 'A' ? 'opt-incorrect' : ''}">
+              <span class="option-label">A</span>
+              <span>${formatMathText(q.option_a)}</span>
+            </div>
+
+            <!-- Option B -->
+            <div class="option-cell ${correctAns === 'B' ? 'opt-correct' : studentAns === 'B' ? 'opt-incorrect' : ''}">
+              <span class="option-label">B</span>
+              <span>${formatMathText(q.option_b)}</span>
+            </div>
+
+            <!-- Option C -->
+            <div class="option-cell ${correctAns === 'C' ? 'opt-correct' : studentAns === 'C' ? 'opt-incorrect' : ''}">
+              <span class="option-label">C</span>
+              <span>${formatMathText(q.option_c)}</span>
+            </div>
+
+            <!-- Option D -->
+            <div class="option-cell ${correctAns === 'D' ? 'opt-correct' : studentAns === 'D' ? 'opt-incorrect' : ''}">
+              <span class="option-label">D</span>
+              <span>${formatMathText(q.option_d)}</span>
+            </div>
+          </div>
+
+          ${q.explanation ? `
+          <div class="solution-box">
+            <strong>Solution / Explanation:</strong>
+            ${formatMathText(q.explanation)}
+          </div>` : ''}
+        </div>
+
+        <div class="result-strip">
+          <div>
+            ${isCorrect ? `<span class="tag-correct">CORRECT: Option ${correctAns} (Your Answer: Option ${studentAns})</span>` : ''}
+            ${isIncorrect ? `<span class="tag-incorrect">INCORRECT: Your Answer Option ${studentAns || '—'} | Correct Answer: Option ${correctAns}</span>` : ''}
+            ${isAbsent ? `<span class="tag-absent">NOT ATTEMPTED: Correct Answer Option ${correctAns}</span>` : ''}
+          </div>
+          <div style="font-size: 10.5px; color: #94a3b8;">Sunrise Classes</div>
+        </div>
+      </div>
+`;
     }
+  }
 
-    // Prepare Question Card Content
-    const qNumberText = `Q${idx + 1}.`;
-    const qLines = doc.splitTextToSize(q.question_text || '', contentW - 18);
-    const qHeight = qLines.length * 4.2;
+  html += `
+    <div style="text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8;">
+      Sunrise Classes & Academy • Champanagar, Purnia, Bihar - 854201 • Mob: 9973152070
+    </div>
+  </div>
 
-    // Options lines
-    const optA = `(A) ${q.option_a || '—'}`;
-    const optB = `(B) ${q.option_b || '—'}`;
-    const optC = `(C) ${q.option_c || '—'}`;
-    const optD = `(D) ${q.option_d || '—'}`;
-
-    const halfW = (contentW - 12) / 2;
-    const optALines = doc.splitTextToSize(optA, halfW);
-    const optBLines = doc.splitTextToSize(optB, halfW);
-    const optCLines = doc.splitTextToSize(optC, halfW);
-    const optDLines = doc.splitTextToSize(optD, halfW);
-
-    const row1H = Math.max(optALines.length, optBLines.length) * 3.8 + 2;
-    const row2H = Math.max(optCLines.length, optDLines.length) * 3.8 + 2;
-
-    // Explanation height
-    let expLines: string[] = [];
-    let expHeight = 0;
-    if (q.explanation) {
-      expLines = doc.splitTextToSize(`Solution: ${q.explanation}`, contentW - 12);
-      expHeight = expLines.length * 3.6 + 6;
-    }
-
-    // Status bar height
-    const statusH = 7;
-
-    // Total required height for this question card
-    const cardH = 8 + qHeight + row1H + row2H + statusH + expHeight + 4;
-
-    // Check if card fits on current page
-    if (y + cardH > pageH - footerMargin) {
-      doc.addPage();
-      drawPageHeader(doc.getNumberOfPages());
-      y = 20;
-    }
-
-    // Draw Question Card Border
-    doc.setFillColor(255, 255, 255);
-    let cardBorderColor: [number, number, number] = [226, 232, 240];
-    if (item.status === 'correct') cardBorderColor = [187, 247, 208];
-    else if (item.status === 'incorrect') cardBorderColor = [254, 202, 202];
-    else if (item.status === 'absent') cardBorderColor = [254, 240, 138];
-
-    doc.setDrawColor(...cardBorderColor);
-    doc.setLineWidth(0.4);
-    doc.roundedRect(margin, y, contentW, cardH, 2, 2, 'FD');
-
-    // Draw Q number badge
-    doc.setFillColor(...NAVY);
-    doc.roundedRect(margin + 3, y + 3, 11, 5.5, 1, 1, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text(qNumberText, margin + 8.5, y + 7, { align: 'center' });
-
-    // Question Text
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text(qLines, margin + 17, y + 7);
-
-    let innerY = y + 8 + qHeight;
-
-    // Options Row 1 (A & B)
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-
-    // Helper for option styling
-    const renderOption = (optKey: 'A' | 'B' | 'C' | 'D', textLines: string[], x: number, currY: number, width: number) => {
-      const isCorrectOpt = q.correct_option?.trim().toUpperCase() === optKey;
-      const isStudentOpt = item.studentAnswer?.trim().toUpperCase() === optKey;
-
-      if (isCorrectOpt) {
-        doc.setFillColor(240, 253, 244);
-        doc.setDrawColor(...GREEN);
-        doc.setLineWidth(0.3);
-        doc.roundedRect(x - 1, currY - 3, width, textLines.length * 3.8 + 2, 1, 1, 'FD');
-        doc.setTextColor(21, 128, 61);
-        doc.setFont('helvetica', 'bold');
-      } else if (isStudentOpt && !isCorrectOpt) {
-        doc.setFillColor(254, 242, 242);
-        doc.setDrawColor(...RED);
-        doc.setLineWidth(0.3);
-        doc.roundedRect(x - 1, currY - 3, width, textLines.length * 3.8 + 2, 1, 1, 'FD');
-        doc.setTextColor(185, 28, 28);
-        doc.setFont('helvetica', 'bold');
-      } else {
-        doc.setTextColor(51, 65, 85);
-        doc.setFont('helvetica', 'normal');
-      }
-
-      doc.text(textLines, x + 2, currY);
+  <script>
+    // Automatically trigger Print dialog once document is loaded
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+      }, 600);
     };
+  </script>
+</body>
+</html>`;
 
-    renderOption('A', optALines, margin + 4, innerY, halfW);
-    renderOption('B', optBLines, margin + 8 + halfW, innerY, halfW);
+  onProgress?.(80, 'Opening print document in browser...');
 
-    innerY += row1H;
-
-    // Options Row 2 (C & D)
-    renderOption('C', optCLines, margin + 4, innerY, halfW);
-    renderOption('D', optDLines, margin + 8 + halfW, innerY, halfW);
-
-    innerY += row2H;
-
-    // Status strip at bottom of card
-    doc.setFillColor(248, 250, 252);
-    doc.rect(margin + 0.4, innerY, contentW - 0.8, statusH, 'F');
-    doc.setFontSize(7.5);
-
-    if (item.status === 'correct') {
-      doc.setTextColor(...GREEN);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`CORRECT: Option ${q.correct_option} (Your Answer: Option ${item.studentAnswer})`, margin + 4, innerY + 4.5);
-    } else if (item.status === 'incorrect') {
-      doc.setTextColor(...RED);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`INCORRECT: Your Answer Option ${item.studentAnswer || '—'}  |  Correct Answer: Option ${q.correct_option}`, margin + 4, innerY + 4.5);
-    } else if (item.status === 'absent') {
-      doc.setTextColor(180, 83, 9);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`NOT ATTEMPTED: Correct Answer Option ${q.correct_option}`, margin + 4, innerY + 4.5);
-    } else {
-      doc.setTextColor(...GRAY);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Answer Key: Option ${q.correct_option}`, margin + 4, innerY + 4.5);
-    }
-
-    doc.setTextColor(...GRAY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Marks: ${q.marks || 1}`, margin + contentW - 4, innerY + 4.5, { align: 'right' });
-
-    innerY += statusH;
-
-    // Explanation Box (if any)
-    if (q.explanation) {
-      doc.setFillColor(240, 249, 255);
-      doc.setDrawColor(186, 230, 253);
-      doc.setLineWidth(0.2);
-      doc.roundedRect(margin + 3, innerY + 1, contentW - 6, expHeight - 2, 1, 1, 'FD');
-
-      doc.setFontSize(7);
-      doc.setTextColor(3, 105, 161);
-      doc.setFont('helvetica', 'normal');
-      doc.text(expLines, margin + 5, innerY + 4.5);
-
-      innerY += expHeight;
-    }
-
-    y += cardH + 4;
+  // Open in new tab/window for crystal clear browser print-to-PDF
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    onProgress?.(100, 'Ready! Print / Save as PDF dialog opened.');
+  } else {
+    // If popup blocked, create a temporary downloadable HTML blob
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Sunrise_${studentName.replace(/\s+/g, '_')}_Revision_Bank.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    onProgress?.(100, 'Popup blocked. HTML file downloaded. Open it and press Ctrl+P (or Cmd+P) to Save as PDF.');
   }
-
-  // Draw Watermark & Branded Footers on all pages
-  onProgress?.(96, 'Applying watermarks and footers...');
-  const totalPages = doc.getNumberOfPages();
-  for (let p = 1; p <= totalPages; p++) {
-    doc.setPage(p);
-    drawWatermark(doc);
-  }
-  drawPDFFooter(doc);
-
-  onProgress?.(100, 'Downloading PDF...');
-
-  // Build clean filename
-  const cleanStudent = studentName.replace(/\s+/g, '_');
-  const cleanFilter = filterLabel.replace(/[^a-zA-Z0-9]/g, '_');
-  const filename = `Sunrise_${cleanStudent}_${className.replace(/\s+/g, '')}_${cleanFilter}.pdf`;
-
-  doc.save(filename);
 }
