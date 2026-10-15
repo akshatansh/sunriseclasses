@@ -350,18 +350,37 @@ export async function submitTest(attempt: Partial<StudentTestAttempt>, answers: 
   let score = 0;
   let total_marks = 0;
 
-  questions?.forEach(q => {
-    total_marks += q.marks;
-    if (answers[q.id] === q.correct_option) {
-      score += q.marks;
-    }
-  });
+  const isBiharBoardMode = testData?.required_attempts && testData.required_attempts > 0;
 
-  // Bihar Board Mode: student can only attempt required_attempts questions.
-  // Hence, the exam's total maximum marks is based on required_attempts, not total question count!
-  if (testData?.required_attempts && testData.required_attempts > 0 && questions && questions.length > 0) {
-    const avgMarks = total_marks / questions.length;
-    total_marks = Math.round(testData.required_attempts * avgMarks);
+  if (isBiharBoardMode && questions && questions.length > 0) {
+    const rawTotalMarks = questions.reduce((acc, q) => acc + (q.marks || 1), 0);
+    const avgMarks = rawTotalMarks / questions.length;
+    total_marks = Math.round(testData.required_attempts! * avgMarks);
+
+    // Official Bihar Board Rule: Evaluate ONLY the first `required_attempts` questions
+    // that the student answered, in test order. Excess answers beyond the limit are ignored.
+    let evaluatedCount = 0;
+    questions.forEach(q => {
+      const studentAns = answers[q.id];
+      if (studentAns !== undefined && studentAns !== null && String(studentAns).trim() !== '') {
+        if (evaluatedCount < testData.required_attempts!) {
+          if (String(studentAns).trim().toUpperCase() === q.correct_option?.trim().toUpperCase()) {
+            score += (q.marks || 1);
+          }
+          evaluatedCount++;
+        }
+      }
+    });
+
+    // Score cannot exceed total_marks
+    score = Math.min(score, total_marks);
+  } else {
+    questions?.forEach(q => {
+      total_marks += (q.marks || 1);
+      if (answers[q.id]?.trim().toUpperCase() === q.correct_option?.trim().toUpperCase()) {
+        score += (q.marks || 1);
+      }
+    });
   }
 
   const { data, error } = await supabase
