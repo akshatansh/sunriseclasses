@@ -746,6 +746,7 @@ export default function OnlineTestAdmin() {
 
       const blocks = processedLines.join('\n').split(/\n\s*\n/);
       const parsedQuestions: Partial<OnlineTestQuestion>[] = [];
+      const failedBlocks: { text: string; reason: string }[] = [];
 
       const optARegex = /^(\([Aa]\)|\[[Aa]\]|[Aa]\s*[\.\:\)\-–—]|\([कअ]\)|\[[कअ]\]|[कअ]\s*[\.\:\)\-–—])\s*/;
       const optBRegex = /^(\([Bb]\)|\[[Bb]\]|[Bb]\s*[\.\:\)\-–—]|\([खब]\)|\[[खब]\]|[खब]\s*[\.\:\)\-–—])\s*/;
@@ -759,51 +760,87 @@ export default function OnlineTestAdmin() {
         'घ': 'D', 'द': 'D', '4': 'D'
       };
 
-      for (const block of blocks) {
+      for (let bIdx = 0; bIdx < blocks.length; bIdx++) {
+        const block = blocks[bIdx];
         if (!block.trim()) continue;
-        const lines = block.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const rawLines = block.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-        let ansLineIndex = lines.findIndex(l => {
+        let ansLineIndex = rawLines.findIndex(l => {
           const lower = l.replace(/^[#*_\s]+/, '').toLowerCase();
           return lower.startsWith('ans') || lower.startsWith('उत्तर') || lower.startsWith('correct') || lower.startsWith('right');
         });
 
         if (ansLineIndex === -1) {
-          const lastLine = lines[lines.length - 1];
+          const lastLine = rawLines[rawLines.length - 1];
           if (['a', 'b', 'c', 'd'].includes(lastLine.toLowerCase().trim())) {
-            ansLineIndex = lines.length - 1;
+            ansLineIndex = rawLines.length - 1;
           }
         }
 
-        let optAIndex = lines.findIndex(l => optARegex.test(l));
+        let ansLine = '';
+        let explanationText = '';
+        let contentLines = rawLines;
 
-        if (ansLineIndex > 0 && optAIndex > 0) {
-          let qTextLines = lines.slice(0, optAIndex);
-          qTextLines[0] = qTextLines[0].replace(/^(?:Q(?:uestion)?\s*\d+[\.\)]\s*|प्रश्न\s*\d+[\.\)]\s*|\d+[\.\)]\s*)/i, '');
-          let qText = qTextLines.join('\n').trim();
-
-          let optA = '', optB = '', optC = '', optD = '';
-          let correctOpt = 'A';
-
-          let optBIndex = lines.findIndex(l => optBRegex.test(l));
-          let optCIndex = lines.findIndex(l => optCRegex.test(l));
-          let optDIndex = lines.findIndex(l => optDRegex.test(l));
-
-          if (optAIndex !== -1 && optBIndex !== -1) {
-            optA = lines.slice(optAIndex, optBIndex).join('\n').replace(optARegex, '').trim();
+        if (ansLineIndex !== -1) {
+          ansLine = rawLines[ansLineIndex];
+          if (ansLineIndex < rawLines.length - 1) {
+            const expLines = rawLines.slice(ansLineIndex + 1);
+            const expStr = expLines.join('\n').trim();
+            if (expStr.toLowerCase().startsWith('exp') || expStr.toLowerCase().startsWith('sol') || expStr.startsWith('व्याख्या') || expStr.startsWith('हल')) {
+              explanationText = expStr.replace(/^(exp(lanation)?|sol(ution)?|व्याख्या|हल)[\:\.\-]?\s*/i, '').trim();
+            } else {
+              explanationText = expStr;
+            }
           }
-          if (optBIndex !== -1 && optCIndex !== -1) {
-            optB = lines.slice(optBIndex, optCIndex).join('\n').replace(optBRegex, '').trim();
-          }
-          if (optCIndex !== -1 && optDIndex !== -1) {
-            optC = lines.slice(optCIndex, optDIndex).join('\n').replace(optCRegex, '').trim();
-          }
-          if (optDIndex !== -1 && ansLineIndex !== -1) {
-            optD = lines.slice(optDIndex, ansLineIndex).join('\n').replace(optDRegex, '').trim();
-          }
+          contentLines = rawLines.slice(0, ansLineIndex);
+        }
 
-          // Robust answer extraction
-          const ansLine = lines[ansLineIndex];
+        // Pre-normalize inline or 2-column options:
+        // Automatically insert newlines before (A), (B), (C), (D) or Hindi equivalents if on the same line
+        let joinedContent = contentLines.join('\n');
+        joinedContent = joinedContent.replace(/(?:[ \t]+)(?=\([AaBbCcDd]\)|\[[AaBbCcDd]\]|[AaBbCcDd][\.\:\)\-–—]|\([कखगघ]\)|\[[कखगघ]\]|[कखगघ][\.\:\)\-–—])/g, '\n');
+
+        const lines = joinedContent.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+        const optAIndex = lines.findIndex(l => optARegex.test(l));
+        const optBIndex = lines.findIndex(l => optBRegex.test(l));
+        const optCIndex = lines.findIndex(l => optCRegex.test(l));
+        const optDIndex = lines.findIndex(l => optDRegex.test(l));
+
+        if (optAIndex === -1 || optBIndex === -1 || optCIndex === -1 || optDIndex === -1) {
+          failedBlocks.push({
+            text: lines[0] || block.slice(0, 50),
+            reason: `Options incomplete (A:${optAIndex !== -1 ? 'OK' : 'Missing'}, B:${optBIndex !== -1 ? 'OK' : 'Missing'}, C:${optCIndex !== -1 ? 'OK' : 'Missing'}, D:${optDIndex !== -1 ? 'OK' : 'Missing'})`
+          });
+          continue;
+        }
+
+        let qTextLines = lines.slice(0, optAIndex);
+        if (qTextLines.length === 0) {
+          failedBlocks.push({ text: lines[0] || block.slice(0, 50), reason: 'Question text is empty' });
+          continue;
+        }
+
+        qTextLines[0] = qTextLines[0].replace(/^(?:Q(?:uestion)?\s*\d+[\.\)]\s*|प्रश्न\s*\d+[\.\)]\s*|\d+[\.\)]\s*)/i, '');
+        let qText = qTextLines.join('\n').trim();
+
+        let optA = lines.slice(optAIndex, optBIndex).join('\n').replace(optARegex, '').trim();
+        let optB = lines.slice(optBIndex, optCIndex).join('\n').replace(optBRegex, '').trim();
+        let optC = lines.slice(optCIndex, optDIndex).join('\n').replace(optCRegex, '').trim();
+        let optD = lines.slice(optDIndex).join('\n').replace(optDRegex, '').trim();
+
+        // Strict empty option validation
+        if (!optA || !optB || !optC || !optD) {
+          failedBlocks.push({
+            text: qText || lines[0],
+            reason: `One or more options are empty string (A:"${optA}", B:"${optB}", C:"${optC}", D:"${optD}")`
+          });
+          continue;
+        }
+
+        // Robust answer extraction
+        let correctOpt = 'A';
+        if (ansLine) {
           let ansClean = ansLine.replace(/^[#*_\s]*(?:correct\s*(?:ans(?:wer)?|option)?|right\s*(?:ans(?:wer)?|option)?|ans(?:wer)?|उत्तर)[\s\:\.\-–—]*/i, '').trim();
           ansClean = ansClean.replace(/^[\:\.\-–—\s]+/, '');
 
@@ -823,41 +860,30 @@ export default function OnlineTestAdmin() {
             }
           }
 
-          let explanationText = '';
           const remainingAnsText = ansClean.replace(/^[\[\(]?[A-Dकखगघअबसद1-4][\]\)\.\:\-–—\s]*/i, '').trim();
           if (remainingAnsText.length > 0) {
             const optText = correctOpt === 'A' ? optA : correctOpt === 'B' ? optB : correctOpt === 'C' ? optC : optD;
             if (remainingAnsText.trim() !== optText.trim()) {
-              explanationText = remainingAnsText;
-              if (explanationText.startsWith('(') && explanationText.endsWith(')')) {
-                explanationText = explanationText.substring(1, explanationText.length - 1);
+              let cleanRem = remainingAnsText;
+              if (cleanRem.startsWith('(') && cleanRem.endsWith(')')) {
+                cleanRem = cleanRem.substring(1, cleanRem.length - 1);
               }
+              explanationText = explanationText ? explanationText + '\n' + cleanRem : cleanRem;
             }
           }
-
-          if (ansLineIndex < lines.length - 1) {
-            const expLines = lines.slice(ansLineIndex + 1);
-            const expStr = expLines.join('\n').trim();
-            if (expStr.toLowerCase().startsWith('exp') || expStr.toLowerCase().startsWith('sol') || expStr.startsWith('व्याख्या') || expStr.startsWith('हल')) {
-              let cleanExp = expStr.replace(/^(exp(lanation)?|sol(ution)?|व्याख्या|हल)[\:\.\-]?\s*/i, '').trim();
-              explanationText = explanationText ? explanationText + '\n' + cleanExp : cleanExp;
-            } else {
-              explanationText = explanationText ? explanationText + '\n' + expStr : expStr;
-            }
-          }
-
-          parsedQuestions.push({
-            test_id: currentTest.id,
-            question_text: qText,
-            option_a: optA,
-            option_b: optB,
-            option_c: optC,
-            option_d: optD,
-            correct_option: correctOpt,
-            marks: 1,
-            explanation: explanationText || undefined
-          });
         }
+
+        parsedQuestions.push({
+          test_id: currentTest.id,
+          question_text: qText,
+          option_a: optA,
+          option_b: optB,
+          option_c: optC,
+          option_d: optD,
+          correct_option: correctOpt,
+          marks: 1,
+          explanation: explanationText || undefined
+        });
       }
 
       if (parsedQuestions.length > 0) {
@@ -866,9 +892,23 @@ export default function OnlineTestAdmin() {
         setIsBulkMode(false);
         const data = await getQuestionsAdmin(currentTest.id);
         setQuestions(data);
-        alert(`Successfully added ${parsedQuestions.length} questions!`);
+
+        let msg = `✅ Successfully added ${parsedQuestions.length} questions!`;
+        if (failedBlocks.length > 0) {
+          msg += `\n\n⚠️ ${failedBlocks.length} questions could NOT be uploaded due to formatting errors:\n` +
+            failedBlocks.slice(0, 5).map((f, i) => `${i + 1}. ${f.text.slice(0, 45)}... (${f.reason})`).join('\n');
+          if (failedBlocks.length > 5) {
+            msg += `\n...and ${failedBlocks.length - 5} more.`;
+          }
+        }
+        alert(msg);
       } else {
-        alert("Could not parse any questions. Please check the format.");
+        let errReport = "Could not parse any questions. Please check the format.";
+        if (failedBlocks.length > 0) {
+          errReport += `\n\nErrors detected:\n` +
+            failedBlocks.slice(0, 5).map((f, i) => `${i + 1}. ${f.text.slice(0, 45)}... (${f.reason})`).join('\n');
+        }
+        alert(errReport);
       }
     } catch (err: any) {
       console.error(err);
@@ -892,6 +932,14 @@ export default function OnlineTestAdmin() {
   const handleAddQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentTest.id) return;
+    if (!newQuestion.question_text?.trim()) {
+      alert("Question text is required!");
+      return;
+    }
+    if (!newQuestion.option_a?.trim() || !newQuestion.option_b?.trim() || !newQuestion.option_c?.trim() || !newQuestion.option_d?.trim()) {
+      alert("All 4 options (Option A, Option B, Option C, Option D) are required and cannot be empty!");
+      return;
+    }
     try {
       if (newQuestion.id) {
         // Update existing question

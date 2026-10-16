@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe, Mic, Eye, Lock, Unlock, FileText, AlertTriangle } from 'lucide-react';
+import { BookOpen, LogIn, PlayCircle, ShieldAlert, Timer, CheckCircle, Clock, Camera, Users, Globe, Mic, Eye, Lock, Unlock, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 import { loginStudentForTest, getActiveTests, getStudentAttempts, startTestAttempt, reportTestIssue, OnlineTest, StudentTestAttempt, verifyStudentPin, getTestQuestionsWithAnswers, OnlineTestQuestion, unbanStudent, autoDeleteOldProctoringLogs } from '../lib/onlineTests';
+import { supabase } from '../lib/supabase';
 import jsPDF from 'jspdf';
 import BanScreen from '../components/BanScreen';
 import StudentRevisionVault from '../components/StudentRevisionVault';
@@ -112,8 +113,11 @@ export default function OnlineTestPortal() {
     }
   };
 
-  const fetchTests = async (cls: string, studentId: string) => {
-    setLoadingTests(true);
+  const [isRefreshingTests, setIsRefreshingTests] = useState(false);
+
+  const fetchTests = async (cls: string, studentId: string, showLoading: boolean = true) => {
+    if (showLoading) setLoadingTests(true);
+    setIsRefreshingTests(true);
     try {
       const [testsData, attemptsData] = await Promise.all([
         getActiveTests(cls),
@@ -124,9 +128,40 @@ export default function OnlineTestPortal() {
     } catch (err) {
       console.error('Error fetching tests:', err);
     } finally {
-      setLoadingTests(false);
+      if (showLoading) setLoadingTests(false);
+      setIsRefreshingTests(false);
     }
   };
+
+  // Realtime Supabase channel & auto-polling so newly activated tests show immediately
+  useEffect(() => {
+    if (!isLoggedIn || !student || activeTest) return;
+
+    // 1. Initial fetch
+    fetchTests(student.class_name, student.id, false);
+
+    // 2. Realtime subscription to online_tests table
+    const channel = supabase
+      .channel(`realtime_online_tests_${student.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'online_tests' },
+        () => {
+          fetchTests(student.class_name, student.id, false);
+        }
+      )
+      .subscribe();
+
+    // 3. Auto-poll fallback every 10 seconds while on Available Tests screen
+    const pollInterval = setInterval(() => {
+      fetchTests(student.class_name, student.id, false);
+    }, 10000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
+  }, [isLoggedIn, student?.id, student?.class_name, activeTest]);
 
   const handleStartTest = async (test: OnlineTest) => {
     setAttemptedError('');
@@ -810,10 +845,21 @@ export default function OnlineTestPortal() {
           ) : (
             <>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Timer className="h-5 w-5 text-green-600" /> 
-                  Available Tests
-                </h3>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <Timer className="h-5 w-5 text-green-600" /> 
+                    Available Tests
+                  </h3>
+                  <button
+                    onClick={() => student && fetchTests(student.class_name, student.id, true)}
+                    disabled={isRefreshingTests}
+                    title="Click to refresh test list immediately"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-lg text-xs font-semibold shadow-sm transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 text-blue-600 ${isRefreshingTests ? 'animate-spin' : ''}`} />
+                    <span>{isRefreshingTests ? 'Refreshing...' : 'Refresh Tests'}</span>
+                  </button>
+                </div>
                 <button 
                   onClick={() => setShowReportForm(true)}
                   className="px-4 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-black border border-red-100 hover:bg-red-100 transition-colors flex items-center gap-2"
@@ -830,10 +876,27 @@ export default function OnlineTestPortal() {
               )}
 
               {loadingTests ? (
-                <p className="text-center py-8 text-gray-500">Loading tests...</p>
+                <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
+                  <RefreshCw className="h-8 w-8 text-blue-600 animate-spin mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-gray-600">Loading tests...</p>
+                </div>
               ) : tests.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                  <p className="text-gray-500">No active tests available for your class right now.</p>
+                <div className="text-center py-12 px-4 bg-gray-50 rounded-2xl border border-dashed border-gray-300 max-w-xl mx-auto my-6">
+                  <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Timer className="h-6 w-6" />
+                  </div>
+                  <h4 className="font-bold text-gray-800 text-base mb-1">Abhi koi live test active nahi hai</h4>
+                  <p className="text-gray-500 text-xs sm:text-sm max-w-md mx-auto mb-5 leading-relaxed">
+                    Aapki class ke liye test abhi start nahi hua hai. Jaise hi teacher live test shuru karenge, yeh page automatically bina reload kiye update ho jayega.
+                  </p>
+                  <button
+                    onClick={() => student && fetchTests(student.class_name, student.id, true)}
+                    disabled={isRefreshingTests}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isRefreshingTests ? 'animate-spin' : ''}`} />
+                    <span>{isRefreshingTests ? 'Checking for Tests...' : 'Check Again / Refresh Now'}</span>
+                  </button>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">

@@ -222,12 +222,14 @@ export async function verifyStudentPin(studentId: string, pin: string) {
 }
 
 export async function getActiveTests(className: string) {
+  const cleanClass = (className || '').trim();
   // Fetch both live (is_active=true) AND stopped (is_stopped=true) tests
   // so students can see their Completed/Pending status even after test is stopped
+  // We match exact class_name OR trimmed ilike to prevent trailing whitespace or casing mismatches
   const { data, error } = await supabase
     .from('online_tests')
     .select('*')
-    .eq('class_name', className)
+    .or(`class_name.eq.${cleanClass},class_name.ilike.%${cleanClass}%`)
     .or('is_active.eq.true,is_stopped.eq.true')
     .order('created_at', { ascending: false });
 

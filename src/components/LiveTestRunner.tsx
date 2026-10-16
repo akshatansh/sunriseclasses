@@ -2251,56 +2251,68 @@ export default function LiveTestRunner({ test, studentId, onComplete }: Props) {
                         </div>
 
                         {/* Answer Options */}
-                        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
-                          {((q as any)._shuffledOpts || ['A', 'B', 'C', 'D']).map((opt: string, optIndex: number) => {
-                            const isSelected = answers[q.id] === opt;
-                            const isNewOption = !answers[q.id];
-                            const isBlockedNew = isLimitMode && hasReachedLimit && isNewOption;
-                            const isStrategyBlocked = strategyMode && !strategyDone;
-                            const visualLabel = ['A', 'B', 'C', 'D'][optIndex];
-                            return (
-                              <button
-                                key={opt}
-                                onClick={() => handleOptionSelect(q.id, opt)}
-                                title={
-                                  isStrategyBlocked ? 'Strategy Mode: pehle saare padho, phir Start Answering dabao' :
-                                  isBlockedNew ? `Limit poori. Kisi answer par double-click karke deselect karein.` :
-                                  isSelected ? 'Double-click karein deselect ke liye' : 'Click karein select karne ke liye'
-                                }
-                                className={`text-left px-4 py-4 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border-2 transition-all group relative overflow-hidden active:scale-[0.97] ${
-                                  isSelected
-                                    ? 'border-green-500 bg-green-50 shadow-lg shadow-green-500/20 ring-2 ring-green-400/30'
-                                    : isBlockedNew || isStrategyBlocked
-                                    ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
-                                    : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md'
-                                }`}
-                              >
-                                {/* Selected checkmark */}
-                                {isSelected && (
-                                  <div className="absolute top-2 right-2 text-green-600">
-                                    <CheckCircle className="h-5 w-5" />
+                        {(!q.option_a?.trim() && !q.option_b?.trim() && !q.option_c?.trim() && !q.option_d?.trim()) ? (
+                          <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-900 flex items-start gap-3.5 my-4">
+                            <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-bold text-sm sm:text-base">Is sawal ke options uplabdh nahi hain</p>
+                              <p className="text-xs sm:text-sm text-amber-800 mt-1 leading-relaxed">
+                                Yeh sawal teacher ke dwara upload karte samay options bina save ho gaya tha. Aap Previous/Next button se agle sawal par ja sakte hain. Is question ke marks automatically sabhi bacho ko milenge.
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+                            {((q as any)._shuffledOpts || ['A', 'B', 'C', 'D']).map((opt: string, optIndex: number) => {
+                              const isSelected = answers[q.id] === opt;
+                              const isNewOption = !answers[q.id];
+                              const isBlockedNew = isLimitMode && hasReachedLimit && isNewOption;
+                              const isStrategyBlocked = strategyMode && !strategyDone;
+                              const visualLabel = ['A', 'B', 'C', 'D'][optIndex];
+                              return (
+                                <button
+                                  key={opt}
+                                  onClick={() => handleOptionSelect(q.id, opt)}
+                                  title={
+                                    isStrategyBlocked ? 'Strategy Mode: pehle saare padho, phir Start Answering dabao' :
+                                    isBlockedNew ? `Limit poori. Kisi answer par double-click karke deselect karein.` :
+                                    isSelected ? 'Double-click karein deselect ke liye' : 'Click karein select karne ke liye'
+                                  }
+                                  className={`text-left px-4 py-4 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border-2 transition-all group relative overflow-hidden active:scale-[0.97] ${
+                                    isSelected
+                                      ? 'border-green-500 bg-green-50 shadow-lg shadow-green-500/20 ring-2 ring-green-400/30'
+                                      : isBlockedNew || isStrategyBlocked
+                                      ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                                      : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md'
+                                  }`}
+                                >
+                                  {/* Selected checkmark */}
+                                  {isSelected && (
+                                    <div className="absolute top-2 right-2 text-green-600">
+                                      <CheckCircle className="h-5 w-5" />
+                                    </div>
+                                  )}
+                                  {/* Lock text */}
+                                  {(isBlockedNew || isStrategyBlocked) && !isSelected && (
+                                    <div className="absolute top-2 right-2">
+                                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider bg-gray-200/80 px-1.5 py-0.5 rounded">Locked</span>
+                                    </div>
+                                  )}
+                                  <div className="flex items-start gap-3">
+                                    <span className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-sm font-black transition-colors ${
+                                      isSelected ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'
+                                    }`}>{visualLabel}</span>
+                                    <span className={`font-medium leading-snug flex-grow ${
+                                      isSelected ? 'text-gray-900 font-semibold' : isBlockedNew ? 'text-gray-400' : 'text-gray-700'
+                                    }`} style={{ fontSize: `${Math.max(fontSize - 2, 13)}px` }}>
+                                      {q[`option_${opt.toLowerCase()}` as keyof OnlineTestQuestion] as string}
+                                    </span>
                                   </div>
-                                )}
-                                {/* Lock text */}
-                                {(isBlockedNew || isStrategyBlocked) && !isSelected && (
-                                  <div className="absolute top-2 right-2">
-                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider bg-gray-200/80 px-1.5 py-0.5 rounded">Locked</span>
-                                  </div>
-                                )}
-                                <div className="flex items-start gap-3">
-                                  <span className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-sm font-black transition-colors ${
-                                    isSelected ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'
-                                  }`}>{visualLabel}</span>
-                                  <span className={`font-medium leading-snug flex-grow ${
-                                    isSelected ? 'text-gray-900 font-semibold' : isBlockedNew ? 'text-gray-400' : 'text-gray-700'
-                                  }`} style={{ fontSize: `${Math.max(fontSize - 2, 13)}px` }}>
-                                    {q[`option_${opt.toLowerCase()}` as keyof OnlineTestQuestion] as string}
-                                  </span>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                         {/* Deselect hint — shown when this question is answered */}
                         {answers[q.id] && (
                           <p className="text-[10px] text-gray-400 mt-2 text-right font-medium">
