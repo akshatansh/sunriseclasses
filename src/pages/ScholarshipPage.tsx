@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Trophy, Award, Gift, Clock, MapPin, CheckCircle, ArrowRight, Download, 
-  Sparkles, BookOpen, Star, HelpCircle, Phone, AlertCircle, Search, Calendar,
-  ShieldCheck, Users
-} from 'lucide-react';
-import confetti from 'canvas-confetti';
+import { Download, Search, AlertCircle, CheckCircle, Phone, MapPin, Clock, ArrowRight } from 'lucide-react';
 import { registerForSTSE, getRegistrationByRollOrPhone, getSTSEConfig } from '../lib/stse';
 import { generateAdmitCardPDF, STSERegistration, STSEConfig } from '../lib/admitCardPdf';
 
@@ -32,10 +27,12 @@ const LOCAL_VILLAGES = [
 
 export default function ScholarshipPage() {
   const [config, setConfig] = useState<STSEConfig>({
-    exam_date: 'To be announced (रविवार को)',
+    exam_date: 'शीघ्र घोषित होगी (To Be Announced)',
     venue: 'Sunrise Classes & Academy Campus, Main Market, Champanagar, Purnia (Bihar)',
     shifts: ['Shift 1: 09:30 AM - 10:30 AM', 'Shift 2: 11:30 AM - 12:30 PM'],
   });
+
+  const [activeTab, setActiveTab] = useState<'register' | 'admit'>('register');
 
   const [formData, setFormData] = useState({
     student_name: '',
@@ -54,7 +51,6 @@ export default function ScholarshipPage() {
   const [successRegistration, setSuccessRegistration] = useState<STSERegistration | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Lookup state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<STSERegistration | null>(null);
@@ -69,18 +65,6 @@ export default function ScholarshipPage() {
     });
   }, []);
 
-  const triggerConfetti = () => {
-    try {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-      });
-    } catch (e) {
-      // Ignore if confetti not supported
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -89,7 +73,6 @@ export default function ScholarshipPage() {
       setErrorMessage('कृपया सभी आवश्यक जानकारी (नाम, पिता का नाम और मोबाइल नंबर) भरें।');
       return;
     }
-
     if (formData.phone.trim().length < 10) {
       setErrorMessage('कृपया मान्य 10-अंकों का मोबाइल नंबर दर्ज करें।');
       return;
@@ -97,12 +80,9 @@ export default function ScholarshipPage() {
 
     setLoading(true);
     const finalSchool = formData.school_name === 'अन्य स्कूल (Other School)' && formData.custom_school.trim()
-      ? formData.custom_school.trim()
-      : formData.school_name;
-
+      ? formData.custom_school.trim() : formData.school_name;
     const finalVillage = formData.village_area === 'अन्य 8 KM का गांव/क्षेत्र (Other Area within 8km)' && formData.custom_village.trim()
-      ? formData.custom_village.trim()
-      : formData.village_area;
+      ? formData.custom_village.trim() : formData.village_area;
 
     const res = await registerForSTSE({
       student_name: formData.student_name.trim(),
@@ -117,14 +97,9 @@ export default function ScholarshipPage() {
     });
 
     setLoading(false);
-
     if (res.success && res.registration) {
       setSuccessRegistration(res.registration);
-      triggerConfetti();
-      // Auto-trigger admit card download
-      setTimeout(() => {
-        generateAdmitCardPDF(res.registration!, config);
-      }, 800);
+      setTimeout(() => { generateAdmitCardPDF(res.registration!, config); }, 800);
     } else {
       setErrorMessage(res.error || 'रजिस्ट्रेशन में समस्या आई। कृपया पुनः प्रयास करें।');
     }
@@ -134,665 +109,657 @@ export default function ScholarshipPage() {
     e.preventDefault();
     setSearchError('');
     setSearchResult(null);
-
-    if (!searchQuery.trim()) {
-      setSearchError('कृपया रोल नंबर या मोबाइल नंबर दर्ज करें।');
-      return;
-    }
-
+    if (!searchQuery.trim()) { setSearchError('कृपया रोल नंबर या मोबाइल नंबर दर्ज करें।'); return; }
     setSearchLoading(true);
     const result = await getRegistrationByRollOrPhone(searchQuery.trim());
     setSearchLoading(false);
-
-    if (result) {
-      setSearchResult(result);
-    } else {
-      setSearchError('कोई एडमिट कार्ड नहीं मिला। कृपया सही रोल नंबर या 10-अंकों का मोबाइल नंबर दर्ज करें।');
-    }
+    if (result) { setSearchResult(result); }
+    else { setSearchError('कोई रजिस्ट्रेशन नहीं मिला। कृपया सही रोल नंबर या 10-अंकों का मोबाइल नंबर दर्ज करें।'); }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
-      {/* 1. TOP HERO SECTION */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#0a1931] via-[#0f2a5c] to-[#153e75] text-white py-16 md:py-24">
-        {/* Glow circles background */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#f5a623]/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-10 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#f7f7f5] text-gray-800 font-sans">
 
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
-          <div className="text-center max-w-3xl mx-auto">
-            {/* Top Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#f5a623]/20 border border-[#f5a623]/40 text-[#f5a623] text-sm font-bold tracking-wide uppercase mb-6 animate-pulse">
-              <Sparkles className="w-4 h-4" />
-              चंपानगर का सबसे बड़ा टैलेंट हंट व स्कॉलरशिप टेस्ट
-            </div>
-
-            {/* Main Headline */}
-            <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-4 text-white">
-              सनराइज प्रतिभा खोज परीक्षा <span className="text-[#f5a623]">2027</span>
-              <span className="block text-xl sm:text-2xl md:text-3xl font-semibold text-blue-200 mt-2">
-                STSE: Sunrise Talent Search Examination
-              </span>
-            </h1>
-
-            {/* Sub-headline */}
-            <p className="text-base sm:text-lg text-slate-200 mb-8 leading-relaxed">
-              जो छात्र अब <strong>Class 10th (मैट्रिक 2027)</strong> में जाने वाले हैं, उनके लिए सुनहरा अवसर! 
-              जीतो <strong>Smartwatch, Champion Trophies, 100% फीस माफ़ी</strong> और हर छात्र के लिए <strong>फ्री एग्जाम किट</strong>!
-            </p>
-
-            {/* Quick Meta Pills */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl mx-auto mb-10 text-xs sm:text-sm">
-              <div className="bg-white/10 backdrop-blur-md border border-white/10 p-3 rounded-xl flex items-center gap-2.5">
-                <MapPin className="w-5 h-5 text-[#f5a623] shrink-0" />
-                <div className="text-left">
-                  <div className="text-slate-300 text-[11px]">स्थान (Offline)</div>
-                  <div className="font-bold text-white">सनराइज कैंपस, चंपानगर</div>
-                </div>
+      {/* ═══════════════════════════════════════════════
+          INSTITUTIONAL HEADER
+      ═══════════════════════════════════════════════ */}
+      <header className="bg-[#0f2a5c] text-white">
+        <div className="max-w-5xl mx-auto px-4 py-5 flex flex-col sm:flex-row items-center gap-4">
+          {/* Logo + Institute Name */}
+          <div className="flex items-center gap-4 flex-1">
+            <img src="/sunrise-logo.png" alt="Sunrise Classes Logo"
+              className="w-16 h-16 object-contain rounded bg-white p-1 shrink-0"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            <div>
+              <div className="text-[11px] font-semibold tracking-widest uppercase text-[#f5a623] mb-0.5">
+                Sunrise Classes &amp; Academy
               </div>
-
-              <div className="bg-white/10 backdrop-blur-md border border-white/10 p-3 rounded-xl flex items-center gap-2.5">
-                <Clock className="w-5 h-5 text-green-400 shrink-0" />
-                <div className="text-left">
-                  <div className="text-slate-300 text-[11px]">परीक्षा समय</div>
-                  <div className="font-bold text-white">60 मिनट (50 MCQs)</div>
-                </div>
+              <div className="text-xl sm:text-2xl font-bold leading-tight text-white">
+                सनराइज क्लासेज एवं अकादमी
               </div>
-
-              <div className="col-span-2 sm:col-span-1 bg-white/10 backdrop-blur-md border border-white/10 p-3 rounded-xl flex items-center gap-2.5">
-                <Gift className="w-5 h-5 text-pink-400 shrink-0" />
-                <div className="text-left">
-                  <div className="text-slate-300 text-[11px]">रजिस्ट्रेशन शुल्क</div>
-                  <div className="font-bold text-green-300">100% बिल्कुल FREE</div>
-                </div>
+              <div className="text-xs text-blue-200 mt-0.5">
+                Main Market, Champanagar, Purnia — Bihar — 854330
               </div>
-            </div>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a
-                href="#register-section"
-                className="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-[#f5a623] to-[#d48806] text-[#0f2a5c] font-extrabold text-base sm:text-lg shadow-xl shadow-[#f5a623]/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <span>फ्री रजिस्ट्रेशन करें (Free Register)</span>
-                <ArrowRight className="w-5 h-5" />
-              </a>
-              <a
-                href="#admit-card-section"
-                className="w-full sm:w-auto px-6 py-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-base transition-all flex items-center justify-center gap-2"
-              >
-                <Download className="w-5 h-5 text-[#f5a623]" />
-                <span>एडमिट कार्ड डाउनलोड करें</span>
-              </a>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* 2. MEGA INCENTIVES / PRIZES SECTION (LALACH CARDS) */}
-      <section className="py-14 sm:py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span className="text-xs font-bold text-[#f5a623] tracking-wider uppercase bg-[#f5a623]/10 px-3 py-1 rounded-full">
-              Prizes & Scholarships
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-[#0f2a5c] mt-2">
-              छात्रों के लिए शानदार पुरस्कार व स्कॉलरशिप
-            </h2>
-            <p className="text-slate-600 text-sm sm:text-base mt-2">
-              मेहनत आपकी, सम्मान और इनाम हमारा! टॉप 10 को बड़े उपहार और हर छात्र के लिए गारंटीड गिफ्ट!
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Rank 1 Card */}
-            <div className="relative rounded-2xl bg-gradient-to-b from-amber-50 to-white border-2 border-[#f5a623] p-6 shadow-lg shadow-amber-500/10 hover:-translate-y-1 transition-all">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-[#f5a623] text-white px-4 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase shadow">
-                🥇 1st Rank (Topper)
-              </div>
-              <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-4 mt-2">
-                <Trophy className="w-9 h-9" />
-              </div>
-              <h3 className="text-xl font-bold text-center text-slate-800 mb-1">
-                स्मार्टवॉच + 100% फ्री ट्यूशन
-              </h3>
-              <div className="text-center text-xs font-semibold text-amber-700 bg-amber-100/60 py-1 px-3 rounded-lg w-fit mx-auto mb-4">
-                पूरे 1 साल की फीस ₹0 (Zero)
-              </div>
-              <ul className="space-y-2.5 text-sm text-slate-700">
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <span><strong>Branded Smartwatch</strong> (boAt / Noise) ⌚</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <span><strong>Golden Champion Trophy</strong> 🏆</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <span><strong>100% Free Tuition Fees</strong> (Class 10th Full Year)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <span>Sunrise VIP School Bag + Complete Kit</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Rank 2 & 3 Card */}
-            <div className="relative rounded-2xl bg-gradient-to-b from-slate-50 to-white border-2 border-slate-300 p-6 shadow-md hover:-translate-y-1 transition-all">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-slate-700 text-white px-4 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase shadow">
-                🥈 Rank 2 & 3 (Runners-Up)
-              </div>
-              <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center mx-auto mb-4 mt-2">
-                <Award className="w-9 h-9" />
-              </div>
-              <h3 className="text-xl font-bold text-center text-slate-800 mb-1">
-                स्पोर्ट्स वॉच + 75% फीस माफ़ी
-              </h3>
-              <div className="text-center text-xs font-semibold text-slate-700 bg-slate-200 py-1 px-3 rounded-lg w-fit mx-auto mb-4">
-                ₹9,000+ की सीधी बचत
-              </div>
-              <ul className="space-y-2.5 text-sm text-slate-700">
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <span><strong>Digital Sports Wristwatch</strong> ⌚</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <span><strong>Silver Trophy + Medal</strong> 🥈</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <span><strong>75% Tuition Fee Scholarship</strong></span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <span>Sunrise Premium School Bag</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Rank 4 to 10 Card */}
-            <div className="relative rounded-2xl bg-gradient-to-b from-blue-50/50 to-white border-2 border-blue-200 p-6 shadow-md hover:-translate-y-1 transition-all">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-extrabold tracking-wide uppercase shadow">
-                🥉 Rank 4 से 10 (Star Scholars)
-              </div>
-              <div className="w-16 h-16 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-4 mt-2">
-                <Star className="w-9 h-9" />
-              </div>
-              <h3 className="text-xl font-bold text-center text-slate-800 mb-1">
-                बुक्स किट + 50% फीस माफ़ी
-              </h3>
-              <div className="text-center text-xs font-semibold text-blue-700 bg-blue-100 py-1 px-3 rounded-lg w-fit mx-auto mb-4">
-                आधी फीस माफ़ (50% Off)
-              </div>
-              <ul className="space-y-2.5 text-sm text-slate-700">
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <span><strong>Class 10th Complete Books Guide Kit</strong> 📚</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <span><strong>Bronze Medal + Trophy</strong> 🥉</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <span><strong>50% Fees Scholarship</strong> (आधी फीस फ्री!)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  <span>Sunrise School Bag + Certificate</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Guaranteed Gift for EVERY attendee */}
-          <div className="mt-8 bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-700 rounded-2xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-5 text-center sm:text-left">
-              <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 mx-auto sm:mx-0">
-                <Gift className="w-9 h-9 text-amber-300" />
-              </div>
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-amber-300 mb-1">
-                  🎁 Guaranteed Gift for Every Student (कोई खाली हाथ नहीं जाएगा!)
-                </div>
-                <h3 className="text-xl sm:text-2xl font-extrabold text-white">
-                  परीक्षा केंद्र पर आते ही फ्री Sunrise Exam Kit + Certificate!
-                </h3>
-                <p className="text-emerald-100 text-sm mt-1">
-                  हर शामिल होने वाले छात्र को <strong>Sunrise Writing Board/Pad</strong>, <strong>2 स्पेशल OMR Ball Pens</strong> और आधिकारिक <strong>Certificate of Merit</strong> मिलेगा!
-                </p>
-              </div>
-            </div>
-            <a
-              href="#register-section"
-              className="px-6 py-3.5 rounded-xl bg-white text-emerald-800 font-extrabold text-sm sm:text-base shrink-0 shadow-lg hover:bg-emerald-50 active:scale-95 transition-all"
-            >
-              अभी फ्री सीट बुक करें →
+          {/* Contact */}
+          <div className="text-right shrink-0">
+            <a href="tel:9973152070" className="flex items-center gap-2 text-[#f5a623] font-bold text-base hover:underline justify-end">
+              <Phone className="w-4 h-4" />
+              +91 99731 52070
             </a>
+            <div className="text-xs text-blue-200 mt-0.5">सोम–शनि: सुबह 7 से शाम 7 बजे</div>
           </div>
         </div>
-      </section>
+        {/* Gold divider bar */}
+        <div className="h-1 bg-[#f5a623]" />
+      </header>
 
-      {/* 3. EXAM PATTERN & SYLLABUS SECTION */}
-      <section className="py-14 sm:py-20 bg-slate-100 border-y border-slate-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <span className="text-xs font-bold text-blue-600 tracking-wider uppercase bg-blue-100 px-3 py-1 rounded-full">
-              Exam Pattern & Syllabus
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0f2a5c] mt-2">
-              परीक्षा का पैटर्न और सिलेबस (Class 9th आधारित)
-            </h2>
-            <p className="text-slate-600 text-sm mt-1">
-              क्योंकि आप 9वीं पास करके 10वीं में आ रहे हैं, प्रश्न 9वीं के मुख्य अध्यायों से ही पूछे जाएंगे!
+      {/* ═══════════════════════════════════════════════
+          EXAM NOTIFICATION BANNER (Government Notice Style)
+      ═══════════════════════════════════════════════ */}
+      <section className="bg-white border-b-4 border-[#0f2a5c]">
+        <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10">
+          <div className="text-center">
+            {/* Official notice top label */}
+            <div className="inline-block border border-[#0f2a5c] text-[#0f2a5c] text-xs font-bold uppercase tracking-widest px-4 py-1 mb-4">
+              ✦ आधिकारिक सूचना — Scholarship Examination Notice ✦
+            </div>
+            {/* Exam full name */}
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-[#0f2a5c] leading-snug mb-1">
+              सनराइज प्रतिभा खोज एवं छात्रवृत्ति परीक्षा
+            </h1>
+            <div className="text-base sm:text-xl font-semibold text-[#f5a623] tracking-wide mb-4">
+              STSE 2027 — Sunrise Talent Search Examination
+            </div>
+            {/* Intro para — institutional language */}
+            <p className="max-w-2xl mx-auto text-sm sm:text-base text-gray-600 leading-relaxed">
+              सनराइज क्लासेज एवं अकादमी, चंपानगर द्वारा कक्षा 9वीं उत्तीर्ण (10वीं में प्रवेशार्थी) छात्र-छात्राओं के लिए
+              एक विशेष प्रतिभा खोज परीक्षा का आयोजन किया जा रहा है। इस परीक्षा में भाग लेने के लिए कोई शुल्क नहीं है।
+              योग्य छात्रों को <strong>शत-प्रतिशत (100%) से 25% तक फीस में छूट</strong> एवं विशेष पुरस्कार प्रदान किए जाएंगे।
             </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-bold text-[#0f2a5c]">गणित (Mathematics)</h4>
-                <span className="text-xs font-extrabold px-2.5 py-1 bg-amber-100 text-amber-800 rounded-md">20 Questions</span>
+            {/* Key info row */}
+            <div className="mt-6 flex flex-wrap justify-center gap-6 text-sm font-medium text-gray-700">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#0f2a5c]" />
+                <span>परीक्षा तिथि: <strong className="text-[#0f2a5c]">{config.exam_date}</strong></span>
               </div>
-              <ul className="text-xs space-y-1.5 text-slate-600">
-                <li>• संख्या पद्धति (Number System)</li>
-                <li>• बहुपद (Polynomials)</li>
-                <li>• दो चर वाले रैखिक समीकरण</li>
-                <li>• त्रिभुज एवं चतुर्भुज</li>
-                <li>• पृष्ठीय क्षेत्रफल और आयतन</li>
-              </ul>
-            </div>
-
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-bold text-[#0f2a5c]">विज्ञान (Science)</h4>
-                <span className="text-xs font-extrabold px-2.5 py-1 bg-blue-100 text-blue-800 rounded-md">20 Questions</span>
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-[#0f2a5c]" />
+                <span>परीक्षा केंद्र: <strong className="text-[#0f2a5c]">सनराइज कैंपस, चंपानगर</strong></span>
               </div>
-              <ul className="text-xs space-y-1.5 text-slate-600">
-                <li>• गति एवं बल के नियम (Physics)</li>
-                <li>• गुरुत्वाकर्षण (Gravitation)</li>
-                <li>• हमारे आस-पास के पदार्थ (Chemistry)</li>
-                <li>• परमाणु एवं अणु</li>
-                <li>• कोशिका एवं ऊतक (Biology)</li>
-              </ul>
-            </div>
-
-            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-bold text-[#0f2a5c]">तर्कशक्ति (Mental Ability)</h4>
-                <span className="text-xs font-extrabold px-2.5 py-1 bg-purple-100 text-purple-800 rounded-md">10 Questions</span>
-              </div>
-              <ul className="text-xs space-y-1.5 text-slate-600">
-                <li>• नंबर व अल्फाबेट सीरीज</li>
-                <li>• कोडिंग - डिकोडिंग</li>
-                <li>• मिसिंग नंबर लॉजिक</li>
-                <li>• दिशा व ब्लड रिलेशन बेसिक्स</li>
-                <li>• तार्किक पैटर्न प्रश्न</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-6 bg-white rounded-xl p-4 border border-slate-200 text-xs sm:text-sm text-slate-600 flex flex-wrap items-center justify-around gap-4 text-center">
-            <div>⏱️ <strong>समय:</strong> 60 मिनट (1 घंटा)</div>
-            <div>📝 <strong>पैटर्न:</strong> 50 वस्तुनिष्ठ प्रश्न (MCQ)</div>
-            <div>⭕ <strong>माध्यम:</strong> OMR शीट (गोला भरने वाली शीट)</div>
-            <div>✅ <strong>नेगेटिव मार्किंग:</strong> बिल्कुल नहीं (No Negative)</div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. REGISTRATION FORM SECTION */}
-      <section id="register-section" className="py-16 sm:py-24 bg-white relative">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-10">
-            <span className="text-xs font-bold text-green-700 tracking-wider uppercase bg-green-100 px-3 py-1 rounded-full">
-              Free Registration Form
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2a5c] mt-2">
-              STSE 2027 ऑनलाइन फॉर्म भरें
-            </h2>
-            <p className="text-slate-600 text-sm sm:text-base mt-2">
-              फॉर्म भरते ही तुरंत आधिकारिक <strong>Admit Card (PDF)</strong> डाउनलोड हो जाएगा!
-            </p>
-          </div>
-
-          {/* Success State Card */}
-          {successRegistration ? (
-            <div className="bg-gradient-to-b from-emerald-50 to-white border-2 border-emerald-500 rounded-2xl p-6 sm:p-8 text-center shadow-xl animate-fade-in">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-10 h-10" />
-              </div>
-              <h3 className="text-2xl font-bold text-emerald-900 mb-1">
-                बधाई हो! रजिस्ट्रेशन सफल रहा 🎉
-              </h3>
-              <p className="text-emerald-700 text-sm mb-6">
-                आपका STSE 2027 परीक्षा के लिए रजिस्ट्रेशन हो चुका है।
-              </p>
-
-              <div className="bg-white border border-emerald-200 rounded-xl p-4 max-w-md mx-auto mb-6 text-left text-sm space-y-2">
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-slate-500">रोल नंबर (Roll No):</span>
-                  <span className="font-extrabold text-lg text-[#0f2a5c]">{successRegistration.roll_number}</span>
-                </div>
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-slate-500">छात्र का नाम:</span>
-                  <span className="font-bold text-slate-800">{successRegistration.student_name}</span>
-                </div>
-                <div className="flex justify-between border-b pb-2">
-                  <span className="text-slate-500">परीक्षा शिफ्ट:</span>
-                  <span className="font-semibold text-slate-800">{successRegistration.shift_preference}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">परीक्षा केंद्र:</span>
-                  <span className="font-semibold text-slate-800">सनराइज क्लासेज, चंपानगर</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <button
-                  onClick={() => generateAdmitCardPDF(successRegistration, config)}
-                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-bold rounded-xl shadow-lg hover:from-emerald-700 hover:to-teal-800 transition-all flex items-center justify-center gap-2"
-                >
-                  <Download className="w-5 h-5" />
-                  <span>एडमिट कार्ड दोबारा डाउनलोड करें (PDF)</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setSuccessRegistration(null);
-                    setFormData({
-                      student_name: '',
-                      father_name: '',
-                      phone: '',
-                      whatsapp: '',
-                      school_name: LOCAL_SCHOOLS[0],
-                      custom_school: '',
-                      village_area: LOCAL_VILLAGES[0],
-                      custom_village: '',
-                      shift_preference: config.shifts?.[0] || 'Shift 1: 09:30 AM - 10:30 AM',
-                      class_target: 'Class 10th (Matric 2027)',
-                    });
-                  }}
-                  className="w-full sm:w-auto px-5 py-3.5 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-all text-sm"
-                >
-                  दूसरा फॉर्म भरें
-                </button>
+              <div className="flex items-center gap-2">
+                <ArrowRight className="w-4 h-4 text-green-700" />
+                <span>पंजीकरण शुल्क: <strong className="text-green-700">निःशुल्क (Free)</strong></span>
               </div>
             </div>
-          ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-xl p-6 sm:p-10">
-              {errorMessage && (
-                <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 shrink-0" />
-                  <span>{errorMessage}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      छात्र / छात्रा का नाम (Student Name) *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="उदा: Rahul Kumar"
-                      value={formData.student_name}
-                      onChange={e => setFormData({ ...formData, student_name: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[#0f2a5c] focus:ring-2 focus:ring-[#0f2a5c]/20 outline-none text-sm font-medium"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      पिता का नाम (Father's Name) *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="उदा: Shri Rajesh Sharma"
-                      value={formData.father_name}
-                      onChange={e => setFormData({ ...formData, father_name: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[#0f2a5c] focus:ring-2 focus:ring-[#0f2a5c]/20 outline-none text-sm font-medium"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      मोबाइल नंबर (Mobile / Calling) *
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      maxLength={10}
-                      placeholder="10 अंकों का मोबाइल नंबर"
-                      value={formData.phone}
-                      onChange={e => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[#0f2a5c] focus:ring-2 focus:ring-[#0f2a5c]/20 outline-none text-sm font-medium"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      WhatsApp नंबर (एडमिट कार्ड व रिजल्ट के लिए)
-                    </label>
-                    <input
-                      type="tel"
-                      maxLength={10}
-                      placeholder="व्हाट्सएप नंबर (यदि अलग है)"
-                      value={formData.whatsapp}
-                      onChange={e => setFormData({ ...formData, whatsapp: e.target.value.replace(/\D/g, '') })}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[#0f2a5c] focus:ring-2 focus:ring-[#0f2a5c]/20 outline-none text-sm font-medium"
-                    />
-                  </div>
-                </div>
-
-                {/* School Selection */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    वर्तमान स्कूल का नाम (School Name) *
-                  </label>
-                  <select
-                    value={formData.school_name}
-                    onChange={e => setFormData({ ...formData, school_name: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[#0f2a5c] focus:ring-2 focus:ring-[#0f2a5c]/20 outline-none text-sm font-medium bg-white"
-                  >
-                    {LOCAL_SCHOOLS.map((sch, i) => (
-                      <option key={i} value={sch}>{sch}</option>
-                    ))}
-                  </select>
-                  {formData.school_name === 'अन्य स्कूल (Other School)' && (
-                    <input
-                      type="text"
-                      placeholder="अपने स्कूल का नाम लिखें"
-                      value={formData.custom_school}
-                      onChange={e => setFormData({ ...formData, custom_school: e.target.value })}
-                      className="w-full mt-2 px-4 py-2.5 rounded-xl border border-slate-300 focus:border-[#0f2a5c] outline-none text-sm font-medium"
-                    />
-                  )}
-                </div>
-
-                {/* Village / Area */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    गांव / मोहल्ला (Village / Area within 8km) *
-                  </label>
-                  <select
-                    value={formData.village_area}
-                    onChange={e => setFormData({ ...formData, village_area: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-[#0f2a5c] focus:ring-2 focus:ring-[#0f2a5c]/20 outline-none text-sm font-medium bg-white"
-                  >
-                    {LOCAL_VILLAGES.map((v, i) => (
-                      <option key={i} value={v}>{v}</option>
-                    ))}
-                  </select>
-                  {formData.village_area === 'अन्य 8 KM का गांव/क्षेत्र (Other Area within 8km)' && (
-                    <input
-                      type="text"
-                      placeholder="अपने गांव या क्षेत्र का नाम लिखें"
-                      value={formData.custom_village}
-                      onChange={e => setFormData({ ...formData, custom_village: e.target.value })}
-                      className="w-full mt-2 px-4 py-2.5 rounded-xl border border-slate-300 focus:border-[#0f2a5c] outline-none text-sm font-medium"
-                    />
-                  )}
-                </div>
-
-                {/* Shift preference */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    पसंदीदा परीक्षा शिफ्ट (Shift Preference)
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {(config.shifts || ['Shift 1: 09:30 AM - 10:30 AM', 'Shift 2: 11:30 AM - 12:30 PM']).map((s, idx) => (
-                      <label
-                        key={idx}
-                        className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                          formData.shift_preference === s
-                            ? 'border-[#0f2a5c] bg-[#0f2a5c]/5 font-bold text-[#0f2a5c]'
-                            : 'border-slate-200 hover:bg-slate-50 text-slate-700'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="shift"
-                          checked={formData.shift_preference === s}
-                          onChange={() => setFormData({ ...formData, shift_preference: s })}
-                          className="w-4 h-4 text-[#0f2a5c]"
-                        />
-                        <span className="text-sm">{s}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-4 rounded-xl bg-gradient-to-r from-[#0f2a5c] to-[#1e4a8a] text-white font-extrabold text-base shadow-lg hover:from-[#153e75] hover:to-[#225aa5] active:scale-[0.99] transition-all flex items-center justify-center gap-2 mt-4"
-                >
-                  {loading ? (
-                    <span>रजिस्ट्रेशन हो रहा है...</span>
-                  ) : (
-                    <>
-                      <span>फ्री रजिस्ट्रेशन करें व एडमिट कार्ड पाएं</span>
-                      <ArrowRight className="w-5 h-5 text-[#f5a623]" />
-                    </>
-                  )}
-                </button>
-
-                <p className="text-center text-xs text-slate-500 mt-2">
-                  🔒 आपकी जानकारी सुरक्षित है। रजिस्ट्रेशन बिल्कुल निःशुल्क है।
-                </p>
-              </form>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* 5. DOWNLOAD ADMIT CARD LOOKUP SECTION */}
-      <section id="admit-card-section" className="py-14 sm:py-16 bg-slate-100 border-t border-slate-200">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
-          <div className="w-12 h-12 rounded-full bg-[#0f2a5c]/10 text-[#0f2a5c] flex items-center justify-center mx-auto mb-3">
-            <Download className="w-6 h-6" />
-          </div>
-          <h3 className="text-2xl font-bold text-[#0f2a5c] mb-2">
-            पहले से रजिस्टर्ड हैं? एडमिट कार्ड डाउनलोड करें
-          </h3>
-          <p className="text-slate-600 text-sm mb-6">
-            अपना रोल नंबर या 10-अंकों का मोबाइल नंबर दर्ज करके कभी भी एडमिट कार्ड PDF डाउनलोड करें।
-          </p>
-
-          <form onSubmit={handleSearchLookup} className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
-            <input
-              type="text"
-              placeholder="रोल नंबर या मोबाइल नंबर"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="flex-grow px-4 py-3 rounded-xl border border-slate-300 focus:border-[#0f2a5c] outline-none text-sm font-medium"
-            />
-            <button
-              type="submit"
-              disabled={searchLoading}
-              className="px-6 py-3 bg-[#0f2a5c] text-white font-bold rounded-xl hover:bg-[#153e75] transition-all text-sm shrink-0 flex items-center justify-center gap-2"
-            >
-              <Search className="w-4 h-4" />
-              <span>{searchLoading ? 'खोज रहे हैं...' : 'खोजें'}</span>
-            </button>
-          </form>
-
-          {searchError && (
-            <p className="text-red-600 text-xs mt-3">{searchError}</p>
-          )}
-
-          {searchResult && (
-            <div className="mt-6 bg-white border border-slate-200 rounded-xl p-5 text-left max-w-md mx-auto shadow-md">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-[#0f2a5c] text-base">{searchResult.student_name}</span>
-                <span className="text-xs font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
-                  {searchResult.roll_number}
-                </span>
-              </div>
-              <div className="text-xs text-slate-600 space-y-1 mb-4">
-                <div>पिता का नाम: {searchResult.father_name}</div>
-                <div>स्कूल: {searchResult.school_name}</div>
-                <div>शिफ्ट: {searchResult.shift_preference}</div>
-              </div>
-              <button
-                onClick={() => generateAdmitCardPDF(searchResult, config)}
-                className="w-full py-2.5 bg-gradient-to-r from-[#f5a623] to-[#d48806] text-[#0f2a5c] font-bold rounded-lg text-sm flex items-center justify-center gap-2 shadow"
-              >
-                <Download className="w-4 h-4" />
-                <span>एडमिट कार्ड PDF डाउनलोड करें</span>
+            {/* CTA Buttons */}
+            <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button onClick={() => setActiveTab('register')}
+                className="px-8 py-3 bg-[#f5a623] text-[#0f2a5c] font-bold rounded text-sm hover:bg-amber-400 transition-colors shadow">
+                ➤ ऑनलाइन पंजीकरण (Free Registration)
+              </button>
+              <button onClick={() => setActiveTab('admit')}
+                className="px-8 py-3 bg-white border-2 border-[#0f2a5c] text-[#0f2a5c] font-bold rounded text-sm hover:bg-blue-50 transition-colors">
+                ↓ एडमिट कार्ड डाउनलोड करें
               </button>
             </div>
-          )}
-        </div>
-      </section>
-
-      {/* 6. PARENTS ORIENTATION & WHY SUNRISE */}
-      <section className="py-14 sm:py-20 bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="bg-gradient-to-br from-[#0f2a5c] to-[#153e75] rounded-3xl p-8 sm:p-12 text-white shadow-xl">
-            <div className="max-w-3xl">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#f5a623] bg-[#f5a623]/20 px-3 py-1 rounded-full">
-                अभिभावकों के लिए विशेष (For Parents)
-              </span>
-              <h2 className="text-2xl sm:text-4xl font-extrabold mt-3 leading-snug">
-                परीक्षा के दौरान: 15-मिनट का निःशुल्क करियर व बोर्ड गाइडेंस सेमिनार
-              </h2>
-              <p className="text-slate-200 text-sm sm:text-base mt-3 leading-relaxed">
-                जब आपके बच्चे परीक्षा कक्ष में टेस्ट दे रहे होंगे, उस समय कोचिंग सभागार में अभिभावकों के लिए विशेष सत्र आयोजित होगा:
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-                <div className="flex items-start gap-3 bg-white/10 p-3.5 rounded-xl border border-white/10">
-                  <ShieldCheck className="w-5 h-5 text-[#f5a623] shrink-0 mt-0.5" />
-                  <div className="text-xs sm:text-sm">
-                    <strong>450+ अंक की रणनीति:</strong> बिहार बोर्ड मैट्रिक में स्टेट व जिला टॉप कैसे करें।
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 bg-white/10 p-3.5 rounded-xl border border-white/10">
-                  <Users className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
-                  <div className="text-xs sm:text-sm">
-                    <strong>डिजिटल अटेंडेंस व वीकली टेस्ट:</strong> सनराइज में हर छात्र की निगरानी कैसे होती है।
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 flex items-center gap-4 text-xs sm:text-sm text-slate-300">
-                <Phone className="w-5 h-5 text-[#f5a623]" />
-                <span>किसी भी प्रश्न या पूछताछ के लिए कॉल करें: <strong>+91 9973152070</strong></span>
-              </div>
-            </div>
           </div>
         </div>
       </section>
+
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+
+        {/* ═══════════════════════════════════════════════
+            DIRECTOR'S MESSAGE
+        ═══════════════════════════════════════════════ */}
+        <section className="bg-white border border-gray-200 rounded shadow-sm overflow-hidden">
+          <div className="bg-[#0f2a5c] text-white px-5 py-2.5 text-sm font-bold uppercase tracking-wider">
+            निदेशक महोदय का संदेश — Director's Message
+          </div>
+          <div className="p-5 sm:p-6 flex flex-col sm:flex-row gap-6">
+            {/* Director photo */}
+            <div className="shrink-0 mx-auto sm:mx-0">
+              <img
+                src="/director_photo.jpg"
+                alt="Director — Sunrise Classes"
+                className="w-28 h-28 sm:w-32 sm:h-32 object-cover rounded border-2 border-[#f5a623]"
+                onError={e => {
+                  const el = e.target as HTMLImageElement;
+                  el.style.display = 'none';
+                }}
+              />
+              <div className="text-center mt-1.5 text-xs text-gray-500 leading-tight">
+                <div className="font-bold text-gray-700">निदेशक</div>
+                <div>सनराइज क्लासेज</div>
+              </div>
+            </div>
+            {/* Message text */}
+            <div>
+              <p className="text-sm sm:text-base text-gray-700 leading-relaxed mb-3">
+                प्रिय अभिभावक एवं छात्र-छात्राओं,
+              </p>
+              <p className="text-sm text-gray-600 leading-relaxed mb-3">
+                STSE 2027 का उद्देश्य हमारे क्षेत्र — चंपानगर एवं आसपास के गांवों — के प्रतिभाशाली बच्चों को एक मंच
+                देना है, जहाँ वे अपनी योग्यता साबित कर सकें और कम फीस में गुणवत्तापूर्ण शिक्षा प्राप्त कर सकें।
+                यह परीक्षा कक्षा 9वीं के पाठ्यक्रम पर आधारित होगी। <strong>प्रथम स्थान पाने वाले छात्र को
+                स्मार्टवॉच एवं पूरे वर्ष 100% फीस माफ़ी</strong> दी जाएगी।
+              </p>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                परीक्षा में भाग लेना बिल्कुल निःशुल्क है। हर भाग लेने वाले छात्र को <strong>Sunrise Exam Kit
+                एवं सहभागिता प्रमाण-पत्र</strong> दिया जाएगा। अपना पंजीकरण आज ही करें।
+              </p>
+              <div className="mt-4 text-xs text-gray-500 font-medium">
+                — निदेशक, सनराइज क्लासेज एवं अकादमी, चंपानगर
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════
+            PRIZE & SCHOLARSHIP TABLE
+        ═══════════════════════════════════════════════ */}
+        <section className="bg-white border border-gray-200 rounded shadow-sm overflow-hidden">
+          <div className="bg-[#0f2a5c] text-white px-5 py-2.5 text-sm font-bold uppercase tracking-wider">
+            पुरस्कार एवं छात्रवृत्ति विवरण — Prize &amp; Scholarship Details
+          </div>
+          <div className="p-4 sm:p-5">
+            <p className="text-xs text-gray-500 mb-3 italic">
+              * शीर्ष 10 छात्रों को पुरस्कार एवं फीस छूट दी जाएगी। सभी उपस्थित छात्रों को Exam Kit एवं Certificate मिलेगा।
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-[#f5a623]/15 text-[#0f2a5c]">
+                    <th className="border border-gray-300 px-3 py-2.5 text-left font-bold w-32">रैंक (Rank)</th>
+                    <th className="border border-gray-300 px-3 py-2.5 text-left font-bold">फीस में छूट</th>
+                    <th className="border border-gray-300 px-3 py-2.5 text-left font-bold">पुरस्कार / Prize</th>
+                    <th className="border border-gray-300 px-3 py-2.5 text-left font-bold">अन्य लाभ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="bg-amber-50">
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-amber-700">🥇 प्रथम (1st)</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-green-700">100% फीस माफ़</td>
+                    <td className="border border-gray-300 px-3 py-2.5">ब्रांडेड स्मार्टवॉच ⌚ + गोल्डन ट्रॉफी 🏆</td>
+                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600">Sunrise VIP Bag + Complete Exam Kit + Certificate</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-gray-600">🥈 द्वितीय (2nd)</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-green-700">75% फीस माफ़</td>
+                    <td className="border border-gray-300 px-3 py-2.5">स्पोर्ट्स डिजिटल वॉच ⌚ + सिल्वर ट्रॉफी</td>
+                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600">Premium School Bag + Exam Kit + Certificate</td>
+                  </tr>
+                  <tr className="bg-gray-50">
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-orange-700">🥉 तृतीय (3rd)</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-green-700">50% फीस माफ़</td>
+                    <td className="border border-gray-300 px-3 py-2.5">कलाई घड़ी + ब्रॉन्ज ट्रॉफी + मेडल</td>
+                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600">School Bag + Exam Kit + Certificate</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-blue-700">4th से 10th</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-green-700">25% फीस माफ़</td>
+                    <td className="border border-gray-300 px-3 py-2.5">Class 10th Complete Book Kit 📚 + Certificate</td>
+                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600">Exam Kit + Participation Certificate</td>
+                  </tr>
+                  <tr className="bg-green-50">
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-green-700">सभी उपस्थित</td>
+                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600">—</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-semibold text-green-800">
+                      🎁 Sunrise Writing Board + 2 OMR Pens
+                    </td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-semibold text-green-800">
+                      आधिकारिक सहभागिता प्रमाण-पत्र (Certificate of Participation)
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════
+            EXAM PATTERN TABLE
+        ═══════════════════════════════════════════════ */}
+        <section className="bg-white border border-gray-200 rounded shadow-sm overflow-hidden">
+          <div className="bg-[#0f2a5c] text-white px-5 py-2.5 text-sm font-bold uppercase tracking-wider">
+            परीक्षा पैटर्न एवं पाठ्यक्रम — Exam Pattern &amp; Syllabus
+          </div>
+          <div className="p-4 sm:p-5">
+            <p className="text-xs text-gray-500 mb-4">
+              परीक्षा कक्षा 9वीं के Bihar Board पाठ्यक्रम पर आधारित होगी। प्रश्न-पत्र हिंदी एवं अंग्रेजी दोनों माध्यम में होगा।
+            </p>
+            <div className="overflow-x-auto mb-4">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-[#f5a623]/15 text-[#0f2a5c]">
+                    <th className="border border-gray-300 px-3 py-2.5 text-left font-bold">विषय (Subject)</th>
+                    <th className="border border-gray-300 px-3 py-2.5 text-left font-bold w-28">प्रश्न संख्या</th>
+                    <th className="border border-gray-300 px-3 py-2.5 text-left font-bold">मुख्य अध्याय (Topics)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-gray-300 px-3 py-2.5 font-semibold text-[#0f2a5c]">गणित (Mathematics)</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-center">20</td>
+                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600 text-xs">
+                      संख्या पद्धति, बहुपद, दो चर वाले रैखिक समीकरण, त्रिभुज, पृष्ठीय क्षेत्रफल और आयतन
+                    </td>
+                  </tr>
+                  <tr className="bg-gray-50">
+                    <td className="border border-gray-300 px-3 py-2.5 font-semibold text-[#0f2a5c]">विज्ञान (Science)</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-center">20</td>
+                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600 text-xs">
+                      गति एवं बल के नियम, गुरुत्वाकर्षण, पदार्थ की संरचना, परमाणु-अणु, कोशिका एवं ऊतक
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-3 py-2.5 font-semibold text-[#0f2a5c]">तर्कशक्ति (Mental Ability)</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-center">10</td>
+                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600 text-xs">
+                      नंबर सीरीज, कोडिंग-डिकोडिंग, मिसिंग नंबर, दिशा ज्ञान, तार्किक पैटर्न
+                    </td>
+                  </tr>
+                  <tr className="bg-[#f5a623]/10 font-bold">
+                    <td className="border border-gray-300 px-3 py-2.5 text-[#0f2a5c]">कुल (Total)</td>
+                    <td className="border border-gray-300 px-3 py-2.5 text-center text-[#0f2a5c]">50</td>
+                    <td className="border border-gray-300 px-3 py-2.5 text-gray-700 text-xs">
+                      OMR शीट आधारित | समय: 60 मिनट | नेगेटिव मार्किंग: नहीं
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            {/* Exam quick facts */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-center">
+              {[
+                { label: 'कुल प्रश्न', value: '50 MCQ' },
+                { label: 'परीक्षा समय', value: '60 मिनट' },
+                { label: 'माध्यम', value: 'OMR शीट' },
+                { label: 'नेगेटिव मार्किंग', value: 'बिल्कुल नहीं' },
+              ].map(f => (
+                <div key={f.label} className="bg-gray-50 border border-gray-200 rounded p-2.5">
+                  <div className="text-gray-500 mb-0.5">{f.label}</div>
+                  <div className="font-bold text-[#0f2a5c]">{f.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════
+            REGISTRATION / ADMIT CARD TABS
+        ═══════════════════════════════════════════════ */}
+        <section className="bg-white border border-gray-200 rounded shadow-sm overflow-hidden" id="register-section">
+          {/* Tab Header */}
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('register')}
+              className={`flex-1 py-3 text-sm font-bold tracking-wide transition-colors ${
+                activeTab === 'register'
+                  ? 'bg-[#0f2a5c] text-white'
+                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              ➤ नया पंजीकरण (New Registration)
+            </button>
+            <button
+              onClick={() => setActiveTab('admit')}
+              className={`flex-1 py-3 text-sm font-bold tracking-wide transition-colors ${
+                activeTab === 'admit'
+                  ? 'bg-[#0f2a5c] text-white'
+                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              ↓ एडमिट कार्ड डाउनलोड
+            </button>
+          </div>
+
+          <div className="p-5 sm:p-7">
+            {/* ─── REGISTRATION FORM TAB ─── */}
+            {activeTab === 'register' && (
+              <>
+                {successRegistration ? (
+                  /* SUCCESS STATE */
+                  <div className="max-w-lg mx-auto text-center">
+                    <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <CheckCircle className="w-8 h-8 text-green-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-green-800 mb-1">पंजीकरण सफल!</h3>
+                    <p className="text-gray-600 text-sm mb-5">आपका STSE 2027 परीक्षा के लिए पंजीकरण हो चुका है।</p>
+                    <div className="bg-gray-50 border border-gray-200 rounded text-left p-4 mb-5 text-sm space-y-2">
+                      <div className="flex justify-between border-b border-gray-100 pb-2">
+                        <span className="text-gray-500">रोल नंबर:</span>
+                        <span className="font-bold text-[#0f2a5c] text-base">{successRegistration.roll_number}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-gray-100 pb-2">
+                        <span className="text-gray-500">छात्र का नाम:</span>
+                        <span className="font-semibold">{successRegistration.student_name}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-gray-100 pb-2">
+                        <span className="text-gray-500">परीक्षा शिफ्ट:</span>
+                        <span className="font-semibold">{successRegistration.shift_preference}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">परीक्षा केंद्र:</span>
+                        <span className="font-semibold">सनराइज कैंपस, चंपानगर</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <button
+                        onClick={() => generateAdmitCardPDF(successRegistration, config)}
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-[#0f2a5c] text-white font-bold rounded text-sm hover:bg-[#1a3a7a] transition-colors"
+                      >
+                        <Download className="w-4 h-4" />
+                        एडमिट कार्ड PDF डाउनलोड करें
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSuccessRegistration(null);
+                          setFormData({
+                            student_name: '', father_name: '', phone: '', whatsapp: '',
+                            school_name: LOCAL_SCHOOLS[0], custom_school: '',
+                            village_area: LOCAL_VILLAGES[0], custom_village: '',
+                            shift_preference: config.shifts?.[0] || 'Shift 1: 09:30 AM - 10:30 AM',
+                            class_target: 'Class 10th (Matric 2027)',
+                          });
+                        }}
+                        className="px-5 py-3 border border-gray-300 text-gray-700 font-semibold rounded text-sm hover:bg-gray-50 transition-colors"
+                      >
+                        दूसरा फॉर्म भरें
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* REGISTRATION FORM */
+                  <>
+                    <div className="mb-5 pb-4 border-b border-gray-100">
+                      <h2 className="text-base font-bold text-[#0f2a5c]">STSE 2027 — पंजीकरण प्रपत्र</h2>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        फॉर्म भरते ही तुरंत एडमिट कार्ड (PDF) डाउनलोड हो जाएगा। सभी जानकारी सही-सही भरें।
+                      </p>
+                    </div>
+
+                    {errorMessage && (
+                      <div className="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-700 text-sm flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{errorMessage}</span>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      {/* Row 1 */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">
+                            छात्र / छात्रा का नाम <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text" required
+                            placeholder="जैसे: Rahul Kumar"
+                            value={formData.student_name}
+                            onChange={e => setFormData({ ...formData, student_name: e.target.value })}
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#0f2a5c] focus:ring-1 focus:ring-[#0f2a5c]/30"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">
+                            पिता का नाम <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text" required
+                            placeholder="जैसे: Shri Rajesh Kumar"
+                            value={formData.father_name}
+                            onChange={e => setFormData({ ...formData, father_name: e.target.value })}
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#0f2a5c] focus:ring-1 focus:ring-[#0f2a5c]/30"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Row 2 */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">
+                            मोबाइल नंबर <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="tel" required maxLength={10}
+                            placeholder="10 अंकों का नंबर"
+                            value={formData.phone}
+                            onChange={e => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#0f2a5c] focus:ring-1 focus:ring-[#0f2a5c]/30"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">
+                            WhatsApp नंबर <span className="text-gray-400 font-normal">(यदि अलग है)</span>
+                          </label>
+                          <input
+                            type="tel" maxLength={10}
+                            placeholder="WhatsApp नंबर"
+                            value={formData.whatsapp}
+                            onChange={e => setFormData({ ...formData, whatsapp: e.target.value.replace(/\D/g, '') })}
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#0f2a5c] focus:ring-1 focus:ring-[#0f2a5c]/30"
+                          />
+                        </div>
+                      </div>
+
+                      {/* School */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          वर्तमान विद्यालय का नाम <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={formData.school_name}
+                          onChange={e => setFormData({ ...formData, school_name: e.target.value })}
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#0f2a5c] bg-white"
+                        >
+                          {LOCAL_SCHOOLS.map((sch, i) => (
+                            <option key={i} value={sch}>{sch}</option>
+                          ))}
+                        </select>
+                        {formData.school_name === 'अन्य स्कूल (Other School)' && (
+                          <input
+                            type="text"
+                            placeholder="अपने स्कूल का पूरा नाम लिखें"
+                            value={formData.custom_school}
+                            onChange={e => setFormData({ ...formData, custom_school: e.target.value })}
+                            className="w-full mt-2 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#0f2a5c]"
+                          />
+                        )}
+                      </div>
+
+                      {/* Village */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          गांव / मोहल्ला / क्षेत्र <span className="text-red-500">*</span>
+                          <span className="text-gray-400 font-normal ml-1">(8 km के अंदर)</span>
+                        </label>
+                        <select
+                          value={formData.village_area}
+                          onChange={e => setFormData({ ...formData, village_area: e.target.value })}
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#0f2a5c] bg-white"
+                        >
+                          {LOCAL_VILLAGES.map((v, i) => (
+                            <option key={i} value={v}>{v}</option>
+                          ))}
+                        </select>
+                        {formData.village_area === 'अन्य 8 KM का गांव/क्षेत्र (Other Area within 8km)' && (
+                          <input
+                            type="text"
+                            placeholder="अपने गांव या क्षेत्र का नाम लिखें"
+                            value={formData.custom_village}
+                            onChange={e => setFormData({ ...formData, custom_village: e.target.value })}
+                            className="w-full mt-2 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#0f2a5c]"
+                          />
+                        )}
+                      </div>
+
+                      {/* Shift */}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-2">
+                          पसंदीदा परीक्षा शिफ्ट (Shift Preference)
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {(config.shifts || ['Shift 1: 09:30 AM - 10:30 AM', 'Shift 2: 11:30 AM - 12:30 PM']).map((s, idx) => (
+                            <label
+                              key={idx}
+                              className={`flex items-center gap-3 p-3 border rounded cursor-pointer text-sm transition-colors ${
+                                formData.shift_preference === s
+                                  ? 'border-[#0f2a5c] bg-blue-50 font-semibold text-[#0f2a5c]'
+                                  : 'border-gray-300 hover:bg-gray-50 text-gray-700'
+                              }`}
+                            >
+                              <input
+                                type="radio" name="shift"
+                                checked={formData.shift_preference === s}
+                                onChange={() => setFormData({ ...formData, shift_preference: s })}
+                                className="w-4 h-4"
+                              />
+                              {s}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Submit */}
+                      <button
+                        type="submit" disabled={loading}
+                        className="w-full py-3.5 bg-[#0f2a5c] text-white font-bold rounded text-sm hover:bg-[#1a3a7a] active:scale-[0.99] transition-all mt-2 flex items-center justify-center gap-2 disabled:opacity-60"
+                      >
+                        {loading ? (
+                          'पंजीकरण हो रहा है... कृपया प्रतीक्षा करें'
+                        ) : (
+                          <>
+                            <span>निःशुल्क पंजीकरण करें एवं एडमिट कार्ड प्राप्त करें</span>
+                            <ArrowRight className="w-4 h-4 text-[#f5a623]" />
+                          </>
+                        )}
+                      </button>
+                      <p className="text-center text-xs text-gray-400 mt-1">
+                        🔒 आपकी व्यक्तिगत जानकारी पूर्णतः सुरक्षित रहेगी। पंजीकरण बिल्कुल निःशुल्क है।
+                      </p>
+                    </form>
+                  </>
+                )}
+              </>
+            )}
+
+            {/* ─── ADMIT CARD TAB ─── */}
+            {activeTab === 'admit' && (
+              <div className="max-w-md mx-auto">
+                <div className="mb-5 pb-4 border-b border-gray-100">
+                  <h2 className="text-base font-bold text-[#0f2a5c]">एडमिट कार्ड डाउनलोड</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    अपना रोल नंबर या पंजीकृत मोबाइल नंबर दर्ज करके एडमिट कार्ड PDF डाउनलोड करें।
+                  </p>
+                </div>
+
+                <form onSubmit={handleSearchLookup} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      रोल नंबर या मोबाइल नंबर दर्ज करें
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Roll No. या 10-अंकों का मोबाइल नंबर"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="flex-grow px-3 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#0f2a5c]"
+                      />
+                      <button
+                        type="submit" disabled={searchLoading}
+                        className="px-5 py-2.5 bg-[#0f2a5c] text-white font-bold rounded text-sm hover:bg-[#1a3a7a] transition-colors flex items-center gap-1.5 shrink-0"
+                      >
+                        <Search className="w-4 h-4" />
+                        {searchLoading ? 'खोज रहे...' : 'खोजें'}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+
+                {searchError && (
+                  <div className="mt-4 p-3 border border-red-200 bg-red-50 rounded text-sm text-red-700 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    {searchError}
+                  </div>
+                )}
+
+                {searchResult && (
+                  <div className="mt-5 border border-gray-200 rounded bg-gray-50 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-bold text-[#0f2a5c]">{searchResult.student_name}</span>
+                      <span className="text-xs font-bold px-2 py-0.5 bg-[#0f2a5c] text-white rounded">
+                        Roll: {searchResult.roll_number}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 space-y-1 mb-4">
+                      <div>पिता का नाम: <span className="font-medium text-gray-800">{searchResult.father_name}</span></div>
+                      <div>विद्यालय: <span className="font-medium text-gray-800">{searchResult.school_name}</span></div>
+                      <div>परीक्षा शिफ्ट: <span className="font-medium text-gray-800">{searchResult.shift_preference}</span></div>
+                    </div>
+                    <button
+                      onClick={() => generateAdmitCardPDF(searchResult, config)}
+                      className="w-full py-2.5 bg-[#f5a623] text-[#0f2a5c] font-bold rounded text-sm hover:bg-amber-400 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      एडमिट कार्ड PDF डाउनलोड करें
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════
+            PARENTS' ORIENTATION NOTE
+        ═══════════════════════════════════════════════ */}
+        <section className="bg-[#0f2a5c] text-white rounded shadow-sm overflow-hidden">
+          <div className="bg-[#f5a623] text-[#0f2a5c] px-5 py-2.5 text-sm font-bold uppercase tracking-wider">
+            अभिभावकों के लिए विशेष सूचना — Notice for Parents
+          </div>
+          <div className="p-5 sm:p-7">
+            <p className="text-sm text-blue-100 leading-relaxed mb-5">
+              जब आपके बच्चे परीक्षा दे रहे होंगे, उस समय कोचिंग सभागार में अभिभावकों के लिए एक <strong className="text-white">निःशुल्क
+              मार्गदर्शन सत्र (Guidance Session)</strong> आयोजित किया जाएगा, जिसमें निम्न विषयों पर चर्चा होगी:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 text-sm">
+              {[
+                'Bihar Board Matric 2027 में 450+ अंक लाने की रणनीति',
+                'Sunrise में डिजिटल उपस्थिति व साप्ताहिक परीक्षा प्रणाली',
+                'Class 10th पाठ्यक्रम एवं परीक्षा की तैयारी कैसे करें',
+                'अपने बच्चे की पढ़ाई में अभिभावक की भूमिका',
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-2 text-blue-100">
+                  <span className="text-[#f5a623] mt-0.5">▸</span>
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-white/10 pt-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="w-4 h-4 text-[#f5a623]" />
+                <span className="text-blue-200">किसी भी जानकारी के लिए संपर्क करें:</span>
+                <a href="tel:9973152070" className="font-bold text-white hover:text-[#f5a623] transition-colors">
+                  +91 99731 52070
+                </a>
+              </div>
+              <div className="flex items-center gap-2 text-sm sm:ml-4">
+                <MapPin className="w-4 h-4 text-[#f5a623]" />
+                <span className="text-blue-200">सनराइज कैंपस, मेन मार्केट, चंपानगर, पूर्णिया</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer note */}
+        <div className="text-center text-xs text-gray-400 pb-4">
+          © Sunrise Classes &amp; Academy, Champanagar, Purnia, Bihar — STSE 2027
+        </div>
+
+      </div>
     </div>
   );
 }
