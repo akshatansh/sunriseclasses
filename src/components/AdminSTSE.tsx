@@ -344,8 +344,23 @@ export default function AdminSTSE() {
                       </td>
 
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-slate-900">{r.student_name}</div>
-                        <div className="text-[11px] text-slate-500">पिता: {r.father_name}</div>
+                        <div className="flex items-center gap-2.5">
+                          {r.photo_base64 ? (
+                            <img
+                              src={r.photo_base64}
+                              alt={r.student_name}
+                              className="w-8 h-10 object-cover rounded border border-slate-300 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-8 h-10 rounded border border-dashed border-slate-300 bg-slate-100 flex items-center justify-center text-[10px] text-slate-400 shrink-0">
+                              No Pic
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-bold text-slate-900">{r.student_name}</div>
+                            <div className="text-[11px] text-slate-500">पिता: {r.father_name}</div>
+                          </div>
+                        </div>
                       </td>
 
                       <td className="py-3.5 px-4">
@@ -544,3 +559,4 @@ export default function AdminSTSE() {
     </div>
   );
 }
+

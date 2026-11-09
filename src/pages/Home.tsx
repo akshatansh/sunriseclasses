@@ -7,7 +7,7 @@ import Videos from '../components/Videos';
 import Gallery from '../components/Gallery';
 import SeoContentBlock from '../components/SeoContentBlock';
 import Contact from '../components/Contact';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Home() {
@@ -29,8 +29,8 @@ export default function Home() {
               🏆
             </div>
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#f5a623]/20 border border-[#f5a623]/40 text-[#f5a623] text-[11px] font-black uppercase tracking-wider mb-1">
-                <Sparkles size={12} /> चंपानगर का सबसे बड़ा टैलेंट टेस्ट
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#f5a623]/20 border border-[#f5a623]/40 text-[#f5a623] text-[11px] font-bold uppercase tracking-wider mb-1">
+                <Award size={12} /> आधिकारिक छात्रवृत्ति परीक्षा 2027
               </div>
               <h3 className="text-lg sm:text-2xl font-black text-white">
                 सनराइज प्रतिभा खोज परीक्षा 2027 (STSE) — Class 10th बैच

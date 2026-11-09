@@ -97,12 +97,26 @@ export async function registerForSTSE(
       created_at: new Date().toISOString(),
     };
 
-    // 3. Insert into Supabase
-    const { data, error } = await supabase
+    // 3. Insert into Supabase (handle gracefully if photo_base64 column is not yet in DB schema)
+    let dbRecord: any = { ...newRecord };
+    let { data, error } = await supabase
       .from('stse_registrations')
-      .insert([newRecord])
+      .insert([dbRecord])
       .select()
       .single();
+
+    if (error && (error.message?.includes('photo_base64') || error.details?.includes('photo_base64'))) {
+      const { photo_base64, ...recordWithoutPhoto } = dbRecord;
+      const retry = await supabase
+        .from('stse_registrations')
+        .insert([recordWithoutPhoto])
+        .select()
+        .single();
+      if (!retry.error) {
+        error = null;
+        data = { ...retry.data, photo_base64 };
+      }
+    }
 
     if (error) {
       console.warn('Supabase insert failed, caching locally', error);
@@ -110,10 +124,17 @@ export async function registerForSTSE(
       const cached = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
       cached.push(newRecord);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cached));
+      if (newRecord.photo_base64) {
+        localStorage.setItem(`stse_photo_${newRecord.roll_number}`, newRecord.photo_base64);
+      }
       return { success: true, registration: newRecord };
     }
 
-    return { success: true, registration: data || newRecord };
+    const finalReg: STSERegistration = { ...(data || newRecord), photo_base64: newRecord.photo_base64 || (data as any)?.photo_base64 };
+    if (finalReg.photo_base64 && finalReg.roll_number) {
+      localStorage.setItem(`stse_photo_${finalReg.roll_number}`, finalReg.photo_base64);
+    }
+    return { success: true, registration: finalReg };
   } catch (err: any) {
     console.error('STSE Registration Error:', err);
     return { success: false, error: err?.message || 'Registration failed' };
@@ -134,7 +155,12 @@ export async function getRegistrationByRollOrPhone(
       .limit(1);
 
     if (!error && data && data.length > 0) {
-      return data[0];
+      const reg = data[0];
+      if (!reg.photo_base64 && reg.roll_number) {
+        const cachedPhoto = localStorage.getItem(`stse_photo_${reg.roll_number}`);
+        if (cachedPhoto) reg.photo_base64 = cachedPhoto;
+      }
+      return reg;
     }
   } catch (err) {
     console.warn('Search in supabase failed, checking local cache', err);
@@ -212,3 +238,4 @@ export async function updateSTSERegistrationMarks(
     return false;
   }
 }
+

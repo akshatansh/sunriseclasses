@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Download, Search, AlertCircle, CheckCircle, Phone, MapPin, Clock, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Download, Search, AlertCircle, CheckCircle, Phone, MapPin, Clock, ArrowRight, Camera, X } from 'lucide-react';
 import { registerForSTSE, getRegistrationByRollOrPhone, getSTSEConfig } from '../lib/stse';
-import { generateAdmitCardPDF, STSERegistration, STSEConfig } from '../lib/admitCardPdf';
+import { generateAdmitCardPDF, resizeImageToPassportSize, STSERegistration, STSEConfig } from '../lib/admitCardPdf';
 
 const LOCAL_SCHOOLS = [
   'राजकीय उच्च विद्यालय, चंपानगर (Govt High School Champanagar)',
@@ -47,6 +47,10 @@ export default function ScholarshipPage() {
     class_target: 'Class 10th (Matric 2027)',
   });
 
+  const [photoBase64, setPhotoBase64] = useState<string>('');
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [loading, setLoading] = useState(false);
   const [successRegistration, setSuccessRegistration] = useState<STSERegistration | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -55,6 +59,35 @@ export default function ScholarshipPage() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<STSERegistration | null>(null);
   const [searchError, setSearchError] = useState('');
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('कृपया मान्य फोटो फाइल (JPG, PNG या WEBP) चुनें।');
+      return;
+    }
+
+    try {
+      setPhotoLoading(true);
+      const resized = await resizeImageToPassportSize(file);
+      setPhotoBase64(resized);
+      setErrorMessage('');
+    } catch (err) {
+      console.error('Photo resize error', err);
+      setErrorMessage('फोटो लोड करने में समस्या आई। कृपया दूसरी फोटो चुनें।');
+    } finally {
+      setPhotoLoading(false);
+    }
+  };
+
+  const removePhoto = () => {
+    setPhotoBase64('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   useEffect(() => {
     getSTSEConfig().then(cfg => {
@@ -94,6 +127,7 @@ export default function ScholarshipPage() {
       shift_preference: formData.shift_preference,
       class_target: formData.class_target,
       exam_date: config.exam_date,
+      photo_base64: photoBase64 || undefined,
     });
 
     setLoading(false);
@@ -163,7 +197,7 @@ export default function ScholarshipPage() {
           <div className="text-center">
             {/* Official notice top label */}
             <div className="inline-block border border-[#0f2a5c] text-[#0f2a5c] text-xs font-bold uppercase tracking-widest px-4 py-1 mb-4">
-              ✦ आधिकारिक सूचना — Scholarship Examination Notice ✦
+              आधिकारिक सूचना | OFFICIAL NOTIFICATION
             </div>
             {/* Exam full name */}
             <h1 className="text-2xl sm:text-4xl font-extrabold text-[#0f2a5c] leading-snug mb-1">
@@ -278,38 +312,32 @@ export default function ScholarshipPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="bg-amber-50">
-                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-amber-700">🥇 प्रथम (1st)</td>
-                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-green-700">100% फीस माफ़</td>
-                    <td className="border border-gray-300 px-3 py-2.5">ब्रांडेड स्मार्टवॉच ⌚ + गोल्डन ट्रॉफी 🏆</td>
-                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600">Sunrise VIP Bag + Complete Exam Kit + Certificate</td>
+                  <tr className="bg-amber-50/60">
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-amber-900">Rank 1 (Topper)</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-green-700">100% फीस माफ़ (Full Year)</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-medium">ब्रांडेड स्मार्टवॉच + स्वर्ण ट्रॉफी</td>
+                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600">Sunrise VIP बैग + संपूर्ण किट + मेरिट प्रमाण-पत्र</td>
                   </tr>
                   <tr>
-                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-gray-600">🥈 द्वितीय (2nd)</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-gray-700">Rank 2 एवं 3</td>
                     <td className="border border-gray-300 px-3 py-2.5 font-bold text-green-700">75% फीस माफ़</td>
-                    <td className="border border-gray-300 px-3 py-2.5">स्पोर्ट्स डिजिटल वॉच ⌚ + सिल्वर ट्रॉफी</td>
-                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600">Premium School Bag + Exam Kit + Certificate</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-medium">डिजिटल स्पोर्ट्स वॉच + रजत ट्रॉफी</td>
+                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600">प्रीमियम स्कूल बैग + एग्जाम किट + प्रमाण-पत्र</td>
                   </tr>
-                  <tr className="bg-gray-50">
-                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-orange-700">🥉 तृतीय (3rd)</td>
-                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-green-700">50% फीस माफ़</td>
-                    <td className="border border-gray-300 px-3 py-2.5">कलाई घड़ी + ब्रॉन्ज ट्रॉफी + मेडल</td>
-                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600">School Bag + Exam Kit + Certificate</td>
+                  <tr className="bg-gray-50/70">
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-gray-700">Rank 4 से 10</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-green-700">50% से 25% फीस माफ़</td>
+                    <td className="border border-gray-300 px-3 py-2.5 font-medium">कांस्य मेडल + Class 10th गाइड बुक किट</td>
+                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600">स्कूल बैग + एग्जाम किट + प्रमाण-पत्र</td>
                   </tr>
-                  <tr>
-                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-blue-700">4th से 10th</td>
-                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-green-700">25% फीस माफ़</td>
-                    <td className="border border-gray-300 px-3 py-2.5">Class 10th Complete Book Kit 📚 + Certificate</td>
-                    <td className="border border-gray-300 px-3 py-2.5 text-gray-600">Exam Kit + Participation Certificate</td>
-                  </tr>
-                  <tr className="bg-green-50">
-                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-green-700">सभी उपस्थित</td>
+                  <tr className="bg-green-50/60">
+                    <td className="border border-gray-300 px-3 py-2.5 font-bold text-green-800">सभी उपस्थित परीक्षार्थी</td>
                     <td className="border border-gray-300 px-3 py-2.5 text-gray-600">—</td>
-                    <td className="border border-gray-300 px-3 py-2.5 font-semibold text-green-800">
-                      🎁 Sunrise Writing Board + 2 OMR Pens
+                    <td className="border border-gray-300 px-3 py-2.5 font-medium text-green-800">
+                      Sunrise राइटिंग बोर्ड + 2 OMR बॉल पेन
                     </td>
-                    <td className="border border-gray-300 px-3 py-2.5 font-semibold text-green-800">
-                      आधिकारिक सहभागिता प्रमाण-पत्र (Certificate of Participation)
+                    <td className="border border-gray-300 px-3 py-2.5 font-medium text-green-800">
+                      आधिकारिक सहभागिता प्रमाण-पत्र (Certificate)
                     </td>
                   </tr>
                 </tbody>
@@ -427,22 +455,29 @@ export default function ScholarshipPage() {
                     </div>
                     <h3 className="text-xl font-bold text-green-800 mb-1">पंजीकरण सफल!</h3>
                     <p className="text-gray-600 text-sm mb-5">आपका STSE 2027 परीक्षा के लिए पंजीकरण हो चुका है।</p>
-                    <div className="bg-gray-50 border border-gray-200 rounded text-left p-4 mb-5 text-sm space-y-2">
-                      <div className="flex justify-between border-b border-gray-100 pb-2">
-                        <span className="text-gray-500">रोल नंबर:</span>
-                        <span className="font-bold text-[#0f2a5c] text-base">{successRegistration.roll_number}</span>
-                      </div>
-                      <div className="flex justify-between border-b border-gray-100 pb-2">
-                        <span className="text-gray-500">छात्र का नाम:</span>
-                        <span className="font-semibold">{successRegistration.student_name}</span>
-                      </div>
-                      <div className="flex justify-between border-b border-gray-100 pb-2">
-                        <span className="text-gray-500">परीक्षा शिफ्ट:</span>
-                        <span className="font-semibold">{successRegistration.shift_preference}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">परीक्षा केंद्र:</span>
-                        <span className="font-semibold">सनराइज कैंपस, चंपानगर</span>
+                    <div className="bg-gray-50 border border-gray-200 rounded text-left p-4 mb-5 text-sm flex flex-col sm:flex-row gap-4 items-center sm:items-start">
+                      {successRegistration.photo_base64 && (
+                        <div className="w-20 h-24 border border-[#0f2a5c] rounded overflow-hidden bg-white shrink-0 shadow-sm">
+                          <img src={successRegistration.photo_base64} alt="Student" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex-1 w-full space-y-2">
+                        <div className="flex justify-between border-b border-gray-100 pb-2">
+                          <span className="text-gray-500">रोल नंबर:</span>
+                          <span className="font-bold text-[#0f2a5c] text-base">{successRegistration.roll_number}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-gray-100 pb-2">
+                          <span className="text-gray-500">छात्र का नाम:</span>
+                          <span className="font-semibold">{successRegistration.student_name}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-gray-100 pb-2">
+                          <span className="text-gray-500">परीक्षा शिफ्ट:</span>
+                          <span className="font-semibold">{successRegistration.shift_preference}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">परीक्षा केंद्र:</span>
+                          <span className="font-semibold">सनराइज कैंपस, चंपानगर</span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -456,6 +491,8 @@ export default function ScholarshipPage() {
                       <button
                         onClick={() => {
                           setSuccessRegistration(null);
+                          setPhotoBase64('');
+                          if (fileInputRef.current) fileInputRef.current.value = '';
                           setFormData({
                             student_name: '', father_name: '', phone: '', whatsapp: '',
                             school_name: LOCAL_SCHOOLS[0], custom_school: '',
@@ -622,6 +659,72 @@ export default function ScholarshipPage() {
                         </div>
                       </div>
 
+                      {/* Passport Size Photo Upload */}
+                      <div className="border border-gray-300 rounded-lg p-4 bg-gray-50/80">
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          छात्र / छात्रा का पासपोर्ट साइज फोटो (Passport Photo)
+                          <span className="text-gray-400 font-normal ml-1">(एडमिट कार्ड पर प्रिंट होगा)</span>
+                        </label>
+
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          accept="image/*"
+                          onChange={handlePhotoSelect}
+                          className="hidden"
+                          id="passport-photo-input"
+                        />
+
+                        {photoBase64 ? (
+                          <div className="flex items-center gap-4 mt-2">
+                            <div className="relative w-20 h-24 sm:w-24 sm:h-32 border-2 border-[#0f2a5c] rounded overflow-hidden bg-white shadow-sm shrink-0">
+                              <img
+                                src={photoBase64}
+                                alt="Student Preview"
+                                className="w-full h-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={removePhoto}
+                                className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow"
+                                title="फोटो हटाएं"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <div className="text-xs text-gray-600 space-y-1">
+                              <div className="font-semibold text-green-700 flex items-center gap-1">
+                                <CheckCircle className="w-4 h-4" />
+                                फोटो सफलतापूर्वक लोड हो गया
+                              </div>
+                              <p className="text-gray-500">
+                                यह फोटो सीधे आपके आधिकारिक एडमिट कार्ड पर पासपोर्ट बॉक्स में प्रिंट होगा।
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="text-[#0f2a5c] underline font-medium hover:text-[#1a3a7a]"
+                              >
+                                दूसरी फोटो बदलें
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => fileInputRef.current?.click()}
+                            className="mt-2 border-2 border-dashed border-gray-300 rounded cursor-pointer p-4 text-center hover:border-[#0f2a5c] hover:bg-white transition-all"
+                          >
+                            <Camera className="w-7 h-7 text-gray-400 mx-auto mb-1.5" />
+                            <div className="text-xs font-bold text-[#0f2a5c]">
+                              {photoLoading ? 'फोटो प्रोसेस हो रही है...' : 'पासपोर्ट साइज फोटो अपलोड करें (गैलरी या कैमरा)'}
+                            </div>
+                            <p className="text-[11px] text-gray-500 mt-0.5">
+                              JPG, PNG फोटो चुनें — जिससे आपका एडमिट कार्ड आधिकारिक बोर्ड परीक्षा जैसा दिखेगा।
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Submit */}
                       <button
                         type="submit" disabled={loading}
@@ -688,16 +791,25 @@ export default function ScholarshipPage() {
 
                 {searchResult && (
                   <div className="mt-5 border border-gray-200 rounded bg-gray-50 p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-bold text-[#0f2a5c]">{searchResult.student_name}</span>
-                      <span className="text-xs font-bold px-2 py-0.5 bg-[#0f2a5c] text-white rounded">
-                        Roll: {searchResult.roll_number}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-600 space-y-1 mb-4">
-                      <div>पिता का नाम: <span className="font-medium text-gray-800">{searchResult.father_name}</span></div>
-                      <div>विद्यालय: <span className="font-medium text-gray-800">{searchResult.school_name}</span></div>
-                      <div>परीक्षा शिफ्ट: <span className="font-medium text-gray-800">{searchResult.shift_preference}</span></div>
+                    <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start mb-3">
+                      {searchResult.photo_base64 && (
+                        <div className="w-20 h-24 border border-[#0f2a5c] rounded overflow-hidden bg-white shrink-0 shadow-sm">
+                          <img src={searchResult.photo_base64} alt="Student" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex-1 w-full">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-bold text-[#0f2a5c]">{searchResult.student_name}</span>
+                          <span className="text-xs font-bold px-2 py-0.5 bg-[#0f2a5c] text-white rounded">
+                            Roll: {searchResult.roll_number}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-600 space-y-1">
+                          <div>पिता का नाम: <span className="font-medium text-gray-800">{searchResult.father_name}</span></div>
+                          <div>विद्यालय: <span className="font-medium text-gray-800">{searchResult.school_name}</span></div>
+                          <div>परीक्षा शिफ्ट: <span className="font-medium text-gray-800">{searchResult.shift_preference}</span></div>
+                        </div>
+                      </div>
                     </div>
                     <button
                       onClick={() => generateAdmitCardPDF(searchResult, config)}

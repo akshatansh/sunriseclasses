@@ -15,6 +15,7 @@ export interface STSERegistration {
   exam_date?: string;
   status?: string;
   created_at?: string;
+  photo_base64?: string; // passport photo
 }
 
 export interface STSEConfig {
@@ -22,6 +23,59 @@ export interface STSEConfig {
   venue?: string;
   shifts?: string[];
   instructions?: string[];
+}
+
+// Convert and crop image file to standard 3:4 passport size JPEG base64
+export function resizeImageToPassportSize(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 300;
+        canvas.height = 400;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(e.target?.result as string);
+          return;
+        }
+        const hRatio = canvas.width / img.width;
+        const vRatio = canvas.height / img.height;
+        const ratio = Math.max(hRatio, vRatio);
+        const centerShiftX = (canvas.width - img.width * ratio) / 2;
+        const centerShiftY = (canvas.height - img.height * ratio) / 2;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(
+          img,
+          0,
+          0,
+          img.width,
+          img.height,
+          centerShiftX,
+          centerShiftY,
+          img.width * ratio,
+          img.height * ratio
+        );
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Convert image file to base64 string
+export function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 export async function generateAdmitCardPDF(
@@ -37,214 +91,325 @@ export async function generateAdmitCardPDF(
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
-  // Colors
-  const NAVY = [15, 42, 92] as [number, number, number];
-  const GOLD = [245, 166, 35] as [number, number, number];
-  const DARK_GRAY = [50, 50, 50] as [number, number, number];
-  const LIGHT_BG = [248, 250, 252] as [number, number, number];
+  // ─── COLOR PALETTE ───────────────────────────────────
+  const NAVY     = [15, 42, 92]   as [number, number, number];
+  const GOLD     = [200, 140, 20] as [number, number, number]; // deeper gold
+  const GOLD_BG  = [253, 246, 220] as [number, number, number];
+  const DARK     = [30, 30, 30]   as [number, number, number];
+  const MID      = [80, 80, 80]   as [number, number, number];
+  const LIGHT    = [245, 247, 250] as [number, number, number];
+  const WHITE    = [255, 255, 255] as [number, number, number];
+  const RED_DARK = [160, 20, 20]  as [number, number, number];
 
-  // Outer Border
+  // ─── OUTER DOUBLE BORDER ─────────────────────────────
   doc.setDrawColor(...NAVY);
-  doc.setLineWidth(1.2);
-  doc.rect(8, 8, pageW - 16, pageH - 16);
-
-  // Inner Golden Accent Border
+  doc.setLineWidth(1.5);
+  doc.rect(6, 6, pageW - 12, pageH - 12);
   doc.setDrawColor(...GOLD);
-  doc.setLineWidth(0.4);
-  doc.rect(9.5, 9.5, pageW - 19, pageH - 19);
+  doc.setLineWidth(0.5);
+  doc.rect(8.5, 8.5, pageW - 17, pageH - 17);
 
-  // Top Header Banner (Navy)
+  // ─── HEADER BAND ─────────────────────────────────────
   doc.setFillColor(...NAVY);
-  doc.rect(10, 10, pageW - 20, 36, 'F');
+  doc.rect(9, 9, pageW - 18, 40, 'F');
 
-  // Gold accent strip under banner
+  // Gold accent line
   doc.setFillColor(...GOLD);
-  doc.rect(10, 43, pageW - 20, 3, 'F');
+  doc.rect(9, 49, pageW - 18, 2.5, 'F');
 
-  // Header Text
-  doc.setTextColor(255, 255, 255);
+  // Institute name
+  doc.setTextColor(...WHITE);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(20);
+  doc.setFontSize(18);
   doc.text('SUNRISE CLASSES & ACADEMY', pageW / 2, 21, { align: 'center' });
 
+  // Address
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(230, 230, 230);
-  doc.text('Champanagar, Purnia, Bihar - 854201  |  Helpline: +91 9973152070', pageW / 2, 28, { align: 'center' });
+  doc.setFontSize(8.5);
+  doc.setTextColor(200, 215, 240);
+  doc.text(
+    'Main Market, Champanagar, Purnia (Bihar) — 854330  |  Helpline: +91 99731 52070',
+    pageW / 2, 28, { align: 'center' }
+  );
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(...GOLD);
-  doc.text('SUNRISE TALENT SEARCH EXAMINATION 2027 (STSE)', pageW / 2, 36, { align: 'center' });
-
-  // Sub-badge: "OFFICIAL ADMIT CARD"
-  const badgeY = 52;
-  doc.setFillColor(...NAVY);
-  doc.roundedRect(pageW / 2 - 40, badgeY - 5, 80, 10, 2, 2, 'F');
-  doc.setTextColor(255, 255, 255);
+  // Exam title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text('OFFICIAL ADMIT CARD', pageW / 2, badgeY + 1.5, { align: 'center' });
+  doc.setTextColor(...GOLD);
+  doc.text('SUNRISE TALENT SEARCH EXAMINATION — STSE 2027', pageW / 2, 37, { align: 'center' });
 
-  // Roll Number Highlight Box (Right Side)
-  const rollBoxX = pageW - 75;
-  const rollBoxY = 66;
-  doc.setFillColor(...LIGHT_BG);
-  doc.setDrawColor(...GOLD);
-  doc.setLineWidth(0.8);
-  doc.roundedRect(rollBoxX, rollBoxY, 60, 24, 2, 2, 'FD');
-
-  doc.setTextColor(...DARK_GRAY);
+  // Red important bar
+  doc.setFillColor(...RED_DARK);
+  doc.rect(9, 51.5, pageW - 18, 7, 'F');
+  doc.setTextColor(...WHITE);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text('EXAM ROLL NUMBER', rollBoxX + 30, rollBoxY + 7, { align: 'center' });
+  doc.setFontSize(9.5);
+  doc.text('ADMIT CARD  /  प्रवेश-पत्र', pageW / 2, 56.5, { align: 'center' });
 
+  // ─── CANDIDATE INFO SECTION ───────────────────────────
+  const infoStartY = 64;
+  const photoW = 33;
+  const photoH = 40;
+  const photoX = pageW - 9 - photoW - 6;
+  const photoY = infoStartY;
+
+  // Photo box
+  doc.setFillColor(...LIGHT);
+  doc.setDrawColor(...NAVY);
+  doc.setLineWidth(0.6);
+  doc.rect(photoX, photoY, photoW, photoH);
+
+  // Try to draw photo if available
+  if (reg.photo_base64) {
+    try {
+      // Determine format from base64 header
+      const fmt = reg.photo_base64.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+      doc.addImage(reg.photo_base64, fmt, photoX, photoY, photoW, photoH);
+    } catch (_) {
+      // If image fails, draw placeholder text
+      doc.setTextColor(...MID);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.text('Paste Passport', photoX + photoW / 2, photoY + 18, { align: 'center' });
+      doc.text('Size Photo', photoX + photoW / 2, photoY + 23, { align: 'center' });
+    }
+  } else {
+    doc.setTextColor(...MID);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text('Paste Passport', photoX + photoW / 2, photoY + 18, { align: 'center' });
+    doc.text('Size Photo', photoX + photoW / 2, photoY + 23, { align: 'center' });
+    doc.text('Here', photoX + photoW / 2, photoY + 28, { align: 'center' });
+  }
+
+  // Photo caption
+  doc.setDrawColor(...NAVY);
+  doc.setFillColor(...NAVY);
+  doc.rect(photoX, photoY + photoH, photoW, 5, 'F');
+  doc.setTextColor(...WHITE);
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text("Candidate's Photo", photoX + photoW / 2, photoY + photoH + 3.5, { align: 'center' });
+
+  // ─── ROLL NUMBER BOX ─────────────────────────────────
+  const rollX = photoX;
+  const rollY = photoY + photoH + 8;
+  doc.setFillColor(...GOLD_BG);
+  doc.setDrawColor(...GOLD);
+  doc.setLineWidth(0.7);
+  doc.roundedRect(rollX, rollY, photoW, 16, 1.5, 1.5, 'FD');
+  doc.setTextColor(...MID);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.text('ROLL NUMBER', rollX + photoW / 2, rollY + 5, { align: 'center' });
   doc.setTextColor(...NAVY);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text(reg.roll_number || 'STSE-2027-001', rollBoxX + 30, rollBoxY + 16, { align: 'center' });
+  doc.setFontSize(12);
+  doc.text(reg.roll_number || 'STSE-2027-001', rollX + photoW / 2, rollY + 12, { align: 'center' });
 
-  // Student Details Table (Left Side)
+  // ─── CANDIDATE DETAILS TABLE ──────────────────────────
+  const tableRightMargin = pageW - photoX + 2;
   const studentData = [
-    ['Candidate Name:', reg.student_name.toUpperCase()],
-    ['Father\'s Name:', reg.father_name.toUpperCase()],
-    ['Contact / WhatsApp:', reg.phone || reg.whatsapp || 'N/A'],
-    ['Target Class:', reg.class_target || 'Class 10th (Matric 2027)'],
-    ['Current School:', reg.school_name || 'N/A'],
-    ['Village / Area:', reg.village_area || 'Champanagar / Purnia Area'],
+    ['Candidate Name', reg.student_name.toUpperCase()],
+    ["Father's Name", reg.father_name.toUpperCase()],
+    ['Mobile / Contact', reg.phone || 'N/A'],
+    ['Target Class', reg.class_target || 'Class 10th (Matric 2027)'],
+    ['School / Vidyalaya', reg.school_name || 'N/A'],
+    ['Village / Area', reg.village_area || 'Champanagar'],
+    ['Category', 'General (Open Merit)'],
   ];
 
   autoTable(doc, {
-    startY: 65,
-    margin: { left: 15, right: 80 },
-    theme: 'plain',
+    startY: infoStartY,
+    margin: { left: 12, right: tableRightMargin },
+    theme: 'grid',
     body: studentData,
     styles: {
-      fontSize: 9.5,
-      cellPadding: 2.2,
-      textColor: DARK_GRAY,
+      fontSize: 9,
+      cellPadding: { top: 2.5, bottom: 2.5, left: 3, right: 3 },
+      lineColor: [210, 215, 225],
+      lineWidth: 0.3,
     },
     columnStyles: {
-      0: { fontStyle: 'bold', textColor: NAVY, cellWidth: 38 },
-      1: { fontStyle: 'bold', textColor: [20, 20, 20] },
+      0: {
+        fontStyle: 'bold',
+        textColor: NAVY,
+        fillColor: LIGHT,
+        cellWidth: 36,
+      },
+      1: {
+        fontStyle: 'bold',
+        textColor: DARK,
+        fillColor: WHITE,
+      },
     },
   });
 
-  // Examination Details Card (Centered Full Width)
-  const examDetailsY = (doc as any).lastAutoTable.finalY + 8;
-  doc.setFillColor(...LIGHT_BG);
-  doc.setDrawColor(...NAVY);
-  doc.setLineWidth(0.5);
-  doc.roundedRect(15, examDetailsY, pageW - 30, 36, 2, 2, 'FD');
+  // ─── EXAMINATION DETAILS SECTION ──────────────────────
+  const examY = Math.max(
+    (doc as any).lastAutoTable.finalY + 6,
+    photoY + photoH + 32
+  );
 
-  // Exam Details Header Strip
+  // Section header
   doc.setFillColor(...NAVY);
-  doc.rect(15, examDetailsY, pageW - 30, 8, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('EXAMINATION VENUE & SCHEDULE', pageW / 2, examDetailsY + 5.5, { align: 'center' });
-
-  // Schedule content
-  const examDate = config?.exam_date || reg.exam_date || 'Date will be notified via WhatsApp / Call';
-  const shift = reg.shift_preference || 'Shift 1: 09:30 AM - 10:30 AM';
-  const venue = config?.venue || 'Sunrise Classes & Academy Campus, Main Market, Champanagar, Purnia (Bihar)';
-
-  doc.setTextColor(...DARK_GRAY);
+  doc.rect(12, examY, pageW - 24, 7, 'F');
+  doc.setTextColor(...WHITE);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.text('Exam Date:', 20, examDetailsY + 15);
-  doc.text('Exam Shift & Timing:', 20, examDetailsY + 22);
-  doc.text('Reporting Time:', 20, examDetailsY + 29);
-  doc.text('Examination Center:', 105, examDetailsY + 15);
+  doc.text('EXAMINATION DETAILS / परीक्षा विवरण', pageW / 2, examY + 4.8, { align: 'center' });
 
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...NAVY);
-  doc.text(examDate, 55, examDetailsY + 15);
-  doc.text(shift, 55, examDetailsY + 22);
-  doc.text('30 Minutes before Shift start', 55, examDetailsY + 29);
+  const examDate = config?.exam_date || reg.exam_date || 'Notified via WhatsApp / Call';
+  const shift = reg.shift_preference || 'Shift 1: 09:30 AM - 10:30 AM';
+  const venue = config?.venue || 'Sunrise Classes & Academy, Main Market, Champanagar, Purnia (Bihar)';
 
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(40, 40, 40);
-  const venueLines = doc.splitTextToSize(venue, pageW - 145);
-  doc.text(venueLines, 105, examDetailsY + 21);
+  const examDetails = [
+    ['Exam Date / परीक्षा तिथि', examDate, 'Exam Mode / परीक्षा माध्यम', 'Offline (OMR Based)'],
+    ['Exam Shift / शिफ्ट', shift, 'Reporting Time / उपस्थिति', '30 min. before shift'],
+    ['Duration / अवधि', '60 Minutes (1 Hour)', 'Total Questions', '50 MCQs (No Negative)'],
+  ];
 
-  // Prizes & Incentives Highlight Box
-  const prizeY = examDetailsY + 42;
-  doc.setFillColor(254, 243, 199); // Soft amber
+  autoTable(doc, {
+    startY: examY + 7,
+    margin: { left: 12, right: 12 },
+    theme: 'grid',
+    body: examDetails,
+    styles: {
+      fontSize: 8.5,
+      cellPadding: { top: 2.5, bottom: 2.5, left: 3, right: 3 },
+      lineColor: [210, 215, 225],
+      lineWidth: 0.3,
+    },
+    columnStyles: {
+      0: { fontStyle: 'bold', textColor: NAVY, fillColor: LIGHT, cellWidth: 44 },
+      1: { fontStyle: 'bold', textColor: DARK, fillColor: WHITE, cellWidth: 46 },
+      2: { fontStyle: 'bold', textColor: NAVY, fillColor: LIGHT, cellWidth: 44 },
+      3: { fontStyle: 'bold', textColor: DARK, fillColor: WHITE },
+    },
+  });
+
+  // Venue row
+  const venueY = (doc as any).lastAutoTable.finalY;
+  autoTable(doc, {
+    startY: venueY,
+    margin: { left: 12, right: 12 },
+    theme: 'grid',
+    body: [['Exam Center / परीक्षा केंद्र', venue]],
+    styles: {
+      fontSize: 8.5,
+      cellPadding: { top: 2.5, bottom: 2.5, left: 3, right: 3 },
+      lineColor: [210, 215, 225],
+      lineWidth: 0.3,
+    },
+    columnStyles: {
+      0: { fontStyle: 'bold', textColor: NAVY, fillColor: LIGHT, cellWidth: 44 },
+      1: { fontStyle: 'bold', textColor: DARK, fillColor: WHITE },
+    },
+  });
+
+  // ─── SCHOLARSHIP / PRIZE HIGHLIGHTS ───────────────────
+  const prizeSectionY = (doc as any).lastAutoTable.finalY + 5;
+  doc.setFillColor(...GOLD_BG);
   doc.setDrawColor(...GOLD);
-  doc.setLineWidth(0.6);
-  doc.roundedRect(15, prizeY, pageW - 30, 26, 2, 2, 'FD');
+  doc.setLineWidth(0.5);
+  doc.rect(12, prizeSectionY, pageW - 24, 25, 'FD');
 
-  doc.setTextColor(146, 64, 14); // Dark Amber
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9.5);
-  doc.text('MEGA SCHOLARSHIP AWARDS & PRIZES FOR PARTICIPANTS:', 20, prizeY + 6);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(30, 30, 30);
-  doc.text('• Rank 1: Smartwatch + Gold Champion Trophy + 100% Free Tuition for 1 Full Year (Class 10th Batch)', 20, prizeY + 11.5);
-  doc.text('• Rank 2 & 3: Digital Sports Watch + Silver Trophy + 75% Fees Waiver  |  Rank 4 to 10: 50% Fees Waiver + Books Kit', 20, prizeY + 16.5);
-  doc.text('• Guaranteed Gift: Free Sunrise Exam Pad + 2 OMR Pens + Certificate of Merit to every attending candidate!', 20, prizeY + 21.5);
-
-  // Instructions for Candidates
-  const instrY = prizeY + 31;
+  doc.setFillColor(...GOLD);
+  doc.rect(12, prizeSectionY, pageW - 24, 6, 'F');
   doc.setTextColor(...NAVY);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9.5);
-  doc.text('IMPORTANT GUIDELINES FOR CANDIDATES (महत्वपूर्ण निर्देश):', 15, instrY);
+  doc.setFontSize(8.5);
+  doc.text('SCHOLARSHIP & PRIZE DETAILS', pageW / 2, prizeSectionY + 4.2, { align: 'center' });
 
-  const instructions = [
-    '1. Please carry a printed copy of this Admit Card along with an Aadhaar card or School ID.',
-    '2. The exam will be 60 Minutes (50 MCQs: Maths 20, Science 20, Mental Ability 10) on an OMR Sheet.',
-    '3. Every student will receive a free Sunrise Writing Pad & OMR Pen at the center.',
-    '4. Mobile phones, calculators, and any cheating materials are strictly prohibited in the exam hall.',
-    '5. Parents/Guardians are requested to attend the 15-Minute Orientation Seminar during the exam.',
+  const prizeLines = [
+    '• Rank 1 (Topper)  :  Smartwatch + Gold Champion Trophy + 100% Free Tuition (Full Year, Class 10th)',
+    '• Rank 2 & 3        :  Digital Watch + Silver Trophy + 75% Fees Waiver     |  Rank 4–10 :  Books Kit + 25% Fees Waiver',
+    '• All Participants  :  FREE Sunrise Exam Writing Pad + OMR Pens + Official Certificate of Participation',
   ];
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(60, 60, 60);
-  let currentY = instrY + 5;
-  instructions.forEach((inst) => {
-    doc.text(inst, 15, currentY);
-    currentY += 4.5;
+  doc.setFontSize(7.8);
+  doc.setTextColor(...DARK);
+  prizeLines.forEach((line, i) => {
+    doc.text(line, 15, prizeSectionY + 10 + i * 5);
   });
 
-  // Signature Boxes
-  const sigY = pageH - 34;
-  doc.setDrawColor(180, 180, 180);
-  doc.setLineWidth(0.5);
-
-  // Student Signature
-  doc.line(25, sigY, 75, sigY);
+  // ─── INSTRUCTIONS ─────────────────────────────────────
+  const instrY = prizeSectionY + 30;
+  doc.setFillColor(...NAVY);
+  doc.rect(12, instrY, pageW - 24, 6, 'F');
+  doc.setTextColor(...WHITE);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
-  doc.setTextColor(...DARK_GRAY);
-  doc.text('Candidate\'s Signature', 50, sigY + 5, { align: 'center' });
+  doc.text('INSTRUCTIONS FOR CANDIDATES / महत्वपूर्ण निर्देश', pageW / 2, instrY + 4.2, { align: 'center' });
 
-  // Center Seal
-  doc.setDrawColor(...GOLD);
-  doc.roundedRect(pageW / 2 - 20, sigY - 14, 40, 18, 2, 2);
-  doc.setTextColor(...GOLD);
-  doc.setFontSize(7.5);
-  doc.text('SUNRISE ACADEMY', pageW / 2, sigY - 7, { align: 'center' });
-  doc.text('OFFICIAL SEAL', pageW / 2, sigY - 2, { align: 'center' });
+  const instructions = [
+    '1. Carry this Admit Card (printed) + School ID Card / Aadhaar Card on exam day.',
+    '2. Mobile phones, calculators, and electronic devices are strictly NOT allowed in the exam hall.',
+    '3. Report at the examination center at least 30 minutes before the start of your shift.',
+    '4. Each student will receive a free Sunrise Writing Pad & OMR Pen at the exam center.',
+    '5. Parents are requested to attend the FREE 15-minute Guidance Seminar held during the exam.',
+  ];
 
-  // Director Signature
-  doc.setDrawColor(180, 180, 180);
-  doc.line(pageW - 75, sigY, pageW - 25, sigY);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(...NAVY);
-  doc.text('Controller of Examination', pageW - 50, sigY + 5, { align: 'center' });
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Sunrise Classes & Academy', pageW - 50, sigY + 9, { align: 'center' });
+  doc.setFontSize(7.8);
+  doc.setTextColor(...DARK);
+  instructions.forEach((inst, i) => {
+    doc.text(inst, 15, instrY + 10 + i * 4.8);
+  });
 
-  // Save / Download PDF
-  const filename = `STSE-AdmitCard-${reg.roll_number || '2027'}.pdf`;
-  doc.save(filename);
+  // ─── SIGNATURE ROW ────────────────────────────────────
+  const sigBaseY = pageH - 28;
+
+  // Candidate signature box
+  doc.setDrawColor(160, 160, 160);
+  doc.setLineWidth(0.4);
+  doc.rect(14, sigBaseY - 10, 50, 10);
+  doc.setFillColor(...LIGHT);
+  doc.rect(14, sigBaseY - 10, 50, 10, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...MID);
+  doc.text("Candidate's Signature", 39, sigBaseY + 2, { align: 'center' });
+
+  // Center official seal box
+  doc.setDrawColor(...GOLD);
+  doc.setLineWidth(0.6);
+  doc.rect(pageW / 2 - 22, sigBaseY - 14, 44, 18);
+  doc.setTextColor(...NAVY);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.text('SUNRISE CLASSES', pageW / 2, sigBaseY - 7.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.text('Official Seal / Stamp', pageW / 2, sigBaseY - 2, { align: 'center' });
+
+  // Controller signature box
+  doc.setDrawColor(160, 160, 160);
+  doc.setLineWidth(0.4);
+  doc.rect(pageW - 64, sigBaseY - 10, 50, 10);
+  doc.setFillColor(...LIGHT);
+  doc.rect(pageW - 64, sigBaseY - 10, 50, 10, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...NAVY);
+  doc.text('Controller of Examinations', pageW - 39, sigBaseY + 2, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...MID);
+  doc.text('Sunrise Classes & Academy', pageW - 39, sigBaseY + 7, { align: 'center' });
+
+  // ─── BOTTOM STRIP ─────────────────────────────────────
+  doc.setFillColor(...NAVY);
+  doc.rect(9, pageH - 13, pageW - 18, 4, 'F');
+  doc.setTextColor(...WHITE);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text(
+    `Roll No: ${reg.roll_number}  |  Generated on: ${new Date().toLocaleDateString('en-IN')}  |  STSE 2027 — Sunrise Classes & Academy, Champanagar`,
+    pageW / 2, pageH - 10.5, { align: 'center' }
+  );
+
+  // ─── SAVE ─────────────────────────────────────────────
+  doc.save(`STSE-AdmitCard-${reg.roll_number || '2027'}.pdf`);
 }
