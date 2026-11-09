@@ -150,6 +150,9 @@ export async function toggleSilentRecordAdmin(studentId: string, enabled: boolea
 // Upload a silent video proctoring recording for an attempt
 export async function uploadTestVideo(studentId: string, testId: string, videoBlob: Blob) {
   try {
+    // Proactively enforce storage limits before saving a new video
+    await enforceStorageSafetyLimits().catch(() => {});
+
     // Determine actual MIME type — iOS records mp4, Android/Chrome records webm
     const mimeType = videoBlob.type || 'video/webm';
     const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
@@ -813,11 +816,12 @@ export async function deleteProctoringLogAdmin(logId: string, proofUrl: string |
   // If there's a file in storage, delete it first to save space
   if (proofUrl) {
     try {
-      // Extract file path from URL. Format is usually: .../storage/v1/object/public/test_proofs/path/to/file.jpg
-      const urlParts = proofUrl.split('/test_proofs/');
-      if (urlParts.length === 2) {
-        const filePath = urlParts[1].split('?')[0]; // remove query params if any
-        await supabase.storage.from('test_proofs').remove([filePath]);
+      for (const bucket of ['proctoring_proofs', 'proctoring_recordings', 'test_proofs']) {
+        if (proofUrl.includes(`/${bucket}/`)) {
+          const filePath = proofUrl.split(`/${bucket}/`)[1].split('?')[0];
+          await supabase.storage.from(bucket).remove([filePath]);
+          break;
+        }
       }
     } catch (e) {
       console.warn('Failed to delete proof file from storage', e);
@@ -829,71 +833,306 @@ export async function deleteProctoringLogAdmin(logId: string, proofUrl: string |
   if (error) throw error;
 }
 
+export async function clearAllProctoringDataAdmin(testId?: string) {
+  try {
+    // 1. Delete storage files and DB rows for proctoring logs
+    let logsQuery = supabase.from('proctoring_logs').select('id, proof_image_url');
+    if (testId) logsQuery = logsQuery.eq('test_id', testId);
+    const { data: logs } = await logsQuery;
+
+    if (logs && logs.length > 0) {
+      for (const log of logs) {
+        if (!log.proof_image_url) continue;
+        const url = log.proof_image_url;
+        for (const bucket of ['proctoring_proofs', 'proctoring_recordings', 'test_proofs']) {
+          if (url.includes(`/${bucket}/`)) {
+            const path = url.split(`/${bucket}/`)[1].split('?')[0];
+            await supabase.storage.from(bucket).remove([path]).catch(() => {});
+          }
+        }
+      }
+      let delLogsQuery = supabase.from('proctoring_logs').delete();
+      if (testId) delLogsQuery = delLogsQuery.eq('test_id', testId);
+      else delLogsQuery = delLogsQuery.neq('id', '00000000-0000-0000-0000-000000000000');
+      await delLogsQuery;
+    }
+
+    // 2. Delete storage files and DB rows for test video recordings
+    let vQuery = supabase.from('test_video_recordings').select('id, video_url');
+    if (testId) vQuery = vQuery.eq('test_id', testId);
+    const { data: videos } = await vQuery;
+
+    if (videos && videos.length > 0) {
+      for (const v of videos) {
+        if (!v.video_url) continue;
+        const url = v.video_url;
+        for (const bucket of ['proctoring_proofs', 'proctoring_recordings']) {
+          if (url.includes(`/${bucket}/`)) {
+            const path = url.split(`/${bucket}/`)[1].split('?')[0];
+            await supabase.storage.from(bucket).remove([path]).catch(() => {});
+          }
+        }
+      }
+      let delVQuery = supabase.from('test_video_recordings').delete();
+      if (testId) delVQuery = delVQuery.eq('test_id', testId);
+      else delVQuery = delVQuery.neq('id', '00000000-0000-0000-0000-000000000000');
+      await delVQuery;
+    }
+
+    // 3. If cleaning globally, also clean storage buckets directly
+    if (!testId) {
+      for (const bucket of ['proctoring_proofs', 'proctoring_recordings', 'test_proofs']) {
+        try {
+          const { data: files } = await supabase.storage.from(bucket).list('', { limit: 200 });
+          if (files && files.length > 0) {
+            const names = files.filter(f => f.name && !f.name.startsWith('.')).map(f => f.name);
+            if (names.length > 0) {
+              await supabase.storage.from(bucket).remove(names);
+            }
+          }
+        } catch (e) {
+          console.warn(`Could not empty bucket ${bucket}`, e);
+        }
+      }
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Failed to clear proctoring data:', err);
+    throw err;
+  }
+}
+
 export async function autoDeleteOldProctoringLogs() {
   try {
-    // 1. Clean up proctoring logs, images, audio, and videos older than 5 days
-    const fiveDaysAgo = new Date();
-    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
-    const dateStr3 = fiveDaysAgo.toISOString();
+    // 1. Clean up proctoring logs, images, audio, and videos older than 2 days
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    const dateStr = twoDaysAgo.toISOString();
 
     const { data: oldLogs, error: fetchError } = await supabase
       .from('proctoring_logs')
       .select('id, proof_image_url')
-      .lt('created_at', dateStr3);
+      .lt('created_at', dateStr);
 
     if (!fetchError && oldLogs && oldLogs.length > 0) {
-      const filePaths = oldLogs
-        .map(log => log.proof_image_url)
-        .filter(url => url && url.includes('/test_proofs/'))
-        .map(url => url.split('/test_proofs/')[1].split('?')[0]);
-
-      if (filePaths.length > 0) {
-        await supabase.storage.from('test_proofs').remove(filePaths);
+      for (const log of oldLogs) {
+        if (!log.proof_image_url) continue;
+        const url = log.proof_image_url;
+        for (const bucket of ['proctoring_proofs', 'proctoring_recordings', 'test_proofs']) {
+          if (url.includes(`/${bucket}/`)) {
+            const filePath = url.split(`/${bucket}/`)[1].split('?')[0];
+            await supabase.storage.from(bucket).remove([filePath]).catch(() => {});
+          }
+        }
       }
 
       await supabase
         .from('proctoring_logs')
         .delete()
-        .lt('created_at', dateStr3);
+        .lt('created_at', dateStr);
 
       console.log(`Auto-deleted ${oldLogs.length} old proctoring logs.`);
     }
 
-    // 2. Clean up test video recordings older than 3 days
-    const dateStr10 = dateStr3;
-
+    // 2. Clean up test video recordings older than 24 hours
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: oldVideos, error: videoFetchErr } = await supabase
       .from('test_video_recordings')
       .select('id, video_url')
-      .lt('created_at', dateStr10);
+      .lt('created_at', oneDayAgo);
 
     if (!videoFetchErr && oldVideos && oldVideos.length > 0) {
-      const videoPaths = oldVideos
-        .map(v => v.video_url)
-        .filter(url => url && (url.includes('/proctoring_recordings/') || url.includes('/proctoring_proofs/')))
-        .map(url => {
-          if (url.includes('/proctoring_recordings/')) {
-            return url.split('/proctoring_recordings/')[1].split('?')[0];
-          } else {
-            return url.split('/proctoring_proofs/')[1].split('?')[0];
+      for (const v of oldVideos) {
+        if (!v.video_url) continue;
+        const url = v.video_url;
+        for (const bucket of ['proctoring_proofs', 'proctoring_recordings']) {
+          if (url.includes(`/${bucket}/`)) {
+            const filePath = url.split(`/${bucket}/`)[1].split('?')[0];
+            await supabase.storage.from(bucket).remove([filePath]).catch(() => {});
           }
-        });
-
-      if (videoPaths.length > 0) {
-        // Clean from both buckets to be completely safe
-        await supabase.storage.from('proctoring_proofs').remove(videoPaths).catch(() => {});
-        await supabase.storage.from('proctoring_recordings').remove(videoPaths).catch(() => {});
+        }
       }
 
       await supabase
         .from('test_video_recordings')
         .delete()
-        .lt('created_at', dateStr10);
+        .lt('created_at', oneDayAgo);
 
       console.log(`Auto-deleted ${oldVideos.length} old video recordings.`);
     }
+
+    // Also enforce max queue limits
+    await enforceStorageSafetyLimits().catch(() => {});
   } catch (err) {
     console.error('Failed to auto-delete old proctoring data', err);
+  }
+}
+
+export interface StorageMetrics {
+  totalVideos: number;
+  totalLogs: number;
+  estimatedMbUsed: number;
+  maxMbQuota: number;
+  percentageUsed: number;
+  isNearLimit: boolean;
+}
+
+export async function getStorageMetricsAdmin(): Promise<StorageMetrics> {
+  try {
+    const { count: vCount } = await supabase
+      .from('test_video_recordings')
+      .select('id', { count: 'exact', head: true });
+
+    const { count: lCount } = await supabase
+      .from('proctoring_logs')
+      .select('id', { count: 'exact', head: true });
+
+    const totalVideos = vCount || 0;
+    const totalLogs = lCount || 0;
+
+    // Estimate: ~15MB per silent video, ~0.15MB per snapshot proof
+    const estimatedMbUsed = Math.round(totalVideos * 15 + totalLogs * 0.15);
+    const maxMbQuota = 1000; // 1 GB free quota
+    const percentageUsed = Math.min(100, Math.round((estimatedMbUsed / maxMbQuota) * 100));
+    const isNearLimit = percentageUsed >= 60;
+
+    return {
+      totalVideos,
+      totalLogs,
+      estimatedMbUsed,
+      maxMbQuota,
+      percentageUsed,
+      isNearLimit,
+    };
+  } catch (err) {
+    console.warn('Could not fetch storage metrics', err);
+    return {
+      totalVideos: 0,
+      totalLogs: 0,
+      estimatedMbUsed: 0,
+      maxMbQuota: 1000,
+      percentageUsed: 0,
+      isNearLimit: false,
+    };
+  }
+}
+
+export async function clearVideosOnlyAdmin() {
+  try {
+    const { data: vids } = await supabase
+      .from('test_video_recordings')
+      .select('id, video_url');
+
+    if (vids && vids.length > 0) {
+      for (const v of vids) {
+        if (!v.video_url) continue;
+        for (const bucket of ['proctoring_proofs', 'proctoring_recordings']) {
+          if (v.video_url.includes(`/${bucket}/`)) {
+            const path = v.video_url.split(`/${bucket}/`)[1].split('?')[0];
+            await supabase.storage.from(bucket).remove([path]).catch(() => {});
+          }
+        }
+      }
+      await supabase.from('test_video_recordings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    }
+    return true;
+  } catch (err) {
+    console.error('Failed to clear videos', err);
+    throw err;
+  }
+}
+
+export async function clearProofsOnlyAdmin() {
+  try {
+    const { data: logs } = await supabase
+      .from('proctoring_logs')
+      .select('id, proof_image_url');
+
+    if (logs && logs.length > 0) {
+      for (const log of logs) {
+        if (!log.proof_image_url) continue;
+        for (const bucket of ['proctoring_proofs', 'proctoring_recordings', 'test_proofs']) {
+          if (log.proof_image_url.includes(`/${bucket}/`)) {
+            const path = log.proof_image_url.split(`/${bucket}/`)[1].split('?')[0];
+            await supabase.storage.from(bucket).remove([path]).catch(() => {});
+          }
+        }
+      }
+      await supabase.from('proctoring_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    }
+    return true;
+  } catch (err) {
+    console.error('Failed to clear proofs', err);
+    throw err;
+  }
+}
+
+export async function enforceStorageSafetyLimits() {
+  try {
+    // 1. Purge videos older than 24 hours
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: oldVideos } = await supabase
+      .from('test_video_recordings')
+      .select('id, video_url')
+      .lt('created_at', oneDayAgo);
+
+    if (oldVideos && oldVideos.length > 0) {
+      for (const v of oldVideos) {
+        if (!v.video_url) continue;
+        for (const bucket of ['proctoring_proofs', 'proctoring_recordings']) {
+          if (v.video_url.includes(`/${bucket}/`)) {
+            const path = v.video_url.split(`/${bucket}/`)[1].split('?')[0];
+            await supabase.storage.from(bucket).remove([path]).catch(() => {});
+          }
+        }
+      }
+      await supabase.from('test_video_recordings').delete().lt('created_at', oneDayAgo);
+    }
+
+    // 2. FIFO Queue: Cap maximum total videos at 25. If > 25, delete oldest
+    const { data: allVideos } = await supabase
+      .from('test_video_recordings')
+      .select('id, video_url, created_at')
+      .order('created_at', { ascending: true });
+
+    if (allVideos && allVideos.length > 25) {
+      const excessCount = allVideos.length - 25;
+      const toDelete = allVideos.slice(0, excessCount);
+      for (const v of toDelete) {
+        if (!v.video_url) continue;
+        for (const bucket of ['proctoring_proofs', 'proctoring_recordings']) {
+          if (v.video_url.includes(`/${bucket}/`)) {
+            const path = v.video_url.split(`/${bucket}/`)[1].split('?')[0];
+            await supabase.storage.from(bucket).remove([path]).catch(() => {});
+          }
+        }
+      }
+      const idsToDelete = toDelete.map(x => x.id);
+      await supabase.from('test_video_recordings').delete().in('id', idsToDelete);
+    }
+
+    // 3. Purge proctoring logs older than 48 hours
+    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const { data: oldLogs } = await supabase
+      .from('proctoring_logs')
+      .select('id, proof_image_url')
+      .lt('created_at', twoDaysAgo);
+
+    if (oldLogs && oldLogs.length > 0) {
+      for (const log of oldLogs) {
+        if (!log.proof_image_url) continue;
+        for (const bucket of ['proctoring_proofs', 'proctoring_recordings', 'test_proofs']) {
+          if (log.proof_image_url.includes(`/${bucket}/`)) {
+            const path = log.proof_image_url.split(`/${bucket}/`)[1].split('?')[0];
+            await supabase.storage.from(bucket).remove([path]).catch(() => {});
+          }
+        }
+      }
+      await supabase.from('proctoring_logs').delete().lt('created_at', twoDaysAgo);
+    }
+  } catch (err) {
+    console.warn('enforceStorageSafetyLimits error:', err);
   }
 }
 

@@ -22,3 +22,6 @@ dist-ssr
 *.sw?
 .env
 .vercel
+
+scratch/
+clean_clips.js

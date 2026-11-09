@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download, Camera, AlertTriangle, Clock, RotateCcw, Copy, Search, Filter, FileSpreadsheet, Radio, RefreshCw, Eye, EyeOff, CheckCircle, Wand2, MessageCircle, Volume2, VolumeX } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Save, X, Settings, List, PlayCircle, StopCircle, Users, Download, Camera, AlertTriangle, Clock, RotateCcw, Copy, Search, Filter, FileSpreadsheet, Radio, RefreshCw, Eye, EyeOff, CheckCircle, Wand2, MessageCircle, Volume2, VolumeX, HardDrive, ShieldCheck } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
@@ -8,7 +8,8 @@ import {
   getQuestionsAdmin, createQuestionAdmin, createQuestionsBatchAdmin, updateQuestionAdmin, deleteQuestionAdmin, getTestAttemptsAdmin, getProctoringLogsAdmin,
   resetStudentAttempt,
   uploadQuestionImage,
-  deleteProctoringLogAdmin, autoDeleteOldProctoringLogs,
+  deleteProctoringLogAdmin, clearAllProctoringDataAdmin, autoDeleteOldProctoringLogs,
+  getStorageMetricsAdmin, clearVideosOnlyAdmin, clearProofsOnlyAdmin, StorageMetrics,
   OnlineTest, OnlineTestQuestion,
   banStudent, unbanStudent, getBannedStudentsAdmin,
   toggleSilentRecordAdmin, getTestVideoAdmin
@@ -703,6 +704,102 @@ export default function OnlineTestAdmin() {
     }
   };
 
+  const [clearingProctoring, setClearingProctoring] = useState(false);
+
+  const handleClearAllProctoringData = async (onlyCurrentTest = true) => {
+    const confirmMsg = onlyCurrentTest
+      ? `Kya aap sure hain ki "${currentTest.title}" ke saare warning photos aur videos delete karke Supabase storage khali karna chahte hain?`
+      : 'Kya aap sure hain ki SAARE TESTS ke sabhi warning photos aur proctoring videos delete karke storage khali karna chahte hain?';
+    if (!window.confirm(confirmMsg)) return;
+
+    setClearingProctoring(true);
+    try {
+      await clearAllProctoringDataAdmin(onlyCurrentTest ? currentTest.id : undefined);
+      if (currentTest.id) {
+        const logs = await getProctoringLogsAdmin(currentTest.id);
+        setProctoringLogs(logs || []);
+        const { data: vData } = await supabase
+          .from('test_video_recordings')
+          .select('student_id, video_url')
+          .eq('test_id', currentTest.id);
+        const vMap: Record<string, string> = {};
+        vData?.forEach(v => {
+          vMap[v.student_id] = v.video_url;
+        });
+        setVideoRecordings(vMap);
+      }
+      alert('Sabhi warning videos aur photos delete ho gaye! Storage khali ho gaya.');
+    } catch (err: any) {
+      console.error(err);
+      alert('Delete karne me issue aaya: ' + (err?.message || 'Check console'));
+    } finally {
+      setClearingProctoring(false);
+    }
+  };
+
+  // Storage Monitor state & actions
+  const [storageMetrics, setStorageMetrics] = useState<StorageMetrics | null>(null);
+  const [loadingMetrics, setLoadingMetrics] = useState(false);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+
+  const fetchStorageMetrics = async () => {
+    setLoadingMetrics(true);
+    try {
+      const data = await getStorageMetricsAdmin();
+      setStorageMetrics(data);
+    } catch (e) {
+      console.warn('Failed to fetch storage metrics', e);
+    } finally {
+      setLoadingMetrics(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStorageMetrics();
+  }, []);
+
+  const handleClearVideosOnly = async () => {
+    if (!window.confirm("Kya aap sabhi students ke test video recordings delete karna chahte hain? Results aur scores safe rahenge, sirf video storage free hoga.")) return;
+    setActionInProgress('videos');
+    try {
+      await clearVideosOnlyAdmin();
+      await fetchStorageMetrics();
+      alert("Sabhi test videos successfully delete ho gaye! Storage khali ho gaya.");
+    } catch (err: any) {
+      alert("Error: " + (err?.message || 'Failed'));
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleClearProofsOnly = async () => {
+    if (!window.confirm("Kya aap sabhi cheating warning snapshots delete karna chahte hain?")) return;
+    setActionInProgress('proofs');
+    try {
+      await clearProofsOnlyAdmin();
+      await fetchStorageMetrics();
+      alert("Sabhi warning snapshots successfully delete ho gaye!");
+    } catch (err: any) {
+      alert("Error: " + (err?.message || 'Failed'));
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleEmergencyFlush = async () => {
+    if (!window.confirm("EMERGENCY FLUSH: Kya aap saare proctoring videos aur warning photos delete karke Storage ko turant 0 MB karna chahte hain?")) return;
+    setActionInProgress('flush');
+    try {
+      await clearAllProctoringDataAdmin();
+      await fetchStorageMetrics();
+      alert("Storage successfully 0 MB ho gaya!");
+    } catch (err: any) {
+      alert("Error: " + (err?.message || 'Failed'));
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
   // Questions Management
   const [newQuestion, setNewQuestion] = useState<Partial<OnlineTestQuestion>>({
     question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', marks: 1, question_image: '', explanation: ''
@@ -1013,7 +1110,23 @@ export default function OnlineTestAdmin() {
     if (!currentTest.id) return;
     if (!window.confirm(`"${studentName}" ka attempt reset kar doge? Unka score delete ho jaayega aur wo dobara test de sakenge.`)) return;
     try {
-      // Also delete video recording if any
+      // Find and delete video from storage first to save Supabase space
+      const { data: vRow } = await supabase
+        .from('test_video_recordings')
+        .select('video_url')
+        .eq('student_id', studentId)
+        .eq('test_id', currentTest.id)
+        .maybeSingle();
+
+      if (vRow?.video_url) {
+        for (const bucket of ['proctoring_proofs', 'proctoring_recordings', 'test_proofs']) {
+          if (vRow.video_url.includes(`/${bucket}/`)) {
+            const filePath = vRow.video_url.split(`/${bucket}/`)[1].split('?')[0];
+            await supabase.storage.from(bucket).remove([filePath]).catch(() => {});
+          }
+        }
+      }
+
       await supabase.from('test_video_recordings').delete().eq('student_id', studentId).eq('test_id', currentTest.id);
 
       await resetStudentAttempt(studentId, currentTest.id);
@@ -1313,6 +1426,104 @@ export default function OnlineTestAdmin() {
       <div className="p-6">
         {view === 'list' && (
           <div className="space-y-4">
+            {/* Supabase Storage & Video Proctoring Monitor */}
+            <div className="bg-gradient-to-r from-slate-50 to-blue-50/40 border border-slate-200 rounded-xl p-4 shadow-sm mb-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className={`p-2.5 rounded-lg shrink-0 ${storageMetrics?.isNearLimit ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                    <HardDrive className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-gray-900">Supabase Storage & Video Proctoring Monitor</h3>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
+                        storageMetrics?.isNearLimit 
+                          ? 'bg-red-100 text-red-700 animate-pulse' 
+                          : 'bg-emerald-100 text-emerald-700'
+                      }`}>
+                        {storageMetrics?.isNearLimit ? 'Storage Warning (>60%)' : 'Storage Safe & Protected'}
+                      </span>
+                      <button
+                        onClick={fetchStorageMetrics}
+                        disabled={loadingMetrics}
+                        className="text-gray-400 hover:text-gray-600 p-1"
+                        title="Refresh Stats"
+                      >
+                        <RefreshCw className={`h-3.5 w-3.5 ${loadingMetrics ? 'animate-spin' : ''}`} />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gray-600">
+                      <span>
+                        Estimated Space: <strong className="text-gray-900">{storageMetrics?.estimatedMbUsed || 0} MB</strong> / {storageMetrics?.maxMbQuota || 1000} MB ({storageMetrics?.percentageUsed || 0}%)
+                      </span>
+                      <span>•</span>
+                      <span>
+                        Active Videos: <strong className="text-blue-700">{storageMetrics?.totalVideos || 0}</strong> <span className="text-gray-400">(Auto-capped at 25 max)</span>
+                      </span>
+                      <span>•</span>
+                      <span>
+                        Warning Snapshots: <strong className="text-purple-700">{storageMetrics?.totalLogs || 0}</strong>
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full sm:w-80 h-2 bg-gray-200 rounded-full mt-2 overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-500 ${
+                          (storageMetrics?.percentageUsed || 0) > 75 
+                            ? 'bg-red-500' 
+                            : (storageMetrics?.percentageUsed || 0) > 40 
+                            ? 'bg-amber-500' 
+                            : 'bg-emerald-500'
+                        }`}
+                        style={{ width: `${Math.max(4, storageMetrics?.percentageUsed || 0)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Action Buttons */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={handleClearVideosOnly}
+                    disabled={actionInProgress !== null}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-amber-300 hover:bg-amber-50 text-amber-800 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50"
+                    title="Sabhi test video recordings delete karke space free karein (scores safe rahenge)"
+                  >
+                    <PlayCircle className="h-3.5 w-3.5 text-amber-600" />
+                    {actionInProgress === 'videos' ? 'Deleting...' : 'Clear All Videos'}
+                  </button>
+
+                  <button
+                    onClick={handleClearProofsOnly}
+                    disabled={actionInProgress !== null}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-purple-300 hover:bg-purple-50 text-purple-800 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50"
+                    title="Sabhi warning photos/snapshots delete karein"
+                  >
+                    <Camera className="h-3.5 w-3.5 text-purple-600" />
+                    {actionInProgress === 'proofs' ? 'Deleting...' : 'Clear Warning Proofs'}
+                  </button>
+
+                  <button
+                    onClick={handleEmergencyFlush}
+                    disabled={actionInProgress !== null}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50"
+                    title="Turant 0 MB Storage par reset karein"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {actionInProgress === 'flush' ? 'Flushing...' : 'Reset to 0 MB'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-2.5 pt-2 border-t border-slate-200/70 flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-500">
+                <span className="flex items-center gap-1 text-emerald-700 font-medium">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Auto-Protection Active: 24h Purge + Max 25 FIFO Queue (Storage 1GB kabhi full nahi hoga).
+                </span>
+                <span className="text-gray-400">Student Results, Marks & Questions are always 100% safe.</span>
+              </div>
+            </div>
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-2">
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -2207,8 +2418,33 @@ Explanation: Arunachal Pradesh is the easternmost state.
 
         {view === 'view-proctoring' && (
           <div>
-            <div className="flex justify-between items-center mb-6 border-b pb-2">
-              <h3 className="text-xl font-bold text-gray-900">{currentTest.title} - AI Proctoring Logs</h3>
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-6 border-b pb-3">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">{currentTest.title} - AI Proctoring Logs</h3>
+                <p className="text-xs text-gray-500">Total logs: {proctoringLogs.length}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={clearingProctoring}
+                  onClick={() => handleClearAllProctoringData(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 rounded-md text-xs font-bold transition disabled:opacity-50"
+                  title="Is test ke saare warning photos aur videos delete karke storage free karein"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {clearingProctoring ? 'Cleaning...' : 'Clear This Test Media'}
+                </button>
+                <button
+                  type="button"
+                  disabled={clearingProctoring}
+                  onClick={() => handleClearAllProctoringData(false)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white hover:bg-red-700 rounded-md text-xs font-bold transition disabled:opacity-50 shadow-sm"
+                  title="Supabase Storage ko poora khali karein (saare tests ke warning videos aur photos delete)"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {clearingProctoring ? 'Cleaning...' : 'Clear ALL Media (Free Supabase 1GB)'}
+                </button>
+              </div>
             </div>
             {proctoringLogs.length === 0 ? (
               <div className="p-8 text-center bg-gray-50 border border-dashed rounded-lg">
