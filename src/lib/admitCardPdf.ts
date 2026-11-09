@@ -78,6 +78,50 @@ export function fileToBase64(file: File): Promise<string> {
   });
 }
 
+// Clean and convert text to pure ASCII for jsPDF (standard jsPDF fonts don't support Devanagari glyphs)
+export function cleanForPdf(str?: string): string {
+  if (!str) return '';
+
+  // 1. If string contains English in brackets e.g. "चंपानगर (Champanagar)" or "(Govt High School Champanagar)"
+  const bracketMatch = str.match(/\(([^)]*[a-zA-Z0-9][^)]*)\)/);
+  if (bracketMatch && bracketMatch[1] && /[a-zA-Z]/.test(bracketMatch[1])) {
+    return bracketMatch[1].trim();
+  }
+
+  // 2. Known local mappings if user picked pure Hindi without English brackets
+  const knownMaps: [RegExp, string][] = [
+    [/राजकीय उच्च विद्यालय|उच्च विद्यालय|चंपानगर हाई/i, 'Govt High School, Champanagar'],
+    [/श्रीनगर हाई|उच्च माध्यमिक विद्यालय.*श्रीनगर/i, 'High School, Srinagar'],
+    [/उत्क्रमित माध्यमिक विद्यालय/i, 'Upgraded High School'],
+    [/आदर्श मध्य विद्यालय/i, 'Adarsh Middle School, Champanagar'],
+    [/एस\.?एन\.?एस/i, 'SNS High School'],
+    [/संत जोसेफ|होली क्रॉस/i, 'St. Joseph / Holy Cross School'],
+    [/ज्ञान भारती/i, 'Gyan Bharti Public School'],
+    [/डी\.?ए\.?वी/i, 'DAV Public School'],
+    [/अन्य स्कूल/i, 'Other School'],
+    [/चंपानगर/i, 'Champanagar'],
+    [/श्रीनगर/i, 'Srinagar'],
+    [/खुटी धुनैली/i, 'Khuthi Dhunaili'],
+    [/झौआरी|कदवा/i, 'Jhouari / Kadwa'],
+    [/बनमनखी/i, 'Banmankhi Road Area'],
+    [/महाराजपुर|रामपुर/i, 'Maharajpur / Rampur'],
+    [/रविवार/i, 'Sunday'],
+    [/शीघ्र घोषित/i, 'To Be Announced'],
+  ];
+
+  for (const [regex, replacement] of knownMaps) {
+    if (regex.test(str)) {
+      return replacement;
+    }
+  }
+
+  // 3. Strip any remaining Devanagari Unicode characters (0x0900 - 0x097F)
+  let cleaned = str.replace(/[\u0900-\u097F]/g, '').trim();
+  cleaned = cleaned.replace(/\(\s*\)/g, '').replace(/^[-/,:\s]+|[-/,:\s]+$/g, '').trim();
+
+  return cleaned || str;
+}
+
 export async function generateAdmitCardPDF(
   reg: STSERegistration,
   config?: STSEConfig
@@ -144,7 +188,7 @@ export async function generateAdmitCardPDF(
   doc.setTextColor(...WHITE);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
-  doc.text('ADMIT CARD  /  प्रवेश-पत्र', pageW / 2, 56.5, { align: 'center' });
+  doc.text('OFFICIAL ADMIT CARD', pageW / 2, 56.5, { align: 'center' });
 
   // ─── CANDIDATE INFO SECTION ───────────────────────────
   const infoStartY = 64;
@@ -210,12 +254,12 @@ export async function generateAdmitCardPDF(
   // ─── CANDIDATE DETAILS TABLE ──────────────────────────
   const tableRightMargin = pageW - photoX + 2;
   const studentData = [
-    ['Candidate Name', reg.student_name.toUpperCase()],
-    ["Father's Name", reg.father_name.toUpperCase()],
+    ['Candidate Name', cleanForPdf(reg.student_name).toUpperCase()],
+    ["Father's Name", cleanForPdf(reg.father_name).toUpperCase()],
     ['Mobile / Contact', reg.phone || 'N/A'],
-    ['Target Class', reg.class_target || 'Class 10th (Matric 2028)'],
-    ['School / Vidyalaya', reg.school_name || 'N/A'],
-    ['Village / Area', reg.village_area || 'Champanagar'],
+    ['Target Class', cleanForPdf(reg.class_target) || 'Class 10th (Matric 2028)'],
+    ['School Name', cleanForPdf(reg.school_name) || 'N/A'],
+    ['Village / Area', cleanForPdf(reg.village_area) || 'Champanagar'],
     ['Category', 'General (Open Merit)'],
   ];
 
@@ -257,16 +301,17 @@ export async function generateAdmitCardPDF(
   doc.setTextColor(...WHITE);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.text('EXAMINATION DETAILS / परीक्षा विवरण', pageW / 2, examY + 4.8, { align: 'center' });
+  doc.text('EXAMINATION DETAILS & SCHEDULE', pageW / 2, examY + 4.8, { align: 'center' });
 
-  const examDate = config?.exam_date || reg.exam_date || 'Notified via WhatsApp / Call';
-  const shift = reg.shift_preference || 'Shift 1: 09:30 AM - 10:30 AM';
-  const venue = config?.venue || 'Sunrise Classes & Academy, Main Market, Champanagar, Purnia (Bihar)';
+  const rawExamDate = config?.exam_date || reg.exam_date || 'Date will be notified via WhatsApp / Call';
+  const cleanExamDate = cleanForPdf(rawExamDate) || 'To be announced';
+  const shift = cleanForPdf(reg.shift_preference) || 'Shift 1: 09:30 AM - 10:30 AM';
+  const venue = cleanForPdf(config?.venue) || 'Sunrise Classes & Academy, Main Market, Champanagar, Purnia (Bihar)';
 
   const examDetails = [
-    ['Exam Date / परीक्षा तिथि', examDate, 'Exam Mode / परीक्षा माध्यम', 'Offline (OMR Based)'],
-    ['Exam Shift / शिफ्ट', shift, 'Reporting Time / उपस्थिति', '30 min. before shift'],
-    ['Duration / अवधि', '60 Minutes (1 Hour)', 'Total Questions', '50 MCQs (No Negative)'],
+    ['Exam Date', cleanExamDate, 'Exam Mode', 'Offline (OMR Sheet)'],
+    ['Exam Shift', shift, 'Reporting Time', '30 min. before shift'],
+    ['Duration', '60 Minutes (1 Hour)', 'Total Questions', '50 MCQs (No Negative)'],
   ];
 
   autoTable(doc, {
@@ -294,7 +339,7 @@ export async function generateAdmitCardPDF(
     startY: venueY,
     margin: { left: 12, right: 12 },
     theme: 'grid',
-    body: [['Exam Center / परीक्षा केंद्र', venue]],
+    body: [['Exam Center', venue]],
     styles: {
       fontSize: 8.5,
       cellPadding: { top: 2.5, bottom: 2.5, left: 3, right: 3 },
@@ -341,7 +386,7 @@ export async function generateAdmitCardPDF(
   doc.setTextColor(...WHITE);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
-  doc.text('INSTRUCTIONS FOR CANDIDATES / महत्वपूर्ण निर्देश', pageW / 2, instrY + 4.2, { align: 'center' });
+  doc.text('IMPORTANT INSTRUCTIONS FOR CANDIDATES', pageW / 2, instrY + 4.2, { align: 'center' });
 
   const instructions = [
     '1. Carry this Admit Card (printed) + School ID Card / Aadhaar Card on exam day.',

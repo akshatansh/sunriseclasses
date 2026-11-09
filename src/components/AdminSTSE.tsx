@@ -10,7 +10,7 @@ import {
   getAllSTSERegistrations, updateSTSERegistrationMarks, 
   getSTSEConfig, updateSTSEConfig 
 } from '../lib/stse';
-import { generateAdmitCardPDF, STSERegistration, STSEConfig } from '../lib/admitCardPdf';
+import { generateAdmitCardPDF, cleanForPdf, STSERegistration, STSEConfig } from '../lib/admitCardPdf';
 
 export default function AdminSTSE() {
   const [registrations, setRegistrations] = useState<STSERegistration[]>([]);
@@ -167,9 +167,9 @@ export default function AdminSTSE() {
     const tableRows = filtered.map((r, i) => [
       i + 1,
       r.roll_number,
-      r.student_name,
-      r.father_name,
-      r.school_name.length > 25 ? r.school_name.slice(0, 25) + '...' : r.school_name,
+      cleanForPdf(r.student_name),
+      cleanForPdf(r.father_name),
+      cleanForPdf(r.school_name),
       r.shift_preference?.includes('Shift 1') ? 'Shift 1' : 'Shift 2',
       '', // Signature
     ]);
