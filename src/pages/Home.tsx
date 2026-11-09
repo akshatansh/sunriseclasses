@@ -21,7 +21,7 @@ export default function Home() {
       />
       <Hero />
 
-      {/* STSE 2027 Mega Announcement Banner */}
+      {/* STSE 2028 Mega Announcement Banner */}
       <section className="bg-[#06162f] py-4 sm:py-6 px-4 sm:px-6 lg:px-8 border-y border-[#f5a623]/30">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 bg-gradient-to-r from-[#0f2a5c] via-[#153e75] to-[#0f2a5c] p-4 sm:p-6 rounded-2xl border-2 border-[#f5a623]/60 shadow-2xl">
           <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
@@ -30,10 +30,10 @@ export default function Home() {
             </div>
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#f5a623]/20 border border-[#f5a623]/40 text-[#f5a623] text-[11px] font-bold uppercase tracking-wider mb-1">
-                <Award size={12} /> आधिकारिक छात्रवृत्ति परीक्षा 2027
+                <Award size={12} /> आधिकारिक छात्रवृत्ति परीक्षा 2028
               </div>
               <h3 className="text-lg sm:text-2xl font-black text-white">
-                सनराइज प्रतिभा खोज परीक्षा 2027 (STSE) — Class 10th बैच
+                सनराइज प्रतिभा खोज परीक्षा 2028 (STSE) — Class 10th बैच
               </h3>
               <p className="text-amber-200/90 text-xs sm:text-sm mt-0.5">
                 Top 10 को <strong>Smartwatch, Trophies व 100% तक फीस माफ़ी</strong>! हर छात्र को फ्री <strong>Exam Kit + Certificate</strong>!

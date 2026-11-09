@@ -50,7 +50,7 @@ export async function updateSTSEConfig(config: Partial<STSEConfig>): Promise<boo
   }
 }
 
-// Generate the next Roll Number (e.g. STSE-2027-101, STSE-2027-102...)
+// Generate the next Roll Number (e.g. STSE-2028-101, STSE-2028-102...)
 export async function generateNextRollNumber(): Promise<string> {
   try {
     const { count, error } = await supabase
@@ -59,7 +59,7 @@ export async function generateNextRollNumber(): Promise<string> {
 
     if (!error && typeof count === 'number') {
       const nextNum = 101 + count;
-      return `STSE-2027-${nextNum}`;
+      return `STSE-2028-${nextNum}`;
     }
   } catch (e) {
     console.warn('Error counting registrations for roll number', e);
@@ -67,24 +67,41 @@ export async function generateNextRollNumber(): Promise<string> {
   
   // Fallback random timestamp number
   const rnd = Math.floor(100 + Math.random() * 900);
-  return `STSE-2027-${rnd}`;
+  return `STSE-2028-${rnd}`;
 }
 
 export async function registerForSTSE(
   formData: Omit<STSERegistration, 'id' | 'roll_number' | 'created_at' | 'status'>
-): Promise<{ success: boolean; registration?: STSERegistration; error?: string }> {
+): Promise<{ success: boolean; isDuplicate?: boolean; registration?: STSERegistration; error?: string }> {
   try {
-    // 1. Check if phone already registered
-    const { data: existing } = await supabase
+    const cleanPhone = formData.phone.trim();
+    const cleanName = formData.student_name.trim().toLowerCase();
+
+    // 1. Check if same student (phone + same name) already exists in Supabase
+    const { data: existingFromDb } = await supabase
       .from('stse_registrations')
       .select('*')
-      .or(`phone.eq.${formData.phone},whatsapp.eq.${formData.phone}`)
-      .limit(1);
+      .or(`phone.eq.${cleanPhone},whatsapp.eq.${cleanPhone}`);
 
-    if (existing && existing.length > 0) {
+    // Also check local storage cache
+    const cached: STSERegistration[] = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
+    const combinedExisting = [...(existingFromDb || []), ...cached];
+
+    const duplicate = combinedExisting.find((r) => {
+      const phoneMatches = r.phone === cleanPhone || r.whatsapp === cleanPhone;
+      const nameMatches = r.student_name?.trim().toLowerCase() === cleanName;
+      return phoneMatches && nameMatches;
+    });
+
+    if (duplicate) {
+      if (!duplicate.photo_base64 && duplicate.roll_number) {
+        duplicate.photo_base64 = localStorage.getItem(`stse_photo_${duplicate.roll_number}`) || undefined;
+      }
       return {
-        success: true,
-        registration: existing[0],
+        success: false,
+        isDuplicate: true,
+        registration: duplicate,
+        error: `छात्र "${duplicate.student_name}" एवं मोबाइल नंबर "${cleanPhone}" से पंजीकरण पहले ही हो चुका है (रोल नंबर: ${duplicate.roll_number})। दोबारा फॉर्म सबमिट नहीं किया जा सकता।`,
       };
     }
 

@@ -1007,7 +1007,7 @@ export default function AdminResultsPage() {
                 <button onClick={() => setActiveTab('stse')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'stse' ? 'bg-gradient-to-r from-[#f5a623] to-[#d48806] text-[#0f2a5c] shadow-lg scale-105' : 'text-amber-300 hover:bg-white/5 hover:text-white'}`}>
                   <Trophy size={20} />
-                  <span>STSE 2027 🎓</span>
+                  <span>STSE 2028</span>
                 </button>
               </>)}
             </div>

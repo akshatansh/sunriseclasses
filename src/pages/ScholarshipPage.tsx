@@ -44,7 +44,7 @@ export default function ScholarshipPage() {
     village_area: LOCAL_VILLAGES[0],
     custom_village: '',
     shift_preference: 'Shift 1: 09:30 AM - 10:30 AM',
-    class_target: 'Class 10th (Matric 2027)',
+    class_target: 'Class 10th (Matric 2028)',
   });
 
   const [photoBase64, setPhotoBase64] = useState<string>('');
@@ -53,6 +53,7 @@ export default function ScholarshipPage() {
 
   const [loading, setLoading] = useState(false);
   const [successRegistration, setSuccessRegistration] = useState<STSERegistration | null>(null);
+  const [duplicateRegistration, setDuplicateRegistration] = useState<STSERegistration | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,6 +102,7 @@ export default function ScholarshipPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setDuplicateRegistration(null);
 
     if (!formData.student_name.trim() || !formData.father_name.trim() || !formData.phone.trim()) {
       setErrorMessage('कृपया सभी आवश्यक जानकारी (नाम, पिता का नाम और मोबाइल नंबर) भरें।');
@@ -134,6 +136,9 @@ export default function ScholarshipPage() {
     if (res.success && res.registration) {
       setSuccessRegistration(res.registration);
       setTimeout(() => { generateAdmitCardPDF(res.registration!, config); }, 800);
+    } else if (res.isDuplicate && res.registration) {
+      setDuplicateRegistration(res.registration);
+      setErrorMessage(res.error || 'इस नाम एवं मोबाइल नंबर से पहले ही रजिस्ट्रेशन हो चुका है।');
     } else {
       setErrorMessage(res.error || 'रजिस्ट्रेशन में समस्या आई। कृपया पुनः प्रयास करें।');
     }
@@ -204,7 +209,7 @@ export default function ScholarshipPage() {
               सनराइज प्रतिभा खोज एवं छात्रवृत्ति परीक्षा
             </h1>
             <div className="text-base sm:text-xl font-semibold text-[#f5a623] tracking-wide mb-4">
-              STSE 2027 — Sunrise Talent Search Examination
+              STSE 2028 — Sunrise Talent Search Examination
             </div>
             {/* Intro para — institutional language */}
             <p className="max-w-2xl mx-auto text-sm sm:text-base text-gray-600 leading-relaxed">
@@ -274,7 +279,7 @@ export default function ScholarshipPage() {
                 प्रिय अभिभावक एवं छात्र-छात्राओं,
               </p>
               <p className="text-sm text-gray-600 leading-relaxed mb-3">
-                STSE 2027 का उद्देश्य हमारे क्षेत्र — चंपानगर एवं आसपास के गांवों — के प्रतिभाशाली बच्चों को एक मंच
+                STSE 2028 का उद्देश्य हमारे क्षेत्र — चंपानगर एवं आसपास के गांवों — के प्रतिभाशाली बच्चों को एक मंच
                 देना है, जहाँ वे अपनी योग्यता साबित कर सकें और कम फीस में गुणवत्तापूर्ण शिक्षा प्राप्त कर सकें।
                 यह परीक्षा कक्षा 9वीं के पाठ्यक्रम पर आधारित होगी। <strong>प्रथम स्थान पाने वाले छात्र को
                 स्मार्टवॉच एवं पूरे वर्ष 100% फीस माफ़ी</strong> दी जाएगी।
@@ -454,7 +459,7 @@ export default function ScholarshipPage() {
                       <CheckCircle className="w-8 h-8 text-green-600" />
                     </div>
                     <h3 className="text-xl font-bold text-green-800 mb-1">पंजीकरण सफल!</h3>
-                    <p className="text-gray-600 text-sm mb-5">आपका STSE 2027 परीक्षा के लिए पंजीकरण हो चुका है।</p>
+                    <p className="text-gray-600 text-sm mb-5">आपका STSE 2028 परीक्षा के लिए पंजीकरण हो चुका है।</p>
                     <div className="bg-gray-50 border border-gray-200 rounded text-left p-4 mb-5 text-sm flex flex-col sm:flex-row gap-4 items-center sm:items-start">
                       {successRegistration.photo_base64 && (
                         <div className="w-20 h-24 border border-[#0f2a5c] rounded overflow-hidden bg-white shrink-0 shadow-sm">
@@ -498,7 +503,7 @@ export default function ScholarshipPage() {
                             school_name: LOCAL_SCHOOLS[0], custom_school: '',
                             village_area: LOCAL_VILLAGES[0], custom_village: '',
                             shift_preference: config.shifts?.[0] || 'Shift 1: 09:30 AM - 10:30 AM',
-                            class_target: 'Class 10th (Matric 2027)',
+                            class_target: 'Class 10th (Matric 2028)',
                           });
                         }}
                         className="px-5 py-3 border border-gray-300 text-gray-700 font-semibold rounded text-sm hover:bg-gray-50 transition-colors"
@@ -511,13 +516,37 @@ export default function ScholarshipPage() {
                   /* REGISTRATION FORM */
                   <>
                     <div className="mb-5 pb-4 border-b border-gray-100">
-                      <h2 className="text-base font-bold text-[#0f2a5c]">STSE 2027 — पंजीकरण प्रपत्र</h2>
+                      <h2 className="text-base font-bold text-[#0f2a5c]">STSE 2028 — पंजीकरण प्रपत्र</h2>
                       <p className="text-xs text-gray-500 mt-0.5">
                         फॉर्म भरते ही तुरंत एडमिट कार्ड (PDF) डाउनलोड हो जाएगा। सभी जानकारी सही-सही भरें।
                       </p>
                     </div>
 
-                    {errorMessage && (
+                    {duplicateRegistration && (
+                      <div className="mb-4 p-4 rounded-lg border-2 border-amber-400 bg-amber-50 text-amber-900 text-sm shadow-sm">
+                        <div className="flex items-start gap-2.5">
+                          <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <div className="font-bold text-base text-amber-950 mb-1">
+                              पंजीकरण पहले से मौजूद है! (Already Registered)
+                            </div>
+                            <p className="text-xs text-amber-800 leading-relaxed mb-3">
+                              छात्र <strong>{duplicateRegistration.student_name}</strong> का मोबाइल नंबर <strong>{formData.phone}</strong> के साथ STSE 2028 में पहले ही पंजीकरण हो चुका है। आपका रोल नंबर <strong>{duplicateRegistration.roll_number}</strong> है। दोबारा नया फॉर्म सबमिट करने की आवश्यकता नहीं है।
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => generateAdmitCardPDF(duplicateRegistration, config)}
+                              className="px-4 py-2 bg-[#0f2a5c] text-white font-bold rounded text-xs hover:bg-[#1a3a7a] transition-colors flex items-center gap-1.5 shadow"
+                            >
+                              <Download className="w-4 h-4 text-[#f5a623]" />
+                              <span>एडमिट कार्ड PDF डाउनलोड करें (Roll: {duplicateRegistration.roll_number})</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {errorMessage && !duplicateRegistration && (
                       <div className="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-700 text-sm flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                         <span>{errorMessage}</span>
@@ -839,7 +868,7 @@ export default function ScholarshipPage() {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 text-sm">
               {[
-                'Bihar Board Matric 2027 में 450+ अंक लाने की रणनीति',
+                'Bihar Board Matric 2028 में 450+ अंक लाने की रणनीति',
                 'Sunrise में डिजिटल उपस्थिति व साप्ताहिक परीक्षा प्रणाली',
                 'Class 10th पाठ्यक्रम एवं परीक्षा की तैयारी कैसे करें',
                 'अपने बच्चे की पढ़ाई में अभिभावक की भूमिका',
@@ -868,7 +897,7 @@ export default function ScholarshipPage() {
 
         {/* Footer note */}
         <div className="text-center text-xs text-gray-400 pb-4">
-          © Sunrise Classes &amp; Academy, Champanagar, Purnia, Bihar — STSE 2027
+          © Sunrise Classes &amp; Academy, Champanagar, Purnia, Bihar — STSE 2028
         </div>
 
       </div>

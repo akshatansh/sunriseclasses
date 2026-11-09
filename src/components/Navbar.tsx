@@ -7,7 +7,7 @@ const navLinks = [
   { label: 'Home', path: '/' },
   { label: 'About', path: '/about' },
   { label: 'Courses', path: '/courses' },
-  { label: 'STSE 2027', path: '/stse', highlight: true },
+  { label: 'STSE 2028', path: '/stse', highlight: true },
   { label: 'Videos', path: '/videos' },
   { label: 'YT Family', path: '/youtube-family' },
   { label: 'Online Tests', path: '/online-tests' },

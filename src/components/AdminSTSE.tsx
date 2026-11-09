@@ -159,7 +159,7 @@ export default function AdminSTSE() {
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text('SUNRISE TALENT SEARCH EXAMINATION 2027 (STSE)', pageW / 2, 12, { align: 'center' });
+    doc.text('SUNRISE TALENT SEARCH EXAMINATION 2028 (STSE)', pageW / 2, 12, { align: 'center' });
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text(`Official Exam Day Attendance Sheet  |  Generated on: ${new Date().toLocaleDateString()}`, pageW / 2, 18, { align: 'center' });
@@ -202,10 +202,10 @@ export default function AdminSTSE() {
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#f5a623] mb-1">
             <Trophy className="w-4 h-4" />
-            STSE 2027 Offline Management
+            STSE 2028 Offline Management
           </div>
           <h2 className="text-2xl font-extrabold text-white">
-            सनराइज प्रतिभा खोज परीक्षा 2027 (प्रबंधन)
+            सनराइज प्रतिभा खोज परीक्षा 2028 (प्रबंधन)
           </h2>
           <p className="text-slate-300 text-xs sm:text-sm mt-1">
             परीक्षा की तारीख: <strong>{config.exam_date}</strong>  |  केंद्र: <strong>{config.venue}</strong>
@@ -475,7 +475,7 @@ export default function AdminSTSE() {
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-scale-up">
             <h3 className="text-lg font-bold text-[#0f2a5c] mb-4 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-[#f5a623]" />
-              <span>STSE 2027 परीक्षा सेटिंग्स</span>
+              <span>STSE 2028 परीक्षा सेटिंग्स</span>
             </h3>
 
             <form onSubmit={handleSaveConfig} className="space-y-4">

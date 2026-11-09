@@ -136,7 +136,7 @@ export async function generateAdmitCardPDF(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(...GOLD);
-  doc.text('SUNRISE TALENT SEARCH EXAMINATION — STSE 2027', pageW / 2, 37, { align: 'center' });
+  doc.text('SUNRISE TALENT SEARCH EXAMINATION — STSE 2028', pageW / 2, 37, { align: 'center' });
 
   // Red important bar
   doc.setFillColor(...RED_DARK);
@@ -205,7 +205,7 @@ export async function generateAdmitCardPDF(
   doc.setTextColor(...NAVY);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
-  doc.text(reg.roll_number || 'STSE-2027-001', rollX + photoW / 2, rollY + 12, { align: 'center' });
+  doc.text(reg.roll_number || 'STSE-2028-001', rollX + photoW / 2, rollY + 12, { align: 'center' });
 
   // ─── CANDIDATE DETAILS TABLE ──────────────────────────
   const tableRightMargin = pageW - photoX + 2;
@@ -213,7 +213,7 @@ export async function generateAdmitCardPDF(
     ['Candidate Name', reg.student_name.toUpperCase()],
     ["Father's Name", reg.father_name.toUpperCase()],
     ['Mobile / Contact', reg.phone || 'N/A'],
-    ['Target Class', reg.class_target || 'Class 10th (Matric 2027)'],
+    ['Target Class', reg.class_target || 'Class 10th (Matric 2028)'],
     ['School / Vidyalaya', reg.school_name || 'N/A'],
     ['Village / Area', reg.village_area || 'Champanagar'],
     ['Category', 'General (Open Merit)'],
@@ -406,10 +406,10 @@ export async function generateAdmitCardPDF(
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.text(
-    `Roll No: ${reg.roll_number}  |  Generated on: ${new Date().toLocaleDateString('en-IN')}  |  STSE 2027 — Sunrise Classes & Academy, Champanagar`,
+    `Roll No: ${reg.roll_number}  |  Generated on: ${new Date().toLocaleDateString('en-IN')}  |  STSE 2028 — Sunrise Classes & Academy, Champanagar`,
     pageW / 2, pageH - 10.5, { align: 'center' }
   );
 
   // ─── SAVE ─────────────────────────────────────────────
-  doc.save(`STSE-AdmitCard-${reg.roll_number || '2027'}.pdf`);
+  doc.save(`STSE-AdmitCard-${reg.roll_number || '2028'}.pdf`);
 }
