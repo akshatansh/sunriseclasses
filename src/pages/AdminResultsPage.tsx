@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, ShieldAlert, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen, Calendar, Pencil, Eye, User, Youtube, MonitorPlay } from 'lucide-react';
+import { Plus, Save, Trash2, Upload, Users, FileBarChart2, LockKeyhole, LogOut, ShieldCheck, ShieldAlert, Download, GraduationCap, ArrowUpCircle, AlertTriangle, Megaphone, IndianRupee, Bell, Settings, Phone, BookOpen, Calendar, Pencil, Eye, User, Youtube, MonitorPlay, Trophy } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { drawPDFHeader, drawPDFFooter } from '../lib/pdfUtils';
@@ -28,6 +28,7 @@ import AttendanceManagement from '../components/AttendanceManagement';
 import AdminStudentProfile from '../components/AdminStudentProfile';
 import YouTubeFamilyAdmin from '../components/YouTubeFamilyAdmin';
 import OnlineTestAdmin from '../components/OnlineTestAdmin';
+import AdminSTSE from '../components/AdminSTSE';
 import IssueReportAdmin from '../components/IssueReportAdmin';
 
 const ADMIN_SESSION_KEY = 'sunrise-admin-authenticated';
@@ -90,7 +91,7 @@ export default function AdminResultsPage() {
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [notices, setNotices] = useState<NoticeRecord[]>([]);
   const [newNoticeForm, setNewNoticeForm] = useState<{ title: string, content: string, type: 'exam' | 'holiday' | 'general' }>({ title: '', content: '', type: 'general' });
-  const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'homework' | 'attendance' | 'settings' | 'youtube' | 'onlinetest' | 'reports'>('marks');
+  const [activeTab, setActiveTab] = useState<'marks' | 'students' | 'fees' | 'notices' | 'homework' | 'attendance' | 'settings' | 'youtube' | 'onlinetest' | 'reports' | 'stse'>('marks');
 
   // PWA Install Prompt
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -1002,6 +1003,11 @@ export default function AdminResultsPage() {
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeTab === 'onlinetest' ? 'bg-white/10 text-pink-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}>
                   <MonitorPlay size={20} />
                   <span>Online Tests</span>
+                </button>
+                <button onClick={() => setActiveTab('stse')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'stse' ? 'bg-gradient-to-r from-[#f5a623] to-[#d48806] text-[#0f2a5c] shadow-lg scale-105' : 'text-amber-300 hover:bg-white/5 hover:text-white'}`}>
+                  <Trophy size={20} />
+                  <span>STSE 2027 🎓</span>
                 </button>
               </>)}
             </div>
@@ -2005,6 +2011,12 @@ export default function AdminResultsPage() {
                 </div>
               )}
 
+              {activeTab === 'stse' && loginRole === 'superadmin' && (
+                <div className="rounded-[2rem] border border-[#d9e5ff] bg-white/90 p-6 sm:p-8 shadow-sm">
+                  <AdminSTSE />
+                </div>
+              )}
+
             </div> {/* end tab content */}
 
             {/* ── BOTTOM NAVIGATION BAR — fixed to screen bottom (Mobile Only) ── */}
@@ -2071,6 +2083,11 @@ export default function AdminResultsPage() {
                     className={`flex flex-col items-center justify-center gap-0.5 min-w-[72px] flex-shrink-0 py-3 transition-colors border-t-2 ${activeTab === 'reports' ? 'border-red-600 text-red-600' : 'border-transparent text-slate-400'}`}>
                     <ShieldAlert size={20} strokeWidth={activeTab === 'reports' ? 2.5 : 1.8} />
                     <span className="text-[9px] font-bold uppercase tracking-wide">Reports</span>
+                  </button>
+                  <button onClick={() => setActiveTab('stse')}
+                    className={`flex flex-col items-center justify-center gap-0.5 min-w-[72px] flex-shrink-0 py-3 transition-colors border-t-2 ${activeTab === 'stse' ? 'border-[#f5a623] text-[#f5a623]' : 'border-transparent text-slate-400'}`}>
+                    <Trophy size={20} strokeWidth={activeTab === 'stse' ? 2.5 : 1.8} />
+                    <span className="text-[9px] font-bold uppercase tracking-wide">STSE 🎓</span>
                   </button>
                 </>)}
               </div>

@@ -7,6 +7,7 @@ const navLinks = [
   { label: 'Home', path: '/' },
   { label: 'About', path: '/about' },
   { label: 'Courses', path: '/courses' },
+  { label: 'STSE 2027 🎓', path: '/stse', highlight: true },
   { label: 'Videos', path: '/videos' },
   { label: 'YT Family', path: '/youtube-family' },
   { label: 'Online Tests', path: '/online-tests' },
@@ -92,8 +93,10 @@ export default function Navbar() {
               <Link
                 key={link.path}
                 to={link.path}
-                className={`rounded-full px-2.5 py-1.5 text-xs font-medium transition-all duration-200 whitespace-nowrap ${
-                  location.pathname === link.path
+                className={`rounded-full px-2.5 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap ${
+                  (link as any).highlight
+                    ? 'bg-gradient-to-r from-[#f5a623] to-[#d48806] text-[#0f2a5c] font-black shadow-md shadow-[#f5a623]/20 hover:scale-105'
+                    : location.pathname === link.path
                     ? 'bg-white text-[#0f2a5c] shadow-sm'
                     : scrolled
                       ? 'text-slate-700 hover:text-[#0f2a5c] hover:bg-slate-100'
@@ -145,10 +148,12 @@ export default function Navbar() {
                 key={link.path}
                 to={link.path}
                 onClick={() => setOpen(false)}
-                className={`rounded-2xl px-4 py-3 text-sm font-medium transition-colors duration-200 ${
-                  location.pathname === link.path
-                    ? 'bg-white text-[#0f2a5c]'
-                    : 'text-gray-200 hover:text-[#f5a623] hover:bg-white/5'
+                className={`rounded-2xl px-4 py-3 text-sm transition-colors duration-200 ${
+                  (link as any).highlight
+                    ? 'bg-gradient-to-r from-[#f5a623] to-[#d48806] text-[#0f2a5c] font-black shadow-md'
+                    : location.pathname === link.path
+                    ? 'bg-white text-[#0f2a5c] font-bold'
+                    : 'text-gray-200 hover:text-[#f5a623] hover:bg-white/5 font-medium'
                 }`}
               >
                 {link.label}
