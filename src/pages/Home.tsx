@@ -44,7 +44,7 @@ export default function Home() {
             to="/stse"
             className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#f5a623] to-[#d48806] text-[#0f2a5c] font-black text-sm shrink-0 shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
           >
-            <span>फ्री फॉर्म भरें व एडमिट कार्ड पाएं</span>
+            <span>STSE 2028 सूचना देखें (Coming Soon)</span>
             <ArrowRight size={16} />
           </Link>
         </div>

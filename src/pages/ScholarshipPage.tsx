@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Search, AlertCircle, CheckCircle, Phone, MapPin, Clock, ArrowRight, Camera, X } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Download, Search, AlertCircle, CheckCircle, Phone, MapPin, Clock, ArrowRight, Camera, X, Award, Calendar, Bell } from 'lucide-react';
 import { registerForSTSE, getRegistrationByRollOrPhone, getSTSEConfig } from '../lib/stse';
 import { generateAdmitCardPDF, resizeImageToPassportSize, STSERegistration, STSEConfig } from '../lib/admitCardPdf';
 
@@ -155,6 +156,116 @@ export default function ScholarshipPage() {
     if (result) { setSearchResult(result); }
     else { setSearchError('कोई रजिस्ट्रेशन नहीं मिला। कृपया सही रोल नंबर या 10-अंकों का मोबाइल नंबर दर्ज करें।'); }
   };
+
+  const [searchParams] = useSearchParams();
+  const isPreview = searchParams.get('preview') === 'true';
+  const isComingSoon = true; // Set to false to launch registration publicly
+
+  if (isComingSoon && !isPreview) {
+    return (
+      <div className="min-h-screen bg-[#f7f7f5] text-gray-800 font-sans flex flex-col">
+        {/* Header */}
+        <header className="bg-[#0f2a5c] text-white">
+          <div className="max-w-5xl mx-auto px-4 py-5 flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex items-center gap-4 flex-1">
+              <img
+                src="/sunrise-logo.png"
+                alt="Sunrise Classes Logo"
+                className="w-16 h-16 object-contain rounded bg-white p-1 shrink-0"
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              <div>
+                <div className="text-[11px] font-semibold tracking-widest uppercase text-[#f5a623] mb-0.5">
+                  Sunrise Classes &amp; Academy
+                </div>
+                <div className="text-xl sm:text-2xl font-bold leading-tight text-white">
+                  सनराइज क्लासेज एवं अकादमी
+                </div>
+                <div className="text-xs text-blue-200 mt-0.5">
+                  Main Market, Champanagar, Purnia — Bihar — 854330
+                </div>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <a href="tel:9973152070" className="flex items-center gap-2 text-[#f5a623] font-bold text-base hover:underline justify-end">
+                <Phone className="w-4 h-4" />
+                +91 99731 52070
+              </a>
+              <div className="text-xs text-blue-200 mt-0.5">हेल्पलाइन: सुबह 7 से शाम 7 बजे</div>
+            </div>
+          </div>
+          <div className="h-1 bg-[#f5a623]" />
+        </header>
+
+        {/* Coming Soon Body */}
+        <div className="flex-1 max-w-4xl mx-auto px-4 py-12 sm:py-16 flex flex-col items-center justify-center text-center">
+          <div className="inline-flex items-center gap-2 border border-[#0f2a5c] text-[#0f2a5c] bg-blue-50/50 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-6">
+            <Bell className="w-3.5 h-3.5 text-[#f5a623]" />
+            <span>आधिकारिक सूचना — Official Notice</span>
+          </div>
+
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-[#0f2a5c] leading-tight mb-2">
+            सनराइज प्रतिभा खोज परीक्षा 2028
+          </h1>
+          <div className="text-lg sm:text-2xl font-bold text-[#f5a623] mb-6">
+            STSE 2028 — Sunrise Talent Search Examination
+          </div>
+
+          {/* Coming Soon Notice Card */}
+          <div className="w-full max-w-2xl bg-white border-2 border-dashed border-[#0f2a5c]/30 rounded-2xl p-6 sm:p-8 shadow-sm mb-8">
+            <div className="inline-block px-5 py-2 bg-[#0f2a5c] text-white text-xs sm:text-sm font-extrabold uppercase tracking-widest rounded-full mb-4">
+              ONLINE REGISTRATION COMING SOON
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">
+              ऑनलाइन पंजीकरण शीघ्र प्रारंभ होगा
+            </h2>
+            <p className="text-sm text-gray-600 leading-relaxed max-w-xl mx-auto">
+              कक्षा 10वीं (मैट्रिक 2028) बैच के छात्र-छात्राओं के लिए चंपानगर एवं आसपास के क्षेत्र की सबसे बड़ी छात्रवृत्ति परीक्षा बहुत जल्द आयोजित की जाएगी। परीक्षा की तिथि, समय व ऑनलाइन आवेदन फॉर्म शीघ्र ही इस पोर्टल पर शुरू होंगे।
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 text-left">
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3.5">
+                <div className="text-[11px] font-bold text-gray-500 uppercase">लक्ष्य विद्यार्थी</div>
+                <div className="text-sm font-bold text-[#0f2a5c] mt-0.5">कक्षा 10वीं (2028 बैच)</div>
+                <div className="text-[11px] text-gray-500 mt-0.5">चंपानगर व 8 km के छात्र</div>
+              </div>
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3.5">
+                <div className="text-[11px] font-bold text-gray-500 uppercase">पुरस्कार व फीस छूट</div>
+                <div className="text-sm font-bold text-green-700 mt-0.5">100% तक फीस माफ़ी</div>
+                <div className="text-[11px] text-gray-500 mt-0.5">स्मार्टवॉच, ट्रॉफी व किट</div>
+              </div>
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3.5">
+                <div className="text-[11px] font-bold text-gray-500 uppercase">परीक्षा माध्यम</div>
+                <div className="text-sm font-bold text-[#0f2a5c] mt-0.5">100% निःशुल्क (Free)</div>
+                <div className="text-[11px] text-gray-500 mt-0.5">ऑफलाइन OMR शीट पर</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <Link
+              to="/"
+              className="px-6 py-3 bg-[#0f2a5c] text-white font-bold rounded-xl text-sm hover:bg-[#1a3a7a] transition-all flex items-center gap-2 shadow"
+            >
+              <span>मुख्य वेबसाइट पर जाएं (Back to Home)</span>
+              <ArrowRight className="w-4 h-4 text-[#f5a623]" />
+            </Link>
+            <a
+              href="tel:9973152070"
+              className="px-6 py-3 border border-gray-300 bg-white text-gray-700 font-bold rounded-xl text-sm hover:bg-gray-50 transition-all flex items-center gap-2"
+            >
+              <Phone className="w-4 h-4 text-[#0f2a5c]" />
+              <span>पूछताछ करें (+91 99731 52070)</span>
+            </a>
+          </div>
+
+          <p className="text-xs text-gray-400 mt-8">
+            © Sunrise Classes &amp; Academy, Champanagar, Purnia (Bihar) — STSE 2028
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f7f5] text-gray-800 font-sans">
